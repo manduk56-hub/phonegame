@@ -1,0 +1,44 @@
+// Each control owns one pointer; other controls remain independently usable.
+export function bindPad(el, callback, {vertical=false, eightWay=false, enabled=()=>true}={}) {
+  let pointer=null;
+  const knob=el.querySelector('.knob');
+  function reset() {
+    const previous=pointer;
+    pointer=null;
+    if(previous!==null&&el.hasPointerCapture(previous))el.releasePointerCapture(previous);
+    knob.style.transform='translate(-50%,-50%)';
+    if(el.dataset)el.dataset.direction='center';
+    callback(0,0);
+  }
+  function update(e) {
+    if(!enabled()) {reset();return;}
+    const b=el.getBoundingClientRect(), fraction=vertical?.38:.36;
+    let x=vertical?0:(e.clientX-b.left-b.width/2)/(b.width*.36);
+    let y=(e.clientY-b.top-b.height/2)/(b.height*fraction);
+    if(eightWay&&!vertical){
+      const strength=Math.min(1,Math.max(Math.abs(x),Math.abs(y)));
+      if(strength<.1){x=0;y=0;if(el.dataset)el.dataset.direction='center';}
+      else{
+        const direction=(Math.round(Math.atan2(y,x)/(Math.PI/4))+8)%8;
+        const axes=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+        [x,y]=axes[direction].map(v=>v*strength);
+        if(el.dataset)el.dataset.direction=['e','se','s','sw','w','nw','n','ne'][direction];
+      }
+    }else{
+      const length=Math.hypot(x,y);
+      if(length>1){x/=length;y/=length;}
+      if(Math.abs(x)<.06)x=0;
+      if(Math.abs(y)<.06)y=0;
+    }
+    knob.style.transform=`translate(calc(-50% + ${x*b.width*.36}px), calc(-50% + ${y*b.height*fraction}px))`;
+    callback(x,y);
+  }
+  el.onpointerdown=e=>{
+    if(pointer!==null||!enabled())return;
+    pointer=e.pointerId;el.setPointerCapture(pointer);update(e);
+  };
+  el.onpointermove=e=>{if(e.pointerId===pointer)update(e);};
+  const release=e=>{if(e.pointerId===pointer)reset();};
+  el.onpointerup=release;el.onpointercancel=release;el.onlostpointercapture=release;
+  return reset;
+}

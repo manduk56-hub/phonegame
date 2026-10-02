@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none" shape-rendering="crispEdges">
+  <path fill="#171b15" d="M9 4H191V9H196V191H191V196H9V191H4V9H9Z"/>
+  <path fill="#788167" d="M9 0H191V5H200V191H195V200H9V195H0V9H5V5H9Z"/>
+  <path fill="#a1a78a" d="M9 0H191V5H9ZM0 9H5V191H0ZM5 5H16V9H5Z"/>
+  <path fill="#454e3b" d="M195 9H200V191H195ZM9 195H191V200H9ZM191 185H195V195H185V191H191Z"/>
+  <path fill="#5e6852" d="M9 9H191V191H9Z"/>
+  <path fill="#343d2c" d="M14 14H186V186H14Z"/>
+  <path fill="#161e17" d="M14 14H186V20H20V186H14Z"/>
+  <path fill="#535c43" d="M20 180H180V20H186V186H20Z"/>
+  <path fill="#2b3326" d="M24 24H176V176H24Z"/>
+  <path stroke="#515b40" stroke-width="1" stroke-dasharray="3 3" d="M26 26L174 174M174 26L26 174"/>
+  <path stroke="#788167" stroke-width="1" d="M30 30H170V170H30Z" opacity=".35"/>
+  <g fill="#b1b799"><path d="M8 8H16V12H8ZM184 8H192V12H184ZM8 184H12V192H8ZM184 188H192V192H184Z"/></g>
+  <g fill="#2c3427"><path d="M8 12H16V16H8ZM184 12H192V16H184ZM12 184H16V192H12ZM184 184H192V188H184Z"/></g>
+</svg>

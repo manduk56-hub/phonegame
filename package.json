@@ -1,0 +1,19 @@
+{
+  "name": "dirt-rally",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test",
+    "verify:geometry": "node tools/verify-geometry.mjs",
+    "verify:render": "node tools/verify-geometry.mjs --render",
+    "verify:live": "node tools/verify-live.mjs",
+    "verify:lobby": "node tools/verify-lobby.mjs"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "three": "^0.186.1",
+    "ws": "^8.18.0"
+  }
+}
