@@ -45,23 +45,23 @@ try {
     & $launcher -Mode Server -ServerUrl 'https://chosen.example'
     Assert-Launch 'https://chosen.example' 'launcher-test-placeholder'
     $choices.Enqueue('bad'); $choices.Enqueue('1')
-    & $launcher
+    & $launcher -Mode Ask
     Assert-Launch '' ''
     $choices.Enqueue('2')
-    & $launcher
+    & $launcher -Mode Ask
     Assert-Launch 'https://chosen.example' 'launcher-test-placeholder'
     Remove-Item -LiteralPath (Join-Path $testLocalAppData 'DirtRally/server.json')
     $choices.Enqueue('2'); $choices.Enqueue(''); $choices.Enqueue('http://invalid.example'); $choices.Enqueue('https://personal.example/')
-    & $launcher
+    & $launcher -Mode Ask
     Assert-Launch 'https://personal.example' 'launcher-test-placeholder'
-    & (Join-Path $projectDir 'Start-RemoteGame.ps1')
+    & (Join-Path $projectDir 'Start-RemoteGame.ps1') -ServerUrl ''
     Assert-Launch 'https://personal.example' 'launcher-test-placeholder'
     Remove-Item -LiteralPath (Join-Path $testLocalAppData 'DirtRally/server.json')
     $choices.Enqueue('2'); $choices.Enqueue('q')
-    & $launcher
+    & $launcher -Mode Ask
     if ($launches.Count) { throw 'Cancelling server address entry started a game.' }
     $choices.Enqueue('q')
-    & $launcher
+    & $launcher -Mode Ask
     if ($launches.Count) { throw 'Cancel started a game.' }
     Write-Host 'PASS: local override, own-server entry and persistence, invalid URLs, cancel and parent environment restoration. No game or server was started.'
 } finally {

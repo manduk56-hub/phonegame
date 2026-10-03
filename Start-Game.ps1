@@ -1,5 +1,9 @@
-param([string]$ServerUrl = $env:DIRT_RALLY_SERVER_URL)
+﻿param([string]$ServerUrl = $env:DIRT_RALLY_SERVER_URL)
 $ErrorActionPreference = 'Stop'
+if (-not $PSBoundParameters.ContainsKey('ServerUrl')) {
+    & (Join-Path $PSScriptRoot 'launcher/Start-InstalledGame.ps1')
+    return
+}
 Set-Location -LiteralPath $PSScriptRoot
 $previousUrl = $env:DIRT_RALLY_SERVER_URL
 $previousKey = $env:DIRT_RALLY_HOST_KEY

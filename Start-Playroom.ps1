@@ -1,8 +1,12 @@
 ﻿param(
-    [ValidateSet('Ask', 'Local', 'Server')][string]$Mode = 'Ask',
+    [ValidateSet('Installer', 'Launcher', 'Ask', 'Local', 'Server')][string]$Mode = 'Installer',
     [string]$ServerUrl = ''
 )
 $ErrorActionPreference = 'Stop'
+if ($Mode -in @('Installer','Launcher')) {
+    & (Join-Path $PSScriptRoot 'launcher/Start-Installer.ps1')
+    return
+}
 if ($Mode -eq 'Ask') {
     Write-Host ''
     Write-Host 'PLAYROOM - 접속할 곳을 선택하세요'

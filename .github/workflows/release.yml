@@ -1,0 +1,85 @@
+name: Build and publish Playroom installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playroom-release-main
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - name: Assign automatic version
+        id: version
+        shell: pwsh
+        run: ./tools/Get-ReleaseVersion.ps1 -RunNumber $env:GITHUB_RUN_NUMBER
+      - name: Build installer and game
+        shell: pwsh
+        run: ./tools/Build-Release.ps1 -Version '${{ steps.version.outputs.version }}'
+      - name: Verify install and update
+        shell: powershell
+        run: ./tools/verify-install.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: playroom-windows
+          path: |
+            .runtime/releases/playroom-*-windows-x64.zip
+            .runtime/releases/playroom-manifest.json
+            .runtime/releases/Playroom-Installer.zip
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: playroom-windows
+          path: release
+      - name: Publish verified files together
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          latest=$(gh api "repos/$GH_REPO/branches/main" --jq '.commit.sha')
+          if [ "$latest" != "$COMMIT" ]; then
+            echo 'A newer commit is on main; its build will publish instead.'
+            exit 0
+          fi
+          tag="playroom-v$VERSION"
+          if gh release view "$tag" --json isDraft > existing.json 2>/dev/null; then
+            if [ "$(jq -r .isDraft existing.json)" = false ]; then
+              echo 'This run already published successfully.'
+              exit 0
+            fi
+          else
+            gh release create "$tag" --draft --target "$COMMIT" --title "플레이룸 $VERSION" --notes 'Download Playroom-Installer.zip, extract it, and run Install-Playroom.cmd. Installed games check for updates on startup.'
+          fi
+          gh release upload "$tag" release/* --clobber
+          latest=$(gh api "repos/$GH_REPO/branches/main" --jq '.commit.sha')
+          if [ "$latest" != "$COMMIT" ]; then
+            echo 'A newer commit arrived; retain this build as a draft.'
+            exit 0
+          fi
+          gh release edit "$tag" --draft=false --latest

@@ -1,8 +1,32 @@
-# PLAYROOM / DIRT RALLY
+# 플레이룸
+
+## 인스톨러·자동 업데이트와 자동 터널 (2026-10-04)
+
+일반 사용자는 GitHub Releases의 `Playroom-Installer.zip`을 내려받아 압축을 풀고 `Install-Playroom.cmd`를 실행합니다. 설치 위치를 선택하면 게임과 Node·Godot 실행파일·터널 프로그램을 함께 설치하고 바탕화면에 **플레이룸** 바로가기 하나를 만듭니다. 설치 화면은 설치할 때만 사용합니다. 소스 저장소에서 직접 받은 경우에도 `Install-Playroom.cmd`를 실행해 같은 설치를 진행할 수 있습니다. 소스 파일만으로는 필요한 실행 도구가 모두 설치되지 않습니다.
+
+바탕화면의 플레이룸을 실행하면 작은 진행 창에서 GitHub Releases의 `playroom-manifest.json`을 확인합니다. 설치 버전보다 새 버전이면 다운로드 → SHA256 검사 → 패키지 내부 버전 검사 → 새 버전 활성화 → 게임 실행 순서로 자동 업데이트합니다. 업데이트가 실패하면 기존 게임을 실행하며, 기존 버전 폴더는 보존합니다. 이미 실행 중인 게임을 다시 실행하면 해당 게임 창을 앞으로 가져옵니다.
+
+게임 실행 시 각 PC에 독립된 Node 서버를 빈 포트로 열고 임의의 방장 키를 생성합니다. PC별 Cloudflare Quick Tunnel 주소를 자동 발급하고 실제 외부 접속을 확인한 다음 게임과 QR을 표시합니다. 다른 Wi-Fi나 LTE의 휴대폰도 해당 QR로 참가합니다. A PC와 B PC는 서버·터널·방 코드가 달라 각각의 방으로 플레이합니다. 기존 구매 서버의 주소나 SSH 키는 일반 게임 실행에 사용하지 않습니다. 게임 서버는 방장 PC에서 실행되며 터널이 인터넷 접속을 연결합니다.
+
+게임 종료·시작 취소 시 해당 게임·서버·터널을 함께 종료합니다. 터널 프로세스 종료 시 최대 3회 새 터널을 열고 QR을 갱신하며 방·참가자·경기를 유지합니다. 호스트 PC를 끄거나 절전 상태로 전환하면 참가할 수 없습니다. 현재 터널은 주소가 매번 바뀌는 **Cloudflare Quick Tunnel 테스트 방식**이며 서비스 가용성이 보장되지 않습니다. 공식 문서: https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/
+
+### 개발 결과 바로 확인
+
+`Start-DevGame.cmd`는 현재 작업 폴더의 소스로 게임·서버·터널을 실행합니다. 모바일 HTML/CSS/JS는 저장 후 휴대폰 새로고침으로 확인하고, 서버·Godot 소스는 게임을 종료하고 다시 개발 실행하면 반영됩니다. 패키지 빌드나 Git 업로드는 필요하지 않습니다. 개발용 Node.js·Godot는 필요하며 이 PC의 `.runtime/godot`를 재사용합니다. 같은 네트워크에서 개발하려면 `./tools/Start-DevGame.ps1 -Mode lan`을 사용합니다.
+
+### push 시 자동 배포
+
+`main`에 push하면 `.github/workflows/release.yml`이 테스트 → 자동 버전 생성 → Windows 게임·인스톨러 빌드 → 실제 설치·업데이트 검증 → GitHub Release 게시를 수행합니다. 버전은 `package.json`의 major.minor와 Actions 실행 번호를 조합한 `0.3.실행번호` 형식입니다. 태그나 패키지를 수동으로 만들 필요가 없습니다. 빌드가 성공하면 모든 파일을 draft Release에 먼저 올린 뒤 게시하므로 사용자는 완성된 패키지만 받습니다. 더 최신 커밋이 있으면 이전 빌드는 최신 배포로 게시하지 않습니다. 재실행은 같은 버전을 사용합니다. Actions 수동 실행은 main에서 동일하게 배포합니다. 저장소 설정에서 Actions의 Release 생성 권한이 허용되어야 합니다.
+
+현재 저장소는 비공개입니다. 비공개 동안 일반 사용자의 온라인 설치·업데이트는 GitHub 접근 제한 때문에 불가능하며, 저장소를 공개로 전환하면 동일한 다운로드 주소로 사용할 수 있습니다. 계정 인증 정보를 게임에 넣지 않습니다. 기존 구매 서버 자동 배포 워크플로는 별도로 유지됩니다.
+
+로컬 패키지는 `./tools/Build-Release.ps1 -Version 0.3.0`으로 `.runtime/releases`에 만듭니다. 로컬 확인은 `.runtime/releases/Playroom-Installer/Install-Playroom.cmd`로 시작합니다. 상위 폴더의 manifest와 게임 ZIP을 자동으로 찾으므로 이 경우 동봉된 패키지로 설치할 수 있습니다. Godot 4.6.2를 사용하며 필요한 엔진·템플릿·cloudflared는 공식 SHA256을 확인합니다.
+
+검증: `npm test`, `powershell.exe -File tools/verify-install.ps1`(먼저 패키지 빌드), `node tools/verify-tunnel.mjs`(인터넷 연결 및 cloudflared 필요). Windows PowerShell 5.1 스크립트는 한국어 표시를 위해 UTF-8 BOM을 사용합니다. 개인 설치 경로·상태는 설치 폴더와 `%LOCALAPPDATA%/Playroom`에 저장하고 Git에 포함하지 않습니다.
 
 ## 게임 선택 메인 (2026-10-03)
 
-PC 게임과 웹 메인이 여러 게임을 선택하는 PLAYROOM 화면으로 시작합니다. 4개 카드에서 게임을 고르면 오른쪽 설명과 입장 버튼이 바뀝니다. DIRT RALLY의 ‘대기실 입장’은 기존 포크레인 경기·QR 참가·팀 설정으로 연결됩니다. POCKET RACING, KITCHEN PANIC, PARTY MIX는 향후 게임을 위한 예시이며 현재 ‘준비 중’으로 표시합니다.
+PC 게임과 웹 메인이 여러 게임을 선택하는 PLAYROOM 화면으로 시작합니다. 바탕화면 게임 바로가기·개발 실행도 게임 선택 화면을 먼저 표시합니다. 4개 카드에서 게임을 고르면 오른쪽 설명과 입장 버튼이 바뀝니다. DIRT RALLY의 ‘대기실 입장’은 기존 포크레인 경기·QR 참가·팀 설정으로 연결됩니다. POCKET RACING, KITCHEN PANIC, PARTY MIX는 향후 게임을 위한 예시이며 현재 ‘준비 중’으로 표시합니다.
 
 PC에서는 기존 실행 스크립트 또는 Godot F5로, 웹에서는 `http://localhost:3000`으로 확인하세요. 게임을 이미 실행 중이라면 다시 실행하고 웹은 새로고침하세요. 대기실의 ‘← 게임 선택’으로 목록에 복귀할 수 있습니다. 경기 중에는 이 버튼이 잠기므로 기존 ‘대기실로 돌아가기’로 경기를 마친 뒤 게임을 변경하세요. 게임 선택으로 돌아와도 서버의 참가자와 팀 설정은 유지됩니다. 웹 대기실은 `/#dirt-rally`로 바로 열 수 있습니다.
 
@@ -18,14 +42,14 @@ Godot 4 PC 공유 화면 + 휴대폰 웹 컨트롤러로 플레이하는 포크�
 
 ## 실행
 
-`Start-Game.cmd`를 더블클릭하면 **1. 로컬 / 2. 운영 서버**를 선택합니다. 선택한 접속 환경으로 같은 게임을 실행하며 대기실 QR도 해당 서버의 주소로 표시됩니다. 로컬 선택은 이전에 설정된 원격 접속 환경변수보다 우선합니다. 게임 종료 후 다른 환경을 선택해 다시 실행하세요. 이 선택은 Git 업로드·서버 배포 설정을 바꾸지 않습니다.
+`Install-Playroom.cmd`로 설치한 뒤 `Start-Game.cmd` 또는 바탕화면 플레이룸을 실행하면 자동 업데이트 확인 후 게임을 실행합니다. 개발 중에는 `Start-DevGame.cmd`를 사용합니다. 기존 **1. 로컬 / 2. 운영 서버** 선택 메뉴는 `./Start-Playroom.ps1 -Mode Ask`로 명시적으로 열 수 있습니다. 기존 로컬 선택은 이전에 설정된 원격 접속 환경변수보다 우선합니다.
 
-선택 창 없이 실행하려면 `./Start-Playroom.ps1 -Mode Local` 또는 `./Start-Playroom.ps1 -Mode Server`를 사용합니다. 기본 운영 서버 주소는 없습니다. 서버 모드의 최초 실행에서 각자 서버의 HTTPS 주소와 진행자 키를 입력합니다. 연결이 확인된 주소는 `%LOCALAPPDATA%/DirtRally/server.json`에, 키는 해당 Windows 계정의 암호화 저장소에 보관해 다음 실행에서 재사용합니다. 서버를 바꾸려면 `-Mode Server -ServerUrl https://game.example.com`으로 지정합니다. 기존 `Start-Game.ps1`, `Start-RemoteGame.cmd`도 유지합니다. 개인 접속 설정·비밀번호·SSH 개인 키·진행자 키는 Git에 포함하지 않습니다.
+선택 창 없이 실행하려면 `./Start-Playroom.ps1 -Mode Local` 또는 `./Start-Playroom.ps1 -Mode Server`를 사용합니다. 기본 운영 서버 주소는 없습니다. 서버 모드의 최초 실행에서 각자 서버의 HTTPS 주소와 진행자 키를 입력합니다. 연결이 확인된 주소는 `%LOCALAPPDATA%/DirtRally/server.json`에, 키는 해당 Windows 계정의 암호화 저장소에 보관해 다음 실행에서 재사용합니다. 서버를 바꾸려면 `-Mode Server -ServerUrl https://game.example.com`으로 지정합니다. 기존 `Start-Launcher.cmd`는 설치 화면으로, `Start-Game.cmd`·`Start-RemoteGame.cmd`·인자 없는 `Start-Game.ps1`·`Start-RemoteGame.ps1`은 새 자동 업데이트·터널 실행으로 연결됩니다. 명시적인 `-ServerUrl` 및 `-Mode Local/Server/Ask`는 기존 개발·원격 진단용 경로를 사용합니다. 개인 접속 설정·비밀번호·SSH 개인 키·진행자 키는 Git에 포함하지 않습니다.
 
 경기장은 66×66 크기입니다. `game/arena.json`에 맵 크기·이동 경계·팀 구역 반경·시작 반경·공유 카메라 크기를 설정합니다. 서버와 Godot은 이 설정을 함께 사용하고, 폰 운전석은 서버가 전달하는 맵 크기를 사용합니다. 설정 변경 후 서버와 게임을 다시 실행하세요.
 
 1. 이 폴더에서 `npm.cmd install`, `npm.cmd start`를 실행합니다. Node.js 20 이상을 사용합니다.
-2. Godot에서 `game/project.godot`을 열고 F5로 실행합니다. 현재 검증에 사용한 버전은 Godot 4.7.2이며 실행 파일은 `.runtime/godot`에 있습니다. `Start-Game.ps1`을 실행하면 서버와 게임을 함께 시작하며 게임 내부 대기실이 표시됩니다.
+2. Godot에서 `game/project.godot`을 열고 F5로 실행합니다. 현재 검증에 사용한 버전은 Godot 4.7.2이며 실행 파일은 `.runtime/godot`에 있습니다. 개발 소스를 확인할 때는 `Start-DevGame.cmd`를 실행합니다. 일반 실행은 `Start-Game.cmd`를 사용합니다.
 3. PC와 휴대폰을 같은 Wi-Fi에 연결합니다. 게임 내부 대기실의 폰 접속 주소가 Wi-Fi 어댑터 주소인지 확인하고 오른쪽 QR코드를 스캔합니다.
 4. 휴대폰에서 이름을 입력합니다. 게임 내부에서 최대 8팀·30~900초를 설정하고 ‘적용 / 균등 배정’을 누릅니다. 최대 16명 목록에서 개별 팀 변경·참가자 제외가 가능하며 ‘경기 시작’으로 진행합니다.
 5. 경기 시작 시 대기실 패널이 닫힙니다. 오른쪽 아래 ‘대기실 / 팀 설정’으로 다시 열 수 있습니다. 경기 중에는 팀 설정이 잠기며, 대기실 복귀 시 점수 초기화를 확인합니다. 경기 종료 시 패널이 다시 표시됩니다. Esc는 열린 패널을 닫고, 패널이 닫힌 상태에서는 창 모드로 전환합니다.
@@ -42,7 +66,7 @@ LAN 모드에서 휴대폰 접속이 실패하면 Windows 방화벽에서 Node.j
 
 인터넷 접속은 각자가 구축한 Node 서버의 HTTPS 주소를 입력해 사용합니다. PC 게임과 휴대폰은 모두 같은 서버에 연결합니다. 서버의 Nginx와 인증서로 HTTPS/WSS를 설정하는 방법은 `deploy/README.md`를 참고하세요.
 
-- PC에서 `Start-RemoteGame.cmd`를 더블클릭하거나 `./Start-RemoteGame.ps1`을 실행합니다. 기존 `Start-Game.ps1`은 LAN 모드로 사용할 수 있습니다.
+- PC에서 `Start-RemoteGame.cmd`를 더블클릭하거나 `./Start-RemoteGame.ps1`을 실행합니다. 기존 원격 서버를 명시적으로 사용할 때는 `./Start-RemoteGame.ps1 -ServerUrl https://game.example.com`으로 실행합니다. 인자 없는 실행은 자동 터널 방식입니다.
 - 게임 대기실에 표시되는 새 QR을 휴대폰으로 스캔합니다. 같은 Wi-Fi가 아니어도 참가할 수 있습니다.
 - 진행자 키는 `%LOCALAPPDATA%/DirtRally/credentials`에 서버 주소별로 구분하고 Windows 계정으로 암호화해 저장합니다. 실행 경로에 관계없이 저장된 키를 자동으로 읽습니다. 키는 프로젝트 밖에 저장되어 Git과 배포 묶음에 포함되지 않습니다. 다른 PC에서는 자기 서버의 키를 처음 한 번 입력하거나 `DIRT_RALLY_HOST_KEY` 환경변수를 사용하세요.
 - Godot 에디터에서 직접 실행할 때는 `DIRT_RALLY_SERVER_URL`과 `DIRT_RALLY_HOST_KEY`를 설정한 환경에서 에디터를 시작해야 합니다. 이미 열린 에디터에는 새 환경변수가 반영되지 않으므로 다시 실행하세요.
@@ -84,7 +108,7 @@ ISO 형태의 두 조이스틱과 두 주행 레버를 사용합니다. 모든 �
 | --- | --- |
 | 왼쪽 조이스틱 좌/우 | 상부 좌/우 회전 |
 | 왼쪽 조이스틱 앞으로/뒤로 | 암 펴기/당기기 |
-| 오른쪽 조이스틱 앞으로/뒤로 | 붐 내리기/올리기 |
+| 오른쪽 조이스틱 앞으로/뒤로 | 붐 올리기/내리기 |
 | 오른쪽 조이스틱 좌/우 | 버킷 닫기/열기 |
 | 양쪽 바깥 좌/우 레버 앞으로/뒤로 | 해당 궤도 전진/후진 |
 

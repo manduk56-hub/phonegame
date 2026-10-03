@@ -6,8 +6,8 @@ import {fileURLToPath} from 'node:url';
 import {WebSocketServer,WebSocket} from 'ws';
 import QRCode from 'qrcode';
 import {Match} from './simulation.mjs';
-export async function createServer({port=3000,host='0.0.0.0',manualTick=false,publicUrl='',hostKey=''}={}) {
-  const publicAddress=normalizePublicUrl(publicUrl);
+export async function createServer({port=3000,host='0.0.0.0',manualTick=false,publicUrl='',hostKey='',keepLanAddresses=false}={}) {
+  let publicAddress=normalizePublicUrl(publicUrl);
   if(publicAddress&&hostKey.length<32)throw Error('PUBLIC_URL 사용 시 HOST_KEY는 32자 이상이어야 합니다.');
   const tokenAuth=Boolean(publicAddress||hostKey);
   const sourceVersion=createHash('sha256').update(await readFile(new URL('./server.mjs',import.meta.url))).digest('hex');
@@ -16,8 +16,8 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   const chatHistory=[],chatSentAt=new Map();
   let chatSequence=0;
   const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/results.js':'results.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js'};
-  let addresses=[],joinAddress='';
-  const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress}});
+  let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
+  const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{
     try {
       const url=new URL(req.url,'http://localhost');
@@ -36,7 +36,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
       if(url.pathname==='/config') {
         res.setHeader('Content-Type','application/json');
         res.setHeader('Cache-Control','no-store');
-        res.end(JSON.stringify({app:'dirt-rally',protocol:1,sourceVersion,room,addresses,joinAddress,hostAuth:tokenAuth?'token':'local',adminKey:!tokenAuth&&local(req.socket.remoteAddress)?adminKey:null}));return;
+        res.end(JSON.stringify({app:'dirt-rally',protocol:1,sourceVersion,room,addresses,joinAddress,publicAddress,internetStatus,hostAuth:tokenAuth?'token':'local',adminKey:!tokenAuth&&local(req.socket.remoteAddress)?adminKey:null}));return;
       }
       if(url.pathname==='/qr') {
         const target=addresses.find(a=>a===url.searchParams.get('address'))||joinAddress;
@@ -109,10 +109,21 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   const heartbeat=setInterval(()=>{for(const ws of wss.clients) {if(!ws.alive) {ws.terminate();continue;}ws.alive=false;ws.ping();}},5000);
   await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);}).catch(error=>{clearInterval(timer);clearInterval(heartbeat);throw error;});
   const actualPort=server.address().port;
-  addresses=publicAddress?[publicAddress]:Object.values(networkInterfaces()).flat().filter(a=>a.family==='IPv4'&&!a.internal).map(a=>`http://${a.address}:${actualPort}`);
-  if(!addresses.length) addresses=[`http://127.0.0.1:${actualPort}`];
+  lanAddresses=[...new Set(Object.values(networkInterfaces()).flat().filter(a=>a.family==='IPv4'&&!a.internal).map(a=>`http://${a.address}:${actualPort}`))];
+  if(!lanAddresses.length) lanAddresses=[`http://127.0.0.1:${actualPort}`];
+  addresses=publicAddress?[publicAddress,...(keepLanAddresses?lanAddresses:[])]:lanAddresses;
   joinAddress=addresses[0];
-  return {server,wss,match,room,port:actualPort,addresses,close:async()=>{clearInterval(timer);clearInterval(heartbeat);for(const ws of wss.clients) ws.terminate();await new Promise(resolve=>wss.close(resolve));await new Promise(resolve=>server.close(resolve));}};
+  // Only the owning process can publish a tunnel address. Never expose this
+  // operation as an HTTP endpoint or trust forwarded loopback addresses.
+  const setPublicUrl=(value,status=value?'online':'local')=>{
+    if(!tokenAuth||hostKey.length<32)throw Error('터널 사용 시 HOST_KEY는 32자 이상이어야 합니다.');
+    publicAddress=normalizePublicUrl(value);
+    if(!['online','local','connecting','reconnecting','failed'].includes(status))throw Error('올바르지 않은 연결 상태');
+    internetStatus=status;
+    addresses=publicAddress?[publicAddress,...(keepLanAddresses?lanAddresses:[])]:lanAddresses;
+    joinAddress=addresses[0];
+  };
+  return {server,wss,match,room,port:actualPort,get addresses(){return addresses;},setPublicUrl,close:async()=>{clearInterval(timer);clearInterval(heartbeat);for(const ws of wss.clients) ws.terminate();await new Promise(resolve=>wss.close(resolve));await new Promise(resolve=>server.close(resolve));}};
 }
 function local(ip) {return ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip);}
 function validKey(value,key) {

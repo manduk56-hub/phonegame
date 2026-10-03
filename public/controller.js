@@ -182,7 +182,7 @@ ws.onclose=e=>{chatConnected(false);stop();cab.offline();active=false;$('control
 $('join-button').onclick=()=>{void landscapeFullscreen();removed=false;$('join-error').textContent='';$('join-button').disabled=true;connect();};if(saved)connect();
 // Models face +Z: positive Y rotation turns left from the driver's seat.
 pads.push(bindPad($('left'),(x,y)=>{input.swing=-x;input.stick=-y;showParts();},{eightWay:true,enabled:canControl}));
-pads.push(bindPad($('right'),(x,y)=>{input.curl=-x;input.boom=y;showParts();},{eightWay:true,enabled:canControl}));
+pads.push(bindPad($('right'),(x,y)=>{input.curl=-x;input.boom=-y;showParts();},{eightWay:true,enabled:canControl}));
 for(const key of ['travelL','travelR'])pads.push(bindPad($(key),(_,y)=>{input[key]=-y;showParts();},{vertical:true,enabled:canControl}));
 setInterval(()=>{if(canControl()&&document.visibilityState==='visible')send({type:'input',...input});},50);
 portrait.addEventListener('change',stop);

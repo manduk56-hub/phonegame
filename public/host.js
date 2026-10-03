@@ -5,7 +5,7 @@ lobby.hidden=true;
 const hub=document.createElement('main');
 hub.className='game-hub';
 const catalog=[
-  {title:'DIRT RALLY',subtitle:'포크레인 모래 쟁탈전',type:'팀 대결',description:'휴대폰을 운전석으로! 포크레인을 조작해 우리 팀 구역에 가장 많은 모래를 모으세요.',meta:'2–16명 · 1–10분 · 휴대폰 컨트롤러',ready:true},
+  {title:'플레이룸',subtitle:'포크레인 모래 쟁탈전',type:'팀 대결',description:'휴대폰을 운전석으로! 포크레인을 조작해 우리 팀 구역에 가장 많은 모래를 모으세요.',meta:'2–16명 · 1–10분 · 휴대폰 컨트롤러',ready:true},
   {title:'POCKET RACING',subtitle:'작은 차, 커다란 승부',type:'레이싱',description:'친구들과 함께 달리는 미니 레이싱. 새로운 경기장을 준비하고 있어요.'},
   {title:'KITCHEN PANIC',subtitle:'우당탕탕 협동 주방',type:'협동',description:'주문이 쏟아지는 주방에서 함께 요리하세요. 새로운 협동 게임을 준비하고 있어요.'},
   {title:'PARTY MIX',subtitle:'다 같이 즐기는 미니게임',type:'파티',description:'짧고 신나는 미니게임으로 한판 더! 새로운 파티 게임을 준비하고 있어요.'}
@@ -17,9 +17,9 @@ const illustrations=[
   '<g fill="#252b30"><path d="M82 109h48v35H82zm63-32h48v35h-48zm64 32h48v35h-48zm63-32h48v35h-48z"/></g><circle cx="106" cy="87" r="22" fill="#f0c667"/><circle cx="169" cy="55" r="22" fill="#d77a88"/><circle cx="233" cy="87" r="22" fill="#80bab1"/><circle cx="296" cy="55" r="22" fill="#eee4d4"/><path stroke="#252b30" stroke-width="5" stroke-dasharray="5 10" d="M96 87h25m38-32h25m39 32h25m38-32h25"/>'
 ];
 const art=i=>i===0?'<img class="hub-art hub-game-render" src="/assets/dirt-rally-card.png" alt="실제 게임 속 노란 포크레인이 모래를 담은 버킷을 들어 올린 모습" width="1024" height="1024">':`<svg class="hub-art art-${i}" viewBox="0 0 400 160" aria-hidden="true"><defs><pattern id="grid-${i}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="white" stroke-opacity=".13"/></pattern></defs><path fill="url(#grid-${i})" d="M0 0h400v160H0z"/>${illustrations[i]}</svg>`;
-hub.innerHTML=`<header class="hub-header"><a class="hub-brand" href="#games">▦ PLAYROOM <span>함께 노는 시간</span></a><span class="hub-device">하나의 화면 · 각자의 휴대폰</span></header><section class="hub-intro"><p class="hub-kicker">PICK A GAME. MAKE A MEMORY.</p><h1>오늘은 어떤 게임을 할까요<span>?</span></h1><p>친구들을 모으고, 게임을 고르고, 함께 시작하세요.</p></section><div class="hub-layout"><section aria-label="게임 목록" class="hub-catalog">${catalog.map((g,i)=>`<button class="hub-card" data-game="${i}" aria-pressed="false">${art(i)}<span class="hub-card-heading"><strong>${g.title}</strong><span class="hub-tag">${g.type}</span></span><span class="hub-card-subtitle">${g.subtitle}</span><span class="hub-card-status ${g.ready?'is-ready':''}">${g.ready?'● 플레이 가능 <span>2–16명</span>':'준비 중 <span>COMING SOON</span>'}</span></button>`).join('')}</section><aside class="hub-detail" aria-label="선택한 게임 정보"><p class="hub-detail-kicker">선택한 게임 <span>GAME INFO ↗</span></p><div id="hub-preview"></div><h2 id="hub-title"></h2><p id="hub-subtitle"></p><p id="hub-description" aria-live="polite"></p><p id="hub-meta"></p><button id="hub-play">대기실 입장 <span>→</span></button><p class="hub-footnote" id="hub-footnote"></p></aside></div><footer class="hub-footer"><span><b>01</b> 게임 선택 <i>→</i> <b>02</b> QR로 참가 <i>→</i> <b>03</b> 함께 플레이</span><span>PLAY TOGETHER.</span></footer>`;
+hub.innerHTML=`<header class="hub-header"><a class="hub-brand" href="#games">▦ 플레이룸 <span>함께 노는 시간</span></a><span class="hub-device">하나의 화면 · 각자의 휴대폰</span></header><section class="hub-intro"><p class="hub-kicker">PICK A GAME. MAKE A MEMORY.</p><h1>오늘은 어떤 게임을 할까요<span>?</span></h1><p>친구들을 모으고, 게임을 고르고, 함께 시작하세요.</p></section><div class="hub-layout"><section aria-label="게임 목록" class="hub-catalog">${catalog.map((g,i)=>`<button class="hub-card" data-game="${i}" aria-pressed="false">${art(i)}<span class="hub-card-heading"><strong>${g.title}</strong><span class="hub-tag">${g.type}</span></span><span class="hub-card-subtitle">${g.subtitle}</span><span class="hub-card-status ${g.ready?'is-ready':''}">${g.ready?'● 플레이 가능 <span>2–16명</span>':'준비 중 <span>COMING SOON</span>'}</span></button>`).join('')}</section><aside class="hub-detail" aria-label="선택한 게임 정보"><p class="hub-detail-kicker">선택한 게임 <span>GAME INFO ↗</span></p><div id="hub-preview"></div><h2 id="hub-title"></h2><p id="hub-subtitle"></p><p id="hub-description" aria-live="polite"></p><p id="hub-meta"></p><button id="hub-play">대기실 입장 <span>→</span></button><p class="hub-footnote" id="hub-footnote"></p></aside></div><footer class="hub-footer"><span><b>01</b> 게임 선택 <i>→</i> <b>02</b> QR로 참가 <i>→</i> <b>03</b> 함께 플레이</span><span>PLAY TOGETHER.</span></footer>`;
 document.body.prepend(hub);
-document.title='PLAYROOM · 게임 선택';
+document.title='플레이룸 · 게임 선택';
 let selectedGame=0,currentPhase='lobby';
 function chooseGame(index){
   selectedGame=index;
@@ -39,7 +39,7 @@ lobby.prepend(backToGames);
 function showScreen(screen){
   const inLobby=screen==='dirt-rally';
   hub.hidden=inLobby;lobby.hidden=!inLobby;
-  document.title=inLobby?'DIRT RALLY · 대기실':'PLAYROOM · 게임 선택';
+  document.title=inLobby?'플레이룸 · 대기실':'플레이룸 · 게임 선택';
   if(inLobby)backToGames.focus();else hub.querySelector(`[data-game="${selectedGame}"]`).focus();
   window.scrollTo(0,0);
 }

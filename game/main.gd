@@ -422,7 +422,7 @@ func accept_state(m: Dictionary) -> void:
 	state = m
 	update_lobby(m)
 	if m.has("connection"):
-		var key := str(m.connection.room) + str(m.connection.address)
+		var key := str(m.connection.room) + str(m.connection.address) + str(m.connection.get("internetStatus", "local"))
 		if key != connection_key:
 			connection_key = key
 			fetch_config()
@@ -595,7 +595,7 @@ func make_ui() -> void:
 	heading_bg.size = Vector2(290,88)
 	ui.add_child(heading_bg)
 	var top := Label.new()
-	top.text = "DIRT RALLY"
+	top.text = "플레이룸"
 	top.position = Vector2(36,24)
 	style_label(top,30,Color("#faad28"))
 	ui.add_child(top)
@@ -1160,12 +1160,16 @@ func config_loaded(_result: int, code: int, _headers: PackedStringArray, body: P
 		network_select.add_item(str(address))
 		if address == config.joinAddress:
 			network_select.select(network_select.item_count-1)
-	var remote_mode: bool = config.get("hostAuth", "local") == "token"
-	network_select.get_parent().visible = not remote_mode
-	connection_help.text = "QR을 스캔해서 참가하세요." if remote_mode else "같은 Wi-Fi에서 QR을 스캔해서 참가하세요."
+	var remote_mode: bool = str(config.joinAddress).begins_with("https://")
+	var internet_status: String = str(config.get("internetStatus", "local"))
+	network_select.get_parent().visible = config.addresses.size() > 1 or not remote_mode
+	connection_help.text = "다른 Wi-Fi / LTE에서도 QR로 참가할 수 있습니다." if remote_mode else "같은 LAN / Wi-Fi에서 QR로 참가하세요."
+	if internet_status in ["connecting", "reconnecting"]:
+		connection_help.text = "인터넷 연결을 복구하고 있습니다. QR이 바뀌면 다시 스캔하세요."
+	elif internet_status == "failed":
+		connection_help.text = "인터넷 연결이 끊겼습니다. 같은 LAN / Wi-Fi에서는 참가할 수 있습니다."
 	join_label.text = "참가 코드 " + str(config.room)
-	if not remote_mode:
-		join_label.text += "\n" + str(config.joinAddress)
+	join_label.text += "\n" + str(config.joinAddress)
 	var request := HTTPRequest.new()
 	add_child(request)
 	request.request_completed.connect(func(_r,c,_h,b):

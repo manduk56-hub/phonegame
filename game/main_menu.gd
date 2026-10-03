@@ -3,7 +3,7 @@ extends Control
 const FONT = preload("res://fonts/NeoDunggeunmoPro-Regular.ttf")
 const ART = preload("res://menu_art.gd")
 const GAMES = [
-	["DIRT RALLY", "포크레인 모래 쟁탈전", "팀 대결", "2–16명", "휴대폰을 운전석으로! 포크레인을 조작해\n우리 팀 구역에 가장 많은 모래를 모으세요."],
+	["플레이룸", "포크레인 모래 쟁탈전", "팀 대결", "2–16명", "휴대폰을 운전석으로! 포크레인을 조작해\n우리 팀 구역에 가장 많은 모래를 모으세요."],
 	["POCKET RACING", "작은 차, 커다란 승부", "레이싱", "준비 중", "친구들과 함께 달리는 미니 레이싱.\n새로운 경기장을 준비하고 있어요."],
 	["KITCHEN PANIC", "우당탕탕 협동 주방", "협동", "준비 중", "주문이 쏟아지는 주방에서 함께 요리하세요.\n새로운 협동 게임을 준비하고 있어요."],
 	["PARTY MIX", "다 같이 즐기는 미니게임", "파티", "준비 중", "짧고 신나는 미니게임으로 한판 더!\n새로운 파티 게임을 준비하고 있어요."]
@@ -63,7 +63,7 @@ func _ready() -> void:
 	menu.add_child(stack)
 	var header := HBoxContainer.new()
 	stack.add_child(header)
-	var brand := label("PLAYROOM / 함께 노는 시간",24,"#f17c64")
+	var brand := label("플레이룸 / 함께 노는 시간",24,"#f17c64")
 	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(brand)
 	header.add_child(label("하나의 화면 · 각자의 휴대폰",18,"#9ba6a5"))

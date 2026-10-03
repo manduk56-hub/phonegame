@@ -1,3 +1,2 @@
 @echo off
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Start-Playroom.ps1"
-if errorlevel 1 pause
+start "" powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0launcher\Start-InstalledGame.ps1"
