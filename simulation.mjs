@@ -8,7 +8,7 @@ export class Match {
   constructor() {
     this.players = new Map(); this.teamCount = 4; this.duration = 180;
     this.phase = 'lobby'; this.remaining = this.duration; this.central = 4000;
-    this.teams = []; this.game = 'excavator'; this.resetTeams();
+    this.teams = []; this.game = 'excavator'; this.results = null; this.resetTeams();
   }
   resetTeams() {
     this.groundPiles = []; this.nextPileId = 0;
@@ -28,7 +28,7 @@ export class Match {
     const radius = ARENA.spawnRadius+row*2.2;
     p.x = Math.sin(angle)*radius; p.z = Math.cos(angle)*radius;
     p.yaw = angle + Math.PI; p.turret = 0; p.boom=.42; p.stick=-1.4; p.curl=-.7; p.cargo=0;
-    p.input=this.neutral(); p.lastInput=0; p.cooldown=0; p.message='';
+    p.input=this.neutral(); p.lastInput=0; p.cooldown=0; p.message=''; p.delivered=0; p.disrupted=0;
   }
   join(name, token) {
     let p = token && [...this.players.values()].find(q=>q.token===token);
@@ -62,12 +62,12 @@ export class Match {
   }
   start() {
     if(this.phase!=='lobby'||![...this.players.values()].some(p=>p.connected)) throw Error('접속한 참가자가 있어야 시작할 수 있습니다.');
-    this.central=4000; this.remaining=this.duration; this.resetTeams();
+    this.central=4000; this.remaining=this.duration; this.results=null; this.resetTeams();
     for(const p of this.players.values()) this.spawn(p);
     this.phase='running';
   }
   lobby() {
-    this.phase='lobby'; this.remaining=this.duration; this.central=4000; this.resetTeams();
+    this.phase='lobby'; this.remaining=this.duration; this.central=4000; this.results=null; this.resetTeams();
     for(const p of this.players.values()) this.spawn(p);
   }
   input(id, value, now=Date.now()) {
@@ -104,11 +104,12 @@ export class Match {
       if(source[key]<=0) {p.message='남은 흙이 없어요';return;}
       if(surface===0||tip.height>surface+.35||tip.height<-.02) {p.message='버킷 이빨을 흙더미 가까이 내리세요';return;}
       const amount=Math.min(40-p.cargo,source[key]); source[key]-=amount;p.cargo+=amount;
+      if(!loose&&source!==this&&source.id!==p.team)p.disrupted+=amount;
       if(loose&&loose.dirt===0) this.groundPiles=this.groundPiles.filter(s=>s!==loose);
       p.message=amount ? (loose?'바닥의 흙을 다시 퍼담았어요':source===this?'중앙 흙을 퍼담았어요':source.id===p.team?'우리 팀 흙을 퍼담았어요':'상대 팀 흙을 훔쳤어요!') : '남은 흙이 없어요';
     } else if(action==='drop') {
       const t=this.teams.find(t=>this.inZone(tip,t));
-      if(t) t.dirt+=p.cargo;
+      if(t) {t.dirt+=p.cargo;if(t.id===p.team)p.delivered+=p.cargo;}
       else if(p.cargo) {
         const nearby=this.groundPiles.find(s=>distance(tip,s)<.35);
         if(nearby) nearby.dirt+=p.cargo;
@@ -119,14 +120,16 @@ export class Match {
     }
   }
   tick(dt,now=Date.now()) {
-    if(this.phase!=='running') return;
-    this.remaining=Math.max(0,this.remaining-dt);
+    const ceremony=this.phase==='finished';
+    if(this.phase!=='running'&&!ceremony) return;
+    if(!ceremony)this.remaining=Math.max(0,this.remaining-dt);
     for(const p of this.players.values()) {
+      if(ceremony&&!this.results.winnerIds.includes(p.team))continue;
       p.cooldown=Math.max(0,p.cooldown-dt);
       if(!p.connected||now-p.lastInput>350) continue;
       const i=p.input;
-      p.yaw+=(i.travelL-i.travelR)*1.3*dt;
-      const speed=(i.travelL+i.travelR)*1.7;
+      if(!ceremony)p.yaw+=(i.travelL-i.travelR)*1.3*dt;
+      const speed=ceremony?0:(i.travelL+i.travelR)*1.7;
       if(Math.abs(speed)>.05) {
         const next={x:clamp(p.x+Math.sin(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit),z:clamp(p.z+Math.cos(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit)};
         if(![...this.players.values()].some(q=>q!==p&&distance(next,q)<1.5)) {p.x=next.x;p.z=next.z;}
@@ -147,10 +150,30 @@ export class Match {
       if(i.curl>.2&&p.curl>.1&&p.cargo<40) this.action(p.id,'scoop');
       if(i.curl<-.2&&p.curl<-.5&&p.cargo>0) this.action(p.id,'drop');
     }
-    if(this.remaining<=0) this.phase='finished';
+    if(!ceremony&&this.remaining<=0) {
+      this.phase='finished';this.results=this.buildResults();
+      const winners=[...this.players.values()].filter(p=>this.results.winnerIds.includes(p.team));
+      const columns=Math.min(4,winners.length);
+      winners.forEach((p,i)=>{
+        const row=Math.floor(i/columns),rowSize=Math.min(columns,winners.length-row*columns);
+        p.x=(i%columns-(rowSize-1)/2)*5;p.z=ARENA.driveLimit-row*6;p.yaw=0;p.turret=0;
+        p.boom=.75;p.stick=-1.2;p.curl=.2;p.cargo=0;p.input=this.neutral();p.lastInput=0;
+      });
+    }
+  }
+  buildResults() {
+    const rank=entries=>{
+      entries.sort((a,b)=>b.score-a.score);
+      let place=1;
+      return entries.map((entry,i)=>{if(i===0||entry.score!==entries[i-1].score)place=i+1;return {...entry,rank:place};});
+    };
+    const participating=new Set([...this.players.values()].map(p=>p.team));
+    const teams=rank(this.teams.filter(t=>participating.has(t.id)).map(t=>({id:t.id,color:t.color,score:t.dirt})));
+    const players=rank([...this.players.values()].map(p=>({id:p.id,name:p.name,team:p.team,score:p.delivered,disrupted:p.disrupted})));
+    return {teams,players,winnerIds:teams.filter(t=>t.score>0&&t.rank===1).map(t=>t.id),total:teams.reduce((sum,t)=>sum+t.score,0)};
   }
   snapshot() {
-    return {type:'state',arena:ARENA,game:this.game,phase:this.phase,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
+    return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
       players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,bucket:this.bucket(p)}))};
   }
 }

@@ -9,7 +9,8 @@
     "verify:geometry": "node tools/verify-geometry.mjs",
     "verify:render": "node tools/verify-geometry.mjs --render",
     "verify:live": "node tools/verify-live.mjs",
-    "verify:lobby": "node tools/verify-lobby.mjs"
+    "verify:lobby": "node tools/verify-lobby.mjs",
+    "verify:remote": "node tools/verify-live.mjs --endpoint=https://dirt-rally.115.68.208.145.sslip.io"
   },
   "dependencies": {
     "qrcode": "^1.5.4",

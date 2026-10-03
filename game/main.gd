@@ -28,6 +28,7 @@ var network_updates := 0
 var capture_name := "preview.png"
 var connection_key := ""
 var admin_key := ""
+var host_token := ""
 var authenticated := false
 var config_pending := false
 var last_config := -5.0
@@ -37,6 +38,7 @@ var lobby_message: Label
 var team_select: OptionButton
 var duration_input: SpinBox
 var network_select: OptionButton
+var connection_help: Label
 var configure_button: Button
 var start_button: Button
 var return_button: Button
@@ -45,6 +47,18 @@ var player_signature := ""
 var settings_signature := ""
 var previous_phase := ""
 var reset_dialog: ConfirmationDialog
+var result_panel: PanelContainer
+var result_title: Label
+var result_body: RichTextLabel
+var result_return: Button
+var result_signature := ""
+var camera: Camera3D
+var arena_visuals: Array[Node3D] = []
+var ceremony_stage: Node3D
+var ceremony_steps: Array[MeshInstance3D] = []
+var chat_panel: PanelContainer
+var match_environment: Environment
+var result_backdrop: Node3D
 var player_controls: Array[Control] = []
 
 func box(parent: Node3D, size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
@@ -184,6 +198,9 @@ func make_road(map_size: float) -> void:
 	merge_static_parts(markings)
 
 func _ready() -> void:
+	host_token = OS.get_environment("DIRT_RALLY_HOST_KEY")
+	if not OS.get_environment("DIRT_RALLY_SERVER_URL").is_empty():
+		server_url = OS.get_environment("DIRT_RALLY_SERVER_URL").trim_suffix("/")
 	var fixture_path := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--fixture="):
@@ -198,11 +215,22 @@ func _ready() -> void:
 	machine_material.shader = load("res://voxel.gdshader")
 	var env := WorldEnvironment.new()
 	var environment := Environment.new()
+	match_environment = environment
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color("#242822")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("#c5d5df")
 	environment.ambient_light_energy = 0.65
+	var sky_material := ProceduralSkyMaterial.new()
+	sky_material.sky_top_color = Color("#628fa4")
+	sky_material.sky_horizon_color = Color("#c1ceca")
+	sky_material.ground_horizon_color = Color("#c1ceca")
+	sky_material.ground_bottom_color = Color("#59614c")
+	sky_material.sky_curve = 0.25
+	sky_material.sun_angle_max = 0.0
+	var result_sky := Sky.new()
+	result_sky.sky_material = sky_material
+	environment.sky = result_sky
 	env.environment = environment
 	add_child(env)
 	var sun := DirectionalLight3D.new()
@@ -210,7 +238,7 @@ func _ready() -> void:
 	sun.light_energy = 0.85
 	sun.shadow_enabled = true
 	add_child(sun)
-	var camera := Camera3D.new()
+	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = float(arena.cameraSize)
 	camera.position = Vector3(34,40,42)
@@ -221,6 +249,25 @@ func _ready() -> void:
 	center_pile = pile(4.3,Color("#c29652"))
 	add_child(center_pile)
 	label3(self,"중앙 모래더미",Vector3(0,4.5,0),Color("#ffe0ab"),64)
+	for child in get_children():
+		if child is Node3D and not child is Camera3D and not child is Light3D:
+			arena_visuals.append(child)
+	ceremony_stage = Node3D.new()
+	add_child(ceremony_stage)
+	for row in range(1,4):
+		ceremony_steps.append(box(ceremony_stage,Vector3(25,row*2.4,5.8),Vector3(0,row*1.2,float(arena.driveLimit)-row*6),Color("#758064")))
+	ceremony_stage.hide()
+	result_backdrop = Node3D.new()
+	add_child(result_backdrop)
+	var backdrop_grass := box(result_backdrop,Vector3(4000,0.1,4000),Vector3(0,-0.13,0),Color("#4f793b"))
+	var grass_material := ShaderMaterial.new()
+	grass_material.shader = load("res://grass.gdshader")
+	backdrop_grass.material_override = grass_material
+	var backdrop_road := box(result_backdrop,Vector3(map_size,0.1,4000),Vector3(0,-0.115,0),Color("#34383d"))
+	var road_material := ShaderMaterial.new()
+	road_material.shader = load("res://asphalt.gdshader")
+	backdrop_road.material_override = road_material
+	result_backdrop.hide()
 	make_ui()
 	if preview_mode:
 		if not fixture_path.is_empty():
@@ -487,7 +534,10 @@ func _process(delta: float) -> void:
 			if not machines.has(p.id):
 				continue
 			var node: Dictionary = machines[p.id]
-			node.root.position = node.root.position.lerp(Vector3(p.x,0,p.z),minf(1,delta*15))
+			var ceremony: bool = state.phase == "finished" and state.get("results") is Dictionary and not state.results.winnerIds.is_empty()
+			var stage_height := maxf(0.0,(float(arena.driveLimit)-float(p.z))/6.0)*2.4 if ceremony else 0.0
+			node.root.position = node.root.position.lerp(Vector3(p.x,stage_height,p.z),minf(1,delta*15))
+			node.root.visible = not ceremony or state.results.winnerIds.has(p.team)
 			node.root.rotation.y = lerp_angle(node.root.rotation.y,p.yaw,minf(1,delta*15))
 			node.upper.rotation.y = lerp_angle(node.upper.rotation.y,p.turret,minf(1,delta*15))
 			node.boom.rotation.x = -float(p.boom)
@@ -502,6 +552,16 @@ func _process(delta: float) -> void:
 			node.number.text = str(state.players.find(p)+1)
 			node.marker.modulate = Color(COLORS[int(p.team)])
 			node.marker.text = "%d · %s%s" % [state.players.find(p)+1,p.name," (OFFLINE)" if not p.connected else ""]
+		var showing_results: bool = state.phase == "finished" and state.get("results") is Dictionary and not state.results.winnerIds.is_empty()
+		for team in team_nodes:
+			team.root.visible = state.phase != "finished"
+			team.label.visible = not showing_results
+			team.pile.visible = state.phase != "finished" and float(state.teams[team_nodes.find(team)].dirt) > 0.0
+		for visual in arena_visuals:
+			visual.visible = not showing_results if visual is Label3D else true
+		center_pile.visible = state.phase != "finished" and float(state.central) > 0.0
+		for loose in ground_piles.values():
+			loose.visible = state.phase != "finished"
 	if "--capture" in OS.get_cmdline_user_args() and elapsed > 3 and not capture_done:
 		capture_done = true
 		capture.call_deferred()
@@ -641,6 +701,7 @@ func make_ui() -> void:
 	fullscreen.pressed.connect(toggle_fullscreen)
 	style_hud_button(fullscreen)
 	make_lobby(ui)
+	make_results(ui)
 	# Keep the entire join card in step with every way of opening/closing the lobby.
 	lobby_panel.visibility_changed.connect(func():
 		join_panel.visible = lobby_panel.visible
@@ -650,7 +711,7 @@ func make_ui() -> void:
 	join_panel.visible = lobby_panel.visible
 	qr.visible = lobby_panel.visible
 	join_label.visible = lobby_panel.visible
-	var chat_panel := PanelContainer.new()
+	chat_panel = PanelContainer.new()
 	ui.add_child(chat_panel)
 	chat_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	chat_panel.offset_left = 20
@@ -699,6 +760,104 @@ func lobby_button(text: String, parent: Node, action: Callable) -> Button:
 	button.pressed.connect(action)
 	parent.add_child(button)
 	return button
+
+func make_results(ui: Control) -> void:
+	result_panel = PanelContainer.new()
+	ui.add_child(result_panel)
+	result_panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	result_panel.offset_left = 20
+	result_panel.offset_right = 350
+	result_panel.offset_top = 118
+	result_panel.offset_bottom = -160
+	var panel_style := worksite_style(Color("#242b24"),Color("#e8b645"))
+	panel_style.content_margin_left = 16
+	panel_style.content_margin_right = 16
+	panel_style.content_margin_top = 16
+	panel_style.content_margin_bottom = 16
+	result_panel.add_theme_stylebox_override("panel",panel_style)
+	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation",16)
+	result_panel.add_child(layout)
+	var caption := Label.new()
+	caption.text = "작업 완료! · 경기 결과"
+	style_label(caption,18,Color("#b9c5ab"))
+	layout.add_child(caption)
+	result_title = Label.new()
+	style_label(result_title,26,Color("#ffe1a0"))
+	result_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	layout.add_child(result_title)
+	result_body = RichTextLabel.new()
+	result_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	result_body.add_theme_font_size_override("normal_font_size",20)
+	style_hud_text(result_body)
+	layout.add_child(result_body)
+	var note := Label.new()
+	note.text = "운반: 우리 팀에 내려놓은 누적량\n방해: 상대 팀에서 퍼낸 누적량\n반복 작업 포함 · 개인 순위는 운반량\n우승 팀은 조이스틱으로 세리머니!"
+	style_label(note,14,Color("#b9c5ab"))
+	layout.add_child(note)
+	result_return = lobby_button("다음 경기 준비",layout,func():send_admin({"type":"lobby"}))
+	result_panel.hide()
+
+func update_results(m: Dictionary) -> void:
+	var results = m.get("results")
+	if m.phase != "finished" or not results is Dictionary:
+		result_panel.hide()
+		ceremony_stage.hide()
+		result_backdrop.hide()
+		match_environment.background_mode = Environment.BG_COLOR
+		chat_panel.show()
+		if not result_signature.is_empty():
+			camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+			camera.size = float(arena.cameraSize)
+			camera.h_offset = 0.0
+			camera.position = Vector3(34,40,42)
+			camera.look_at(Vector3.ZERO)
+			center_pile.show()
+			for team in team_nodes:
+				team.root.show()
+		result_signature = ""
+		return
+	result_return.disabled = not authenticated or preview_mode
+	var signature := JSON.stringify(results)
+	if signature == result_signature:
+		return
+	result_signature = signature
+	result_panel.show()
+	chat_panel.hide()
+	if not results.winnerIds.is_empty():
+		result_backdrop.show()
+		match_environment.background_mode = Environment.BG_SKY
+		var count: int = results.players.filter(func(p):return results.winnerIds.has(p.team)).size()
+		var rows := ceili(float(count)/4.0)
+		ceremony_stage.visible = rows > 1
+		for index in range(ceremony_steps.size()):
+			ceremony_steps[index].visible = index+1 < rows
+		var target := Vector3(0,1.6+(rows-1)*1.2,float(arena.driveLimit)-(rows-1)*3)
+		camera.size = maxf(13.0,min(count,4)*5.0+3.0)+(rows-1)*1.5
+		camera.h_offset = -camera.size*0.18
+		camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		camera.fov = 42.0
+		camera.position = target + Vector3(0,1.6,camera.size*1.3)
+		camera.look_at(target)
+	var names: Array = results.winnerIds.map(func(id):return "팀 %d" % (int(id)+1))
+	result_title.text = "이번 경기는 무승부" if names.is_empty() else " · ".join(names) + (" 공동 우승!" if names.size() > 1 else " 우승!")
+	result_body.clear()
+	result_body.add_text("최종 확보 모래 %d점\n\n팀 최종 순위\n" % int(results.total))
+	for team in results.teams:
+		result_body.push_color(Color(COLORS[int(team.id)]))
+		result_body.add_text("%d위   팀 %d" % [int(team.rank),int(team.id)+1])
+		result_body.pop()
+		result_body.add_text("    %d점\n" % int(team.score))
+	result_body.add_text("\n개인 운반 기록\n")
+	for player in results.players:
+		result_body.push_color(Color(COLORS[int(player.team)]))
+		result_body.add_text("%d위   %s · 팀 %d" % [int(player.rank),str(player.name),int(player.team)+1])
+		result_body.pop()
+		result_body.add_text("\n     운반 %d · 방해 %d\n" % [int(player.score),int(player.get("disrupted",0))])
+	result_body.scroll_to_line(0)
+	var tween := create_tween()
+	result_panel.modulate.a = 0.0
+	tween.tween_property(result_panel,"modulate:a",1.0,0.4)
 
 func make_lobby(ui: Control) -> void:
 	lobby_panel = PanelContainer.new()
@@ -758,10 +917,10 @@ func make_lobby(ui: Control) -> void:
 	network_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	network_row.add_child(network_select)
 	network_select.item_selected.connect(func(index):send_admin({"type":"network","address":network_select.get_item_text(index)}))
-	var help := Label.new()
-	help.text = "같은 Wi-Fi에서 QR로 참가하세요. 참가자의 팀을 아래에서 바꿀 수 있습니다."
-	style_label(help,20)
-	layout.add_child(help)
+	connection_help = Label.new()
+	connection_help.text = "QR을 스캔해서 참가하세요."
+	style_label(connection_help,20)
+	layout.add_child(connection_help)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -819,11 +978,12 @@ func send_admin(message: Dictionary) -> void:
 	socket.send_text(JSON.stringify(message))
 
 func update_lobby(m: Dictionary) -> void:
+	update_results(m)
 	if preview_mode:
 		lobby_message.text = "미리보기 · 실제 설정은 서버에 연결한 뒤 사용할 수 있습니다."
 	var phase := str(m.phase)
 	if phase != previous_phase:
-		lobby_panel.visible = phase != "running"
+		lobby_panel.visible = phase == "lobby"
 		previous_phase = phase
 		reset_dialog.hide()
 	var connected := 0
@@ -992,15 +1152,20 @@ func config_loaded(_result: int, code: int, _headers: PackedStringArray, body: P
 	if config.get("app") != "dirt-rally" or int(config.get("protocol",0)) != 1:
 		lobby_message.text = "게임 서버의 버전이 맞지 않습니다."
 		return
-	admin_key = str(config.adminKey) if config.get("adminKey") != null else ""
+	admin_key = host_token if config.get("hostAuth", "local") == "token" else (str(config.adminKey) if config.get("adminKey") != null else "")
 	if admin_key.is_empty():
-		lobby_message.text = "이 PC의 로컬 서버 주소로 접속해야 팀을 설정할 수 있습니다."
+		lobby_message.text = "DIRT_RALLY_HOST_KEY에 진행자 키를 설정한 뒤 게임을 다시 실행하세요." if config.get("hostAuth") == "token" else "이 PC의 로컬 서버 주소로 접속해야 팀을 설정할 수 있습니다."
 	network_select.clear()
 	for address in config.addresses:
 		network_select.add_item(str(address))
 		if address == config.joinAddress:
 			network_select.select(network_select.item_count-1)
-	join_label.text = "참가 코드 " + str(config.room) + "\n" + str(config.joinAddress)
+	var remote_mode: bool = config.get("hostAuth", "local") == "token"
+	network_select.get_parent().visible = not remote_mode
+	connection_help.text = "QR을 스캔해서 참가하세요." if remote_mode else "같은 Wi-Fi에서 QR을 스캔해서 참가하세요."
+	join_label.text = "참가 코드 " + str(config.room)
+	if not remote_mode:
+		join_label.text += "\n" + str(config.joinAddress)
 	var request := HTTPRequest.new()
 	add_child(request)
 	request.request_completed.connect(func(_r,c,_h,b):

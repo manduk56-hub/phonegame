@@ -2,19 +2,36 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>포크레인 컨트롤러</title>
-  <link rel="stylesheet" href="/style.css">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="포크레인 운전석">
+  <link rel="stylesheet" href="/style.css?v=20261003-mobile-3">
   
 </head>
 <body class="phone-controller">
+  <section id="browser-choice" class="browser-choice hidden" role="dialog" aria-modal="true" aria-labelledby="browser-choice-title">
+    <div class="browser-choice-card">
+      <span class="eyebrow">아이폰 접속</span>
+      <h1 id="browser-choice-title">사용할 브라우저 선택</h1>
+      <p>폰에 설치된 브라우저를 골라주세요.</p>
+      <nav class="browser-options" aria-label="브라우저 선택">
+        <a id="open-chrome" class="primary" href="#">Chrome에서 열기</a>
+        <a id="open-edge" href="#">Edge에서 열기</a>
+        <a id="open-firefox" href="#">Firefox에서 열기</a>
+        <button id="browser-continue" type="button">Safari에서 계속하기</button>
+      </nav>
+      <p class="browser-choice-note">설치되지 않은 앱은 열리지 않습니다. 다른 앱을 고르거나 Safari에서 계속해주세요. 브라우저를 바꿔도 주소창이 표시될 수 있습니다.</p>
+      <details><summary>주소창 없이 사용하는 방법</summary><p>Safari 공유 → 홈 화면에 추가 → 추가된 아이콘으로 실행하세요. ‘웹 앱으로 열기’가 있으면 켜주세요.</p></details>
+    </div>
+  </section>
   <section class="rotate-screen" role="status" aria-live="polite">
     <div class="rotate-card">
       <div class="rotate-icon" aria-hidden="true">↻</div>
       <h1>휴대폰을 가로로 돌려주세요</h1>
       <p>포크레인 조작은 가로 화면에서만 가능합니다.</p>
       <button id="landscape-button" class="primary">가로 전체화면</button>
-      <p class="muted">자동 회전이 되지 않으면 휴대폰의 화면 회전 잠금을 해제하세요.</p>
+      <p id="rotation-help" class="muted" role="status">자동 회전이 되지 않으면 휴대폰의 화면 회전 잠금을 해제하세요.</p>
     </div>
   </section>
   <section id="join" class="join panel">
@@ -26,7 +43,9 @@
     <p id="join-error" class="error" role="alert"></p>
   </section>
   <main id="controller" class="control-shell hidden" data-state="lobby">
-    <section class="mobile-chat" aria-label="전체 채팅">
+    <button id="top-toggle" class="top-toggle" type="button" aria-expanded="true" aria-controls="controller-chat controller-header">상단 숨기기</button>
+    <div id="fullscreen-notice" class="fullscreen-notice hidden" role="status"><span id="fullscreen-notice-text"></span><button id="fullscreen-notice-close" type="button">닫기</button></div>
+    <section id="controller-chat" class="mobile-chat" aria-label="전체 채팅">
       <button id="chat-toggle" class="chat-preview" type="button" aria-expanded="false" aria-controls="chat-history"><span class="chat-label">전체 채팅 ▾</span><span id="chat-latest">아직 메시지가 없습니다.</span></button>
       <div id="chat-history" class="chat-history hidden" role="log" aria-live="polite" aria-relevant="additions" aria-label="채팅 내역"></div>
       <form id="chat-form" class="chat-form">
@@ -35,7 +54,7 @@
       </form>
       <span id="chat-error" class="chat-error hidden" role="alert"></span>
     </section>
-    <header class="control-header">
+    <header id="controller-header" class="control-header">
       <div><span class="eyebrow">ISO CONTROLS</span><h2 id="identity">연결 중</h2></div>
       <span id="cargo" class="badge">버킷 0 / 40</span>
       <span id="phase" class="badge">대기</span>
@@ -46,8 +65,8 @@
       <div class="hand-side left-hand">
         <div class="side-drive"><div class="track-label"><svg class="track-guide" viewBox="0 0 70 34" role="img" aria-label="왼쪽 궤도"><rect data-part="travelL" x="9" y="5" width="15" height="26" rx="4"/><rect class="guide-fixed" x="46" y="5" width="15" height="26" rx="4"/></svg>왼쪽 주행<br>↑ 전진</div><div id="travelL" class="track" role="application" aria-label="왼쪽 궤도 주행 레버"><span class="knob"></span></div><div class="track-label">↓ 후진</div></div>
         <div class="arm-controls">
-        <svg class="part-guide" viewBox="0 0 200 64" role="img" aria-label="왼손 조작: 상부 회전과 암"><g data-part="swing"><rect x="80" y="31" width="48" height="19" rx="4"/><path d="M85 26 Q103 10 125 27 M125 27 l-2 -8 M125 27 l-9 -1" fill="none"/></g><path data-part="stick" d="M141 12 L159 41"/><path class="guide-fixed" d="M121 37 L141 12 M77 55 H133"/><text x="5" y="25">상부 ↔</text><text x="164" y="25">암 ↕</text></svg>
-        <div class="axis-label">↑ 암 펴기</div>
+        <div class="control-top"><svg class="part-guide" viewBox="0 0 200 64" role="img" aria-label="왼손 조작: 상부 회전과 암"><g data-part="swing"><rect x="80" y="31" width="48" height="19" rx="4"/><path d="M85 26 Q103 10 125 27 M125 27 l-2 -8 M125 27 l-9 -1" fill="none"/></g><path data-part="stick" d="M141 12 L159 41"/><path class="guide-fixed" d="M121 37 L141 12 M77 55 H133"/><text x="5" y="25">상부 ↔</text><text x="164" y="25">암 ↕</text></svg>
+        <div class="axis-label">↑ 암 펴기</div></div>
         <div id="left" class="pad eight-way" role="application" aria-label="왼쪽 8방향 조이스틱: 상부 회전과 암"><div class="directions" aria-hidden="true"><span data-dir="nw">↖</span><span data-dir="n">↑</span><span data-dir="ne">↗</span><span data-dir="w">←</span><span class="center-dot">·</span><span data-dir="e">→</span><span data-dir="sw">↙</span><span data-dir="s">↓</span><span data-dir="se">↘</span></div><span class="knob"></span></div>
         <div class="axis-label">← 좌회전 · 우회전 →<br>↓ 암 당기기</div>
         </div>
@@ -58,20 +77,21 @@
       </div>
       <div class="hand-side right-hand">
         <div class="arm-controls">
-        <svg class="part-guide" viewBox="0 0 200 64" role="img" aria-label="오른손 조작: 붐과 버킷"><path data-part="boom" d="M74 40 L103 12"/><path class="guide-fixed" d="M103 12 L122 39 M59 55 H99"/><path data-part="curl" d="M115 38 L137 38 L133 53 L119 52 Z"/><rect class="guide-fixed" x="65" y="35" width="27" height="16"/><text x="5" y="25">붐 ↕</text><text x="143" y="25">버킷 ↔</text></svg>
-        <div class="axis-label">↑ 붐 내리기</div>
+        <div class="control-top"><svg class="part-guide" viewBox="0 0 200 64" role="img" aria-label="오른손 조작: 붐과 버킷"><path data-part="boom" d="M74 40 L103 12"/><path class="guide-fixed" d="M103 12 L122 39 M59 55 H99"/><path data-part="curl" d="M115 38 L137 38 L133 53 L119 52 Z"/><rect class="guide-fixed" x="65" y="35" width="27" height="16"/><text x="5" y="25">붐 ↕</text><text x="143" y="25">버킷 ↔</text></svg>
+        <div class="axis-label">↑ 붐 내리기</div></div>
         <div id="right" class="pad eight-way" role="application" aria-label="오른쪽 8방향 조이스틱: 붐과 버킷"><div class="directions" aria-hidden="true"><span data-dir="nw">↖</span><span data-dir="n">↑</span><span data-dir="ne">↗</span><span data-dir="w">←</span><span class="center-dot">·</span><span data-dir="e">→</span><span data-dir="sw">↙</span><span data-dir="s">↓</span><span data-dir="se">↘</span></div><span class="knob"></span></div>
         <div class="axis-label">← 버킷 닫기 · 열기 →<br>↓ 붐 올리기</div>
         </div>
         <div class="side-drive"><div class="track-label"><svg class="track-guide" viewBox="0 0 70 34" role="img" aria-label="오른쪽 궤도"><rect class="guide-fixed" x="9" y="5" width="15" height="26" rx="4"/><rect data-part="travelR" x="46" y="5" width="15" height="26" rx="4"/></svg>오른쪽 주행<br>↑ 전진</div><div id="travelR" class="track" role="application" aria-label="오른쪽 궤도 주행 레버"><span class="knob"></span></div><div class="track-label">↓ 후진</div></div>
       </div>
     </section>
+    <section id="results" class="match-results phone-results" aria-label="경기 결과" aria-live="polite" hidden></section>
     <footer>
       <div id="message" class="controller-note">버킷을 낮추고 닫아서 퍼담으세요. 어디서든 열면 내려놓고, 팀 구역 안의 모래만 점수가 됩니다.</div>
       <div class="controller-note">전진은 궤도가 향한 방향 기준입니다. 상부를 돌려도 궤도 방향은 유지됩니다.</div>
     </footer>
   </main>
-  <script type="module" src="/controller.js"></script>
+  <script type="module" src="/controller.js?v=20261003-mobile-3"></script>
 </body>
 </html>
 

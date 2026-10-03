@@ -1,5 +1,19 @@
+param([string]$ServerUrl = $env:DIRT_RALLY_SERVER_URL)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
+if ($ServerUrl) {
+    $remoteUri = [Uri]$ServerUrl
+    if ($remoteUri.Scheme -ne 'https' -or $remoteUri.AbsolutePath -ne '/' -or $remoteUri.Query -or $remoteUri.Fragment -or $remoteUri.UserInfo) { throw 'Remote server URL must be an HTTPS origin without a path.' }
+    if (-not $env:DIRT_RALLY_HOST_KEY) {
+        $hostKeyInput = Read-Host 'Remote host key' -AsSecureString
+        $env:DIRT_RALLY_HOST_KEY = [System.Net.NetworkCredential]::new('', $hostKeyInput).Password
+    }
+    if (-not $env:DIRT_RALLY_HOST_KEY) { throw 'Remote host key is required.' }
+    $env:DIRT_RALLY_SERVER_URL = $ServerUrl.TrimEnd('/')
+    $remoteConfig = Invoke-RestMethod -Uri ($env:DIRT_RALLY_SERVER_URL + '/config') -TimeoutSec 10
+    if ($remoteConfig.app -ne 'dirt-rally' -or $remoteConfig.protocol -ne 1 -or $remoteConfig.hostAuth -ne 'token') { throw 'Remote endpoint is not a compatible DIRT RALLY token-auth server.' }
+    Write-Host ('Remote game server: ' + $env:DIRT_RALLY_SERVER_URL)
+} else {
 $nodeExe = (Get-Command node -ErrorAction Stop).Source
 if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'node_modules/ws'))) {
     & npm.cmd install
@@ -35,6 +49,7 @@ if (-not $serverReady) {
         Start-Sleep -Milliseconds 100
     }
     if (-not $serverReady) { throw 'Game server did not start on port 3000' }
+}
 }
 $runtimePath = Join-Path $PSScriptRoot '.runtime/godot'
 $godotPath = $env:GODOT_EXE

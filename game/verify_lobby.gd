@@ -90,12 +90,40 @@ func run() -> void:
 	print("VERIFY_FINISH")
 	if not await wait_until(func():return game.state.phase == "finished"):
 		return
-	if not check(game.lobby_panel.visible and not game.return_button.disabled,"Finished match must show lobby return"):
+	if not check(game.result_panel.visible and not game.result_return.disabled and not game.lobby_panel.visible,"Finished match must show results and return action"):
 		return
-	if not check(game.qr.visible and game.join_label.visible,"Finished match lobby must show QR"):
+	if not check(game.result_title.text == "이번 경기는 무승부","Zero-score finish must show a draw"):
 		return
-	game.return_button.pressed.emit()
+	game.result_return.pressed.emit()
 	if not await wait_until(func():return game.state.phase == "lobby"):
+		return
+	game.start_button.pressed.emit()
+	if not await wait_until(func():return game.state.phase == "running"):
+		return
+	print("VERIFY_WINNING")
+	if not await wait_until(func():return game.state.phase == "finished"):
+		return
+	if not check(game.result_title.text == "팀 8 우승!" and game.arena_visuals.all(func(visual):return visual is Label3D or visual == game.center_pile or visual.visible),"Winning finish must show team title and the actual arena"):
+		return
+	if not check(game.result_backdrop.visible and game.match_environment.background_mode == Environment.BG_SKY and game.team_nodes.all(func(team):return not team.root.visible),"Result scene must fill the background and hide team zones"):
+		return
+	var winner: Dictionary = game.state.players[0]
+	var machine: Dictionary = game.machines[winner.id]
+	if not check(game.camera.position.z > float(winner.z) and float(winner.yaw) == 0.0,"Camera must face the front of the winning excavator"):
+		return
+	var original_results := JSON.stringify(game.state.results)
+	print("VERIFY_CEREMONY")
+	if not await wait_until(func():return absf(machine.upper.rotation.y) > 0.1 and absf(machine.boom.rotation.x+0.75) > 0.03):
+		return
+	if not check(JSON.stringify(game.state.results) == original_results and game.state.remaining == 0,"Ceremony input must preserve final scores and timer"):
+		return
+	for p in game.state.players:
+		if not check(game.machines[p.id].root.visible == (int(p.team) == 7),"Only winner machines must appear on stage"):
+			return
+	game.result_return.pressed.emit()
+	if not await wait_until(func():return game.state.phase == "lobby"):
+		return
+	if not check(not game.ceremony_stage.visible and not game.result_backdrop.visible and game.camera.h_offset == 0.0 and game.camera.projection == Camera3D.PROJECTION_ORTHOGONAL and game.match_environment.background_mode == Environment.BG_COLOR,"Next match must restore the arena camera and background"):
 		return
 	print("PASS: native lobby configure, assign, recolor, remove, QR, start, reset, reconnect, finish and return")
 	quit()

@@ -144,6 +144,53 @@ test('raised bucket can unload at a visible square zone corner; empty ground can
   p.cooldown=0;m.action(p.id,'scoop');assert.equal(p.cargo,0);assert.equal(m.teams[0].dirt,40);
 });
 
+test('final results rank ties equally, omit empty teams and survive ceremony and reconnect',()=>{
+  const m=new Match();m.configure(4);
+  const players=Array.from({length:4},(_,i)=>m.join(`결과 ${i}`));
+  m.assign(players[3].id,0);m.start();
+  m.teams[0].dirt=80;m.teams[1].dirt=80;m.teams[2].dirt=40;
+  players[0].delivered=80;players[1].delivered=80;players[2].delivered=80;players[3].delivered=40;
+  m.tick(901,1000);
+  assert.deepEqual(m.results.winnerIds,[0,1]);
+  assert.deepEqual(m.results.teams.map(t=>[t.id,t.rank,t.score]),[[0,1,80],[1,1,80],[2,3,40]]);
+  assert.deepEqual(m.results.players.map(p=>p.rank),[1,1,1,4]);
+  const result=structuredClone(m.results),a=players[0],loser=players[2];
+  assert.equal(a.yaw,0);assert.equal(a.z,ARENA.driveLimit);
+  const pos=[a.x,a.z,a.yaw],loserPose=[loser.turret,loser.boom];
+  m.input(a.id,{travelL:1,travelR:-1,swing:1,boom:1,stick:1,curl:1},2000);
+  m.input(loser.id,{swing:1,boom:1},2000);
+  const before=a.turret;m.tick(.1,2000);assert(a.turret>before);
+  assert.deepEqual([a.x,a.z,a.yaw],pos);assert.deepEqual([loser.turret,loser.boom],loserPose);
+  m.action(a.id,'scoop');m.action(a.id,'drop');assert.deepEqual(m.results,result);
+  m.disconnect(a.id);m.join('ignored',a.token);assert.equal(a.delivered,80);
+  const stopped=a.turret;m.tick(.1,3000);assert.equal(a.turret,stopped);
+  m.lobby();assert.equal(m.results,null);assert.equal(a.delivered,0);
+});
+
+test('disruption counts only actual sand removed from an opponent and resets for the next round',()=>{
+  const m=new Match();m.configure(2);const p=m.join('방해꾼');m.start();
+  const position=zone=>{const tip=m.bucket(p);p.x+=zone.x-tip.x;p.z+=zone.z-tip.z;p.cooldown=0;};
+  p.x=0;p.z=0;p.yaw=0;p.turret=0;m.action(p.id,'scoop');assert.equal(p.disrupted,0);
+  p.cargo=0;m.teams[0].dirt=400;position(m.teams[0]);m.action(p.id,'scoop');assert.equal(p.disrupted,0);
+  p.cargo=20;m.teams[1].dirt=400;position(m.teams[1]);m.action(p.id,'scoop');assert.equal(p.disrupted,20);
+  p.cooldown=0;m.action(p.id,'scoop');assert.equal(p.disrupted,20);
+  p.cargo=0;p.boom=1.35;p.stick=-.25;p.cooldown=0;m.action(p.id,'scoop');assert.equal(p.disrupted,20);
+  p.boom=.42;p.stick=-1.4;p.curl=-.7;position(m.teams[1]);m.action(p.id,'scoop');assert.equal(p.disrupted,60);
+  m.disconnect(p.id);m.join('ignored',p.token);assert.equal(p.disrupted,60);
+  m.tick(901);assert.equal(m.results.players[0].disrupted,60);
+  m.lobby();assert.equal(p.disrupted,0);m.start();assert.equal(p.disrupted,0);
+});
+
+test('individual record counts own-team deliveries only and zero-score matches have no winners',()=>{
+  const m=new Match();m.configure(2);const p=m.join('운반자');m.start();
+  const place=team=>{const tip=m.bucket(p);p.x+=team.x-tip.x;p.z+=team.z-tip.z;p.cooldown=0;p.cargo=40;};
+  place(m.teams[0]);m.action(p.id,'drop');assert.equal(p.delivered,40);
+  place(m.teams[1]);m.action(p.id,'drop');assert.equal(p.delivered,40);
+  p.x=12;p.z=12;p.cargo=40;p.cooldown=0;m.action(p.id,'drop');assert.equal(p.delivered,40);
+  m.lobby();m.start();m.tick(901);assert.deepEqual(m.results.winnerIds,[]);
+  assert.equal(m.results.players[0].score,0);
+});
+
 function peer(port) {
   const ws=new WebSocket(`ws://127.0.0.1:${port}`),messages=[],waiters=[];
   ws.on('message',raw=>{const m=JSON.parse(raw);messages.push(m);for(const w of [...waiters])if(w.predicate(m)){waiters.splice(waiters.indexOf(w),1);clearTimeout(w.timer);w.resolve(m);}});
@@ -152,6 +199,40 @@ function peer(port) {
     return new Promise((resolve,reject)=>{const waiter={predicate,resolve,timer:setTimeout(()=>reject(Error('Message timeout')),3000)};waiters.push(waiter);});
   }};
 }
+
+test('remote server publishes only its public URL and never exposes host credentials through a loopback proxy',async()=>{
+  const key='test-host-key-'.repeat(4),publicUrl='https://dirt-rally.115.68.208.145.sslip.io';
+  const app=await createServer({port:0,host:'127.0.0.1',publicUrl:publicUrl+'/',hostKey:key});
+  try {
+    const base=`http://127.0.0.1:${app.port}`;
+    const response=await fetch(base+'/config',{headers:{'X-Forwarded-For':'127.0.0.1'}});
+    const cfg=await response.json();
+    assert.equal(response.headers.get('cache-control'),'no-store');
+    assert.deepEqual(cfg.addresses,[publicUrl]);assert.equal(cfg.joinAddress,publicUrl);
+    assert.equal(cfg.hostAuth,'token');assert.equal(cfg.adminKey,null);assert(!JSON.stringify(cfg).includes(key));
+    const host=peer(app.port);await host.open;
+    host.send({type:'host',key:'wrong'});await host.wait(m=>m.type==='error');
+    host.send({type:'host',key});await host.wait(m=>m.type==='host-ready');
+    host.send({type:'configure',teams:3,duration:60});await host.wait(m=>m.teamCount===3);
+    host.send({type:'network',address:'http://192.168.1.50:3000'});await host.wait(m=>m.type==='error');
+    const phone=peer(app.port);await phone.open;
+    phone.send({type:'join',room:cfg.room,name:'원격 운전자'});await phone.wait(m=>m.type==='joined');
+    host.send({type:'start'});await phone.wait(m=>m.phase==='running');
+    phone.send({type:'input',travelL:1,travelR:1});
+    await new Promise(r=>setTimeout(r,50));assert.equal([...app.match.players.values()][0].input.travelL,1);
+    const display=peer(app.port);await display.open;display.send({type:'display'});await display.wait(m=>m.type==='error');
+    const QRCode=(await import('qrcode')).default;
+    const qr=await fetch(base+'/qr?address=http://untrusted.example').then(r=>r.text());
+    assert.equal(qr,await QRCode.toString(`${publicUrl}/controller?room=${cfg.room}`,{type:'svg',margin:2}));
+  } finally {await app.close();}
+});
+
+test('public URL requires a strong host key and rejects ambiguous URL paths and credentials',async()=>{
+  await assert.rejects(createServer({publicUrl:'https://example.com'}),/HOST_KEY/);
+  for(const publicUrl of ['ftp://example.com','https://example.com/game','https://user:pass@example.com','https://example.com/?x=1','https://example.com/#fragment']) {
+    await assert.rejects(createServer({publicUrl,hostKey:'x'.repeat(48)}),/PUBLIC_URL/);
+  }
+});
 
 test('chat broadcasts trusted names, validates messages, limits repeats and restores history',async()=>{
   const app=await createServer({port:0,host:'127.0.0.1',manualTick:true});

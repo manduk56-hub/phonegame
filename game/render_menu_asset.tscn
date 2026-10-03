@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://render_menu_asset.gd" id="1"]
+
+[node name="MenuAssetRenderer" type="Node3D"]
+script = ExtResource("1")

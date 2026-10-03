@@ -2,3 +2,7 @@ node_modules/
 game/.godot/
 .runtime/
 *.log
+.env
+.env.*
+*.pem
+*.key

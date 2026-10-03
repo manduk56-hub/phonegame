@@ -10,8 +10,8 @@ config_version=5
 
 [application]
 
-config/name="DIRT RALLY"
-run/main_scene="res://main.tscn"
+config/name="PLAYROOM"
+run/main_scene="res://main_menu.tscn"
 config/features=PackedStringArray("4.6")
 
 [display]

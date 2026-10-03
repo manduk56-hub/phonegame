@@ -1,23 +1,30 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {networkInterfaces} from 'node:os';
-import {randomBytes,createHash} from 'node:crypto';
+import {randomBytes,createHash,timingSafeEqual} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {WebSocketServer,WebSocket} from 'ws';
 import QRCode from 'qrcode';
 import {Match} from './simulation.mjs';
-export async function createServer({port=3000,host='0.0.0.0',manualTick=false}={}) {
+export async function createServer({port=3000,host='0.0.0.0',manualTick=false,publicUrl='',hostKey=''}={}) {
+  const publicAddress=normalizePublicUrl(publicUrl);
+  if(publicAddress&&hostKey.length<32)throw Error('PUBLIC_URL 사용 시 HOST_KEY는 32자 이상이어야 합니다.');
+  const tokenAuth=Boolean(publicAddress||hostKey);
   const sourceVersion=createHash('sha256').update(await readFile(new URL('./server.mjs',import.meta.url))).digest('hex');
-  const match=new Match(), adminKey=randomBytes(24).toString('hex');
+  const match=new Match(), adminKey=hostKey||randomBytes(24).toString('hex');
   const room=randomBytes(3).toString('hex').toUpperCase();
   const chatHistory=[],chatSentAt=new Map();
   let chatSequence=0;
-  const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js'};
+  const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/results.js':'results.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js'};
   let addresses=[],joinAddress='';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress}});
   const server=http.createServer(async(req,res)=>{
     try {
       const url=new URL(req.url,'http://localhost');
+      if(url.pathname==='/assets/dirt-rally-card.png') {
+        res.setHeader('Content-Type','image/png');
+        res.end(await readFile(new URL('./public/assets/dirt-rally-card.png',import.meta.url)));return;
+      }
       if(['/vendor/three.module.js','/vendor/three.core.js'].includes(url.pathname)) {
         res.setHeader('Content-Type','text/javascript; charset=utf-8');
         res.end(await readFile(new URL(`./node_modules/three/build/${url.pathname.split('/').pop()}`,import.meta.url)));return;
@@ -29,7 +36,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false}={
       if(url.pathname==='/config') {
         res.setHeader('Content-Type','application/json');
         res.setHeader('Cache-Control','no-store');
-        res.end(JSON.stringify({app:'dirt-rally',protocol:1,sourceVersion,room,addresses,joinAddress,adminKey:local(req.socket.remoteAddress)?adminKey:null}));return;
+        res.end(JSON.stringify({app:'dirt-rally',protocol:1,sourceVersion,room,addresses,joinAddress,hostAuth:tokenAuth?'token':'local',adminKey:!tokenAuth&&local(req.socket.remoteAddress)?adminKey:null}));return;
       }
       if(url.pathname==='/qr') {
         const target=addresses.find(a=>a===url.searchParams.get('address'))||joinAddress;
@@ -49,8 +56,8 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false}={
       try {
         const m=JSON.parse(raw.toString());
         if(!role) {
-          if(m.type==='host'&&local(req.socket.remoteAddress)&&m.key===adminKey) role='host';
-          else if(m.type==='display'&&local(req.socket.remoteAddress)) role='display';
+          if(m.type==='host'&&(tokenAuth||local(req.socket.remoteAddress))&&validKey(m.key,adminKey)) role='host';
+          else if(m.type==='display'&&!tokenAuth&&local(req.socket.remoteAddress)) role='display';
           else if(m.type==='join'&&m.room===room) {
             const p=match.join(m.name,m.token); role='player';id=p.id;
             for(const old of wss.clients) if(old!==ws&&old.playerId===id) {old.playerId=null;old.close(4001,'Reconnected elsewhere');}
@@ -100,15 +107,24 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false}={
     const state=snapshot();for(const ws of wss.clients) send(ws,state);
   },50);
   const heartbeat=setInterval(()=>{for(const ws of wss.clients) {if(!ws.alive) {ws.terminate();continue;}ws.alive=false;ws.ping();}},5000);
-  await new Promise(resolve=>server.listen(port,host,resolve));
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,host,resolve);}).catch(error=>{clearInterval(timer);clearInterval(heartbeat);throw error;});
   const actualPort=server.address().port;
-  addresses=Object.values(networkInterfaces()).flat().filter(a=>a.family==='IPv4'&&!a.internal).map(a=>`http://${a.address}:${actualPort}`);
+  addresses=publicAddress?[publicAddress]:Object.values(networkInterfaces()).flat().filter(a=>a.family==='IPv4'&&!a.internal).map(a=>`http://${a.address}:${actualPort}`);
   if(!addresses.length) addresses=[`http://127.0.0.1:${actualPort}`];
   joinAddress=addresses[0];
   return {server,wss,match,room,port:actualPort,addresses,close:async()=>{clearInterval(timer);clearInterval(heartbeat);for(const ws of wss.clients) ws.terminate();await new Promise(resolve=>wss.close(resolve));await new Promise(resolve=>server.close(resolve));}};
 }
 function local(ip) {return ['127.0.0.1','::1','::ffff:127.0.0.1'].includes(ip);}
+function validKey(value,key) {
+  return typeof value==='string'&&timingSafeEqual(createHash('sha256').update(value).digest(),createHash('sha256').update(key).digest());
+}
+function normalizePublicUrl(value) {
+  if(!value)return '';
+  const url=new URL(value);
+  if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw Error('PUBLIC_URL은 경로 없는 http(s) 서버 주소여야 합니다.');
+  return url.origin;
+}
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]) {
-  const app=await createServer({port:Number(process.env.PORT||3000)});
+  const app=await createServer({port:Number(process.env.PORT||3000),host:process.env.HOST||'0.0.0.0',publicUrl:process.env.PUBLIC_URL||'',hostKey:process.env.HOST_KEY||''});
   console.log(`PC 대기실: http://localhost:${app.port}\n폰 접속: ${app.addresses.join(', ')}\n방 코드: ${app.room}`);
 }
