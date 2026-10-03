@@ -290,6 +290,8 @@ button:disabled{opacity:.45}p{color:#c8c8ac}h1,h2,strong,b{font-weight:400}h2{co
 .fullscreen-notice{position:absolute;z-index:20;top:max(44px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));right:max(8px,env(safe-area-inset-right));display:flex;align-items:center;gap:12px;padding:12px;background:#2b3425;border:2px solid #788167;box-shadow:4px 4px 0 #11170f;font-size:13px;line-height:1.5}
 .fullscreen-notice span{flex:1}
 .fullscreen-notice button{min-height:44px;flex-shrink:0}
+.phone-controller>.fullscreen-notice{position:fixed;z-index:105}
+@media(orientation:portrait){.phone-controller>.fullscreen-notice{display:none}}
 .browser-choice{position:fixed;inset:0;z-index:110;background:#171e16;overflow-y:auto;overscroll-behavior:contain;padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;align-items:center;justify-items:center}
 .browser-choice-card{width:min(100%,520px);background:#2b3425;border:2px solid #788167;padding:16px;box-shadow:4px 4px 0 #11170f}
 .browser-choice-card h1{font-size:24px;margin:6px 0}

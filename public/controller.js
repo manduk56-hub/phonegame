@@ -1,6 +1,42 @@
 import {bindPad} from './pointer-pad.js';
 import {createCabView} from './cab-view.js';
-import {renderResults} from './results.js';
+// Keep results bundled: deployed servers may not expose a /results.js route.
+function renderResults(container,state,playerId) {
+  container.hidden=state.phase!=='finished'||!state.results;
+  if(container.hidden){container.replaceChildren();delete container.dataset.signature;return;}
+  const r=state.results,signature=JSON.stringify([r,playerId]);
+  if(container.dataset.signature===signature)return;
+  container.dataset.signature=signature;
+  const element=(tag,text,className)=>{const el=document.createElement(tag);el.textContent=text;if(className)el.className=className;return el;};
+  const winners=r.winnerIds.map(id=>`팀 ${id+1}`).join(' · ');
+  const title=winners?`${winners} ${r.winnerIds.length>1?'공동 우승!':'우승!'}`:'이번 경기는 무승부';
+  const heading=element('h2',title,'result-winner');
+  const summary=element('p',`작업 완료! 최종 확보 모래 ${r.total}점`);
+  const sections=element('div','','result-columns');
+  function standings(title,entries,personal=false){
+    const section=element('section','');section.append(element('h3',title));
+    const list=element('ol','','result-ranking');
+    for(const item of entries){
+      const row=element('li','','result-row');
+      if(personal)row.classList.add('personal');
+      if(personal&&item.id===playerId)row.classList.add('is-me');
+      const name=personal?`${item.name} · 팀 ${item.team+1}${item.id===playerId?' (나)':''}`:`팀 ${item.id+1}`;
+      row.style.setProperty('--team',state.teams[personal?item.team:item.id].color);
+      row.append(element('span',`${item.rank}위`),element('strong',name),element('span',personal?`운반 ${item.score} · 방해 ${item.disrupted??0}`:`${item.score}점`,personal?'result-metrics':undefined));list.append(row);
+    }
+    section.append(list);return section;
+  }
+  sections.append(standings('팀 최종 순위',r.teams),standings('개인 운반 기록',r.players,true));
+  const note=element('p','팀 점수는 최종 모래량입니다. 개인 운반량은 자기 팀에 내려놓은 누적량, 방해량은 상대 팀 구역에서 퍼낸 누적량입니다. 반복한 작업도 포함하며 개인 순위는 운반량 기준입니다.','result-note');
+  if(playerId){const me=r.players.find(p=>p.id===playerId);if(me)summary.textContent+=` · 내 기록 ${me.rank}위 / 운반 ${me.score} · 방해 ${me.disrupted??0}`;}
+  container.replaceChildren(element('span','FINAL RESULTS','eyebrow'),heading,summary,sections,note,element('p','진행자가 대기실로 돌아가면 다음 경기를 준비합니다.','result-note'));
+  if(playerId){
+    container.classList.remove('expanded');
+    const toggle=element('button','전체 순위 보기');toggle.type='button';toggle.setAttribute('aria-expanded','false');
+    toggle.onclick=()=>{const open=container.classList.toggle('expanded');toggle.textContent=open?'순위 접고 조작하기':'전체 순위 보기';toggle.setAttribute('aria-expanded',String(open));};
+    container.prepend(toggle);
+  }
+}
 const $=id=>document.getElementById(id), room=new URLSearchParams(location.search).get('room');
 const storageKey=`dirt-rally:${location.host}:${room}`;
 let saved;try{saved=JSON.parse(localStorage.getItem(storageKey)||'null');}catch{}
@@ -57,6 +93,22 @@ const fullscreenRequest=()=>{
   if(typeof root.webkitRequestFullscreen==='function'&&document.webkitFullscreenEnabled!==false)return root.webkitRequestFullscreen.bind(root);
   return null;
 };
+// Older Samsung/WebKit implementations return void before entering fullscreen.
+// Register events before invoking the API, and bound the wait if it never settles.
+function enterFullscreen(request){
+  return new Promise((resolve,reject)=>{
+    let timer;
+    const cleanup=()=>{clearTimeout(timer);for(const event of ['fullscreenchange','webkitfullscreenchange'])document.removeEventListener(event,changed);for(const event of ['fullscreenerror','webkitfullscreenerror'])document.removeEventListener(event,failed);};
+    const finish=(error)=>{cleanup();error?reject(error):resolve();};
+    const changed=()=>{if(fullscreenElement())finish();};
+    const failed=()=>finish(new Error('Fullscreen rejected'));
+    for(const event of ['fullscreenchange','webkitfullscreenchange'])document.addEventListener(event,changed);
+    for(const event of ['fullscreenerror','webkitfullscreenerror'])document.addEventListener(event,failed);
+    timer=setTimeout(failed,2500);
+    try{Promise.resolve(request({navigationUI:'hide'})).then(changed,failed);}catch{failed();}
+  });
+}
+let fullscreenPending=false;
 const manualRotationHelp=/iPhone|iPod/.test(navigator.userAgent)
   ?'제어 센터의 세로 방향 잠금을 해제하고 아이폰을 가로로 돌려주세요.'
   :'휴대폰의 자동 회전을 켜고 가로로 돌려주세요.';
@@ -67,16 +119,32 @@ function updateFullscreenButtons(){
   if(!supported)$('rotation-help').textContent=`이 브라우저에서는 버튼으로 전체화면을 켤 수 없습니다. ${manualRotationHelp}`;
 }
 function fullscreenFeedback(message){
-  if(portrait.matches)$('rotation-help').textContent=message;
-  else{$('fullscreen-notice-text').textContent=message;$('fullscreen-notice').classList.remove('hidden');}
+  $('rotation-help').textContent=message;
+  $('fullscreen-notice-text').textContent=message;$('fullscreen-notice').classList.remove('hidden');
 }
 $('fullscreen-notice-close').onclick=()=>$('fullscreen-notice').classList.add('hidden');
 async function landscapeFullscreen(showFeedback=false){
+  if(fullscreenPending)return;
+  fullscreenPending=true;
+  for(const id of ['fullscreen','landscape-button'])$(id).disabled=true;
   stop();
   let full=Boolean(fullscreenElement()),locked=false,requestFailed=false;
   const request=fullscreenRequest();
-  try{if(!full&&request){await request({navigationUI:'hide'});full=Boolean(fullscreenElement());}}catch{requestFailed=true;}
-  try{if(typeof screen.orientation?.lock==='function'){await screen.orientation.lock('landscape');locked=true;}}catch{}
+  try{if(!full&&request){await enterFullscreen(request);full=Boolean(fullscreenElement());}}catch{requestFailed=true;}
+  try{
+    if(full||standalone){
+      if(typeof screen.orientation?.lock==='function'){
+        let timer;
+        try{await Promise.race([screen.orientation.lock('landscape'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Orientation timeout')),2500);})]);locked=true;}finally{clearTimeout(timer);}
+      }else{
+        const lock=screen.lockOrientation||screen.webkitLockOrientation||screen.mozLockOrientation;
+        if(typeof lock==='function')locked=lock.call(screen,'landscape')===true;
+      }
+    }
+  }catch{}
+  fullscreenPending=false;
+  for(const id of ['fullscreen','landscape-button'])$(id).disabled=false;
+  $('rotation-help').textContent=manualRotationHelp;
   updateFullscreenButtons();
   if(showFeedback){
     if(!full&&!standalone){

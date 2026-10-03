@@ -6,7 +6,7 @@
   <title>포크레인 컨트롤러</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="포크레인 운전석">
-  <link rel="stylesheet" href="/style.css?v=20261003-mobile-3">
+  <link rel="stylesheet" href="/style.css?v=20261004-fullscreen-2">
   
 </head>
 <body class="phone-controller">
@@ -44,7 +44,6 @@
   </section>
   <main id="controller" class="control-shell hidden" data-state="lobby">
     <button id="top-toggle" class="top-toggle" type="button" aria-expanded="true" aria-controls="controller-chat controller-header">상단 숨기기</button>
-    <div id="fullscreen-notice" class="fullscreen-notice hidden" role="status"><span id="fullscreen-notice-text"></span><button id="fullscreen-notice-close" type="button">닫기</button></div>
     <section id="controller-chat" class="mobile-chat" aria-label="전체 채팅">
       <button id="chat-toggle" class="chat-preview" type="button" aria-expanded="false" aria-controls="chat-history"><span class="chat-label">전체 채팅 ▾</span><span id="chat-latest">아직 메시지가 없습니다.</span></button>
       <div id="chat-history" class="chat-history hidden" role="log" aria-live="polite" aria-relevant="additions" aria-label="채팅 내역"></div>
@@ -91,7 +90,8 @@
       <div class="controller-note">전진은 궤도가 향한 방향 기준입니다. 상부를 돌려도 궤도 방향은 유지됩니다.</div>
     </footer>
   </main>
-  <script type="module" src="/controller.js?v=20261003-mobile-3"></script>
+  <div id="fullscreen-notice" class="fullscreen-notice hidden" role="status"><span id="fullscreen-notice-text"></span><button id="fullscreen-notice-close" type="button">닫기</button></div>
+  <script type="module" src="/controller.js?v=20261004-fullscreen-2"></script>
 </body>
 </html>
 

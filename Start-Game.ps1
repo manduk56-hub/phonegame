@@ -1,6 +1,9 @@
 param([string]$ServerUrl = $env:DIRT_RALLY_SERVER_URL)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
+$previousUrl = $env:DIRT_RALLY_SERVER_URL
+$previousKey = $env:DIRT_RALLY_HOST_KEY
+try {
 if ($ServerUrl) {
     $remoteUri = [Uri]$ServerUrl
     if ($remoteUri.Scheme -ne 'https' -or $remoteUri.AbsolutePath -ne '/' -or $remoteUri.Query -or $remoteUri.Fragment -or $remoteUri.UserInfo) { throw 'Remote server URL must be an HTTPS origin without a path.' }
@@ -14,6 +17,9 @@ if ($ServerUrl) {
     if ($remoteConfig.app -ne 'dirt-rally' -or $remoteConfig.protocol -ne 1 -or $remoteConfig.hostAuth -ne 'token') { throw 'Remote endpoint is not a compatible DIRT RALLY token-auth server.' }
     Write-Host ('Remote game server: ' + $env:DIRT_RALLY_SERVER_URL)
 } else {
+# An explicit local launch must override inherited remote connection settings.
+$env:DIRT_RALLY_SERVER_URL = $null
+$env:DIRT_RALLY_HOST_KEY = $null
 $nodeExe = (Get-Command node -ErrorAction Stop).Source
 if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'node_modules/ws'))) {
     & npm.cmd install
@@ -62,4 +68,8 @@ if ($godotPath -and (Test-Path -LiteralPath $godotPath)) {
     Write-Host ('Game PID: ' + $gameProcess.Id)
 } else {
     Write-Host 'Open game/project.godot in Godot 4 and press F5.'
+}
+} finally {
+    $env:DIRT_RALLY_SERVER_URL = $previousUrl
+    $env:DIRT_RALLY_HOST_KEY = $previousKey
 }
