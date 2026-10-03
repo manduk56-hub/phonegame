@@ -1,6 +1,9 @@
 $ErrorActionPreference = 'Stop'
 $projectDir = Split-Path -Parent $PSScriptRoot
 $previousLocation = Get-Location
+$previousLocalAppData = $env:LOCALAPPDATA
+$testLocalAppData = Join-Path $projectDir ('.runtime/launcher-' + [Guid]::NewGuid().ToString('N'))
+$env:LOCALAPPDATA = $testLocalAppData
 $savedEnvironment = @{}
 foreach ($name in @('DIRT_RALLY_SERVER_URL', 'DIRT_RALLY_HOST_KEY', 'GODOT_EXE')) {
     $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
@@ -46,12 +49,27 @@ try {
     Assert-Launch '' ''
     $choices.Enqueue('2')
     & $launcher
-    Assert-Launch 'https://dirt-rally.115.68.208.145.sslip.io' 'launcher-test-placeholder'
+    Assert-Launch 'https://chosen.example' 'launcher-test-placeholder'
+    Remove-Item -LiteralPath (Join-Path $testLocalAppData 'DirtRally/server.json')
+    $choices.Enqueue('2'); $choices.Enqueue(''); $choices.Enqueue('http://invalid.example'); $choices.Enqueue('https://personal.example/')
+    & $launcher
+    Assert-Launch 'https://personal.example' 'launcher-test-placeholder'
+    & (Join-Path $projectDir 'Start-RemoteGame.ps1')
+    Assert-Launch 'https://personal.example' 'launcher-test-placeholder'
+    Remove-Item -LiteralPath (Join-Path $testLocalAppData 'DirtRally/server.json')
+    $choices.Enqueue('2'); $choices.Enqueue('q')
+    & $launcher
+    if ($launches.Count) { throw 'Cancelling server address entry started a game.' }
     $choices.Enqueue('q')
     & $launcher
     if ($launches.Count) { throw 'Cancel started a game.' }
-    Write-Host 'PASS: local override, remote selection, menu choices, cancel and parent environment restoration. No game or server was started.'
+    Write-Host 'PASS: local override, own-server entry and persistence, invalid URLs, cancel and parent environment restoration. No game or server was started.'
 } finally {
+    $env:LOCALAPPDATA = $previousLocalAppData
+    $testSettings = Join-Path $testLocalAppData 'DirtRally/server.json'
+    if (Test-Path -LiteralPath $testSettings) { Remove-Item -LiteralPath $testSettings }
+    if (Test-Path -LiteralPath (Join-Path $testLocalAppData 'DirtRally')) { Remove-Item -LiteralPath (Join-Path $testLocalAppData 'DirtRally') }
+    if (Test-Path -LiteralPath $testLocalAppData) { Remove-Item -LiteralPath $testLocalAppData }
     foreach ($name in $savedEnvironment.Keys) {
         [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')
     }

@@ -70,4 +70,8 @@ cat /var/lib/dirt-rally/deployed-commit
 systemctl status dirt-rally
 ```
 
-현재 준비된 파일은 로컬 상태입니다. 서버 초기 설정과 GitHub Secrets 등록을 끝내기 전에는 자동 배포가 활성화되지 않습니다. 배포 스크립트를 변경하면 초기 설치 명령을 다시 실행해 서버에 설치된 스크립트도 갱신해야 합니다.
+이 서버의 최초 설정과 GitHub production 설정은 완료되어 있습니다. 이후 main push 시 전용 키로 자동 배포하며 SSH 비밀번호를 요구하지 않습니다.
+
+PC에서 수동으로 같은 배포를 요청하려면 `./deploy/Deploy-Git.ps1 -SshTarget user@your-server`를 실행합니다. 기본 배포 서버는 없습니다. 자기 PC의 `%LOCALAPPDATA%/DirtRally/deployment.json`에 `sshTarget`을 저장하면 다음에는 주소 인수를 생략할 수 있습니다. 기존 `Update-Controller.ps1`도 이 경로를 사용합니다. 두 스크립트 모두 비밀번호 인증을 금지하며, 로컬 파일을 커밋하거나 업로드하지 않습니다. GitHub main과 같은 커밋만 배포합니다.
+
+SSH 개인 키는 `%USERPROFILE%/.ssh/dirt-rally-actions-deploy`에, GitHub용 키는 암호화된 production Secret에만 보관합니다. 저장소에는 개인 키를 포함하지 않습니다. 서버에 설치된 배포 스크립트를 바꿀 때는 설치된 스크립트도 갱신해야 합니다.

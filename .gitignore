@@ -6,3 +6,11 @@ game/.godot/
 .env.*
 *.pem
 *.key
+*.ppk
+*.pfx
+*.p12
+**/.ssh/
+**/credentials/
+remote-host-key
+*-repo-read
+*-actions-deploy

@@ -1,6 +1,6 @@
 ﻿param(
     [ValidateSet('Ask', 'Local', 'Server')][string]$Mode = 'Ask',
-    [string]$ServerUrl = 'https://dirt-rally.115.68.208.145.sslip.io'
+    [string]$ServerUrl = ''
 )
 $ErrorActionPreference = 'Stop'
 if ($Mode -eq 'Ask') {

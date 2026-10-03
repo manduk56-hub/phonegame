@@ -7,10 +7,8 @@ try {
 if ($ServerUrl) {
     $remoteUri = [Uri]$ServerUrl
     if ($remoteUri.Scheme -ne 'https' -or $remoteUri.AbsolutePath -ne '/' -or $remoteUri.Query -or $remoteUri.Fragment -or $remoteUri.UserInfo) { throw 'Remote server URL must be an HTTPS origin without a path.' }
-    if (-not $env:DIRT_RALLY_HOST_KEY) {
-        $hostKeyInput = Read-Host 'Remote host key' -AsSecureString
-        $env:DIRT_RALLY_HOST_KEY = [System.Net.NetworkCredential]::new('', $hostKeyInput).Password
-    }
+    . (Join-Path $PSScriptRoot 'Remote-Credentials.ps1')
+    $env:DIRT_RALLY_HOST_KEY = Get-RemoteHostKey -ServerUrl $ServerUrl -ProjectRoot $PSScriptRoot
     if (-not $env:DIRT_RALLY_HOST_KEY) { throw 'Remote host key is required.' }
     $env:DIRT_RALLY_SERVER_URL = $ServerUrl.TrimEnd('/')
     $remoteConfig = Invoke-RestMethod -Uri ($env:DIRT_RALLY_SERVER_URL + '/config') -TimeoutSec 10
