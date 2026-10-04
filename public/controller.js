@@ -56,8 +56,6 @@ let browserChosen=false;try{browserChosen=sessionStorage.getItem('dirt-rally:bro
 if(iosSafari&&!standalone&&!browserChosen){
   const url=location.href;
   $('open-chrome').href=url.replace(/^https?:/,location.protocol==='https:'?'googlechromes:':'googlechrome:');
-  $('open-edge').href=url.replace(/^https?:/,location.protocol==='https:'?'microsoft-edge-https:':'microsoft-edge-http:');
-  $('open-firefox').href=`firefox://open-url?url=${encodeURIComponent(url)}`;
   $('browser-choice').classList.remove('hidden');
   $('join').inert=true;
   $('controller').inert=true;
