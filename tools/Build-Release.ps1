@@ -1,6 +1,7 @@
 ﻿param([string]$Version='0.3.0',[string]$OutputDirectory='',[string]$GodotExe='',[string]$NodeExe='',[string]$CloudflaredExe='',[string]$GodotVersion='4.6.2')
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Official-Downloads.ps1')
+. (Join-Path $PSScriptRoot 'Release-Retention.ps1')
 $projectRoot=Split-Path -Parent $PSScriptRoot
 if($Version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$'){throw 'Version must be a semantic version.'}
 if(-not $OutputDirectory){$OutputDirectory=Join-Path $projectRoot '.runtime/releases'}
@@ -63,6 +64,9 @@ try{
     Compress-Archive -Path (Join-Path $launcherBundle '*') -DestinationPath (Join-Path $OutputDirectory 'Playroom-Installer.zip') -Force
     Write-Host "Ready: $archive"
 }finally{
+    # Only prune after the game, manifest and installer have all been produced.
+    try { Remove-OldPlayroomArchives -Directory $OutputDirectory -CurrentFileName $fileName }
+    catch { Write-Warning ('Release built, but old archive cleanup failed: ' + $_.Exception.Message) }
     $resolvedBundle=[IO.Path]::GetFullPath($bundle)
     if($resolvedBundle.StartsWith($OutputDirectory.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase) -and (Split-Path -Leaf $resolvedBundle) -like 'build-*'){Remove-Item -LiteralPath $resolvedBundle -Recurse -Force}
 }
