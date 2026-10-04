@@ -156,11 +156,13 @@ function Install-Playroom {
             }
             # Replace only the old shortcuts created for this exact installation.
             $launcherPath = Join-Path $Directory 'launcher/Start-Launcher.ps1'
-            foreach ($oldName in @('PLAYROOM','DIRT RALLY','플레이룸 런처')) {
+            $installerPath = Join-Path $Directory 'launcher/Start-Installer.ps1'
+            foreach ($oldName in @('PLAYROOM','DIRT RALLY','플레이룸 런처','플레이룸 설치')) {
                 $oldPath = Join-Path $desktop ($oldName + '.lnk')
                 if (Test-Path -LiteralPath $oldPath) {
                     $oldShortcut = $shell.CreateShortcut($oldPath)
-                    if ($oldShortcut.Arguments.IndexOf($launcherPath,[StringComparison]::OrdinalIgnoreCase) -ge 0) { Remove-Item -LiteralPath $oldPath }
+                    $expectedPath = if ($oldName -eq '플레이룸 설치') { $installerPath } else { $launcherPath }
+                    if ($oldShortcut.Arguments.IndexOf(('"' + $expectedPath + '"'),[StringComparison]::OrdinalIgnoreCase) -ge 0) { Remove-Item -LiteralPath $oldPath }
                 }
             }
         }
