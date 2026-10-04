@@ -32,4 +32,35 @@ func verify() -> void:
 			quit(1)
 			return
 	print("Verified ",fixture.players.size()," rendered bucket poses against authoritative simulation. Maximum error: ",maximum_error)
+	if fixture.get("water") is Dictionary:
+		var w: Dictionary = fixture.water
+		var lanes: Array = world.water_root.get("lanes")
+		var water_vertices := 0
+		for i in range(lanes.size()):
+			var bytes := Marshalls.base64_to_raw(str(w.lanes[i].surface))
+			var arrays: Array = lanes[i].ground.mesh.surface_get_arrays(0)
+			var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+			if vertices.size() != int(w.rows)*int(w.cols):
+				printerr("Terrain sample count mismatch")
+				quit(1)
+				return
+			for j in range(vertices.size()):
+				if absf(vertices[j].y+bytes.decode_u16(j*3)/1000.0)>0.00001:
+					printerr("Terrain height differs from authoritative excavation")
+					quit(1)
+					return
+			if lanes[i].flow.mesh.get_surface_count()>0:
+				var flow_arrays: Array = lanes[i].flow.mesh.surface_get_arrays(0)
+				var flow: PackedVector3Array = flow_arrays[Mesh.ARRAY_VERTEX]
+				water_vertices += flow.size()
+				for point in flow:
+					if absf(point.y-float(w.level)-0.006)>0.00001 or absf(point.x)>(int(w.cols)-1)*float(w.size)/2+0.0001:
+						printerr("Water surface does not follow the shared level or terrain bounds")
+						quit(1)
+						return
+		if water_vertices == 0:
+			printerr("Continuous water mesh is missing")
+			quit(1)
+			return
+		print("Verified continuous native terrain against all packed height samples; water vertices: ",water_vertices)
 	quit(0)

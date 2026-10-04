@@ -1,3 +1,4 @@
+import {EXCAVATOR_MAPS,resetWater,waterAction,waterTick,waterResults,waterHeight,waterSnapshot} from './waterway.mjs';
 import { randomUUID } from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {raceSpawn,raceTick,chooseCar,CIRCUITS,TRACKS,CARS} from './racing.mjs';
@@ -7,6 +8,7 @@ const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a,b) => Math.hypot(a.x-b.x, a.z-b.z);
 export class Match {
   constructor() {
+    this.excavatorMap=EXCAVATOR_MAPS[0];
     this.circuit=CIRCUITS[0];
     this.players = new Map(); this.teamCount = 4; this.duration = 180;
     this.phase = 'lobby'; this.remaining = this.duration; this.central = 4000;
@@ -18,6 +20,7 @@ export class Match {
       const angle = id / this.teamCount * Math.PI*2;
       return { id, color:COLORS[id], x:Math.sin(angle)*ARENA.teamRadius, z:Math.cos(angle)*ARENA.teamRadius, dirt:0 };
     });
+    resetWater(this);
   }
   spawn(p) {
     if(this.game==='racing'){raceSpawn(this,p);return;}
@@ -30,7 +33,8 @@ export class Match {
     const angle = p.team*sector+(col-(rowSize-1)/2)*Math.min(.24,sector*.8/columns);
     const radius = ARENA.spawnRadius+row*2.2;
     p.x = Math.sin(angle)*radius; p.z = Math.cos(angle)*radius;
-    p.yaw = angle + Math.PI; p.turret = 0; p.boom=.50; p.stick=-1.4; p.curl=-.7; p.cargo=0;
+    p.y=0; p.yaw = angle + Math.PI; p.turret = 0; p.boom=.50; p.stick=-1.4; p.curl=-.7; p.cargo=0;
+    if(this.water){const lane=this.water.lanes[p.team],side=(slot%2===0?-1:1)*3.1;p.x=lane.x+side;p.z=this.water.start+2.2+Math.floor(slot/2)*1.6;p.yaw=side<0?Math.PI/2:-Math.PI/2;}
     p.input=this.neutral(); p.lastInput=0; p.cooldown=0; p.message=''; p.delivered=0; p.disrupted=0;
   }
   join(name, token) {
@@ -47,8 +51,13 @@ export class Match {
     if(this.game===game)return;
     if(this.phase!=='lobby')throw Error('대기실에서 게임을 변경하세요.');
     if(!['excavator','racing'].includes(game))throw Error('지원하지 않는 게임입니다.');
-    this.game=game;this.results=null;for(const p of this.players.values())this.spawn(p);
+    this.game=game;this.resetTeams();for(const p of this.players.values())p.team%=this.teamCount;this.results=null;for(const p of this.players.values())this.spawn(p);
     if(game==='racing'){this.duration=Math.max(300,this.duration);this.remaining=this.duration;}
+  }
+  selectExcavatorMap(id){
+    if(this.game!=='excavator'||this.phase!=='lobby')throw Error('맵은 포크레인 대기실에서 선택하세요.');
+    const map=EXCAVATOR_MAPS.find(m=>m.id===id);if(!map)throw Error('올바른 맵을 선택하세요.');
+    this.excavatorMap=map;this.results=null;this.resetTeams();for(const p of this.players.values())this.spawn(p);
   }
   chooseCar(id,car){chooseCar(this,id,car);}
   selectTrack(id){
@@ -98,7 +107,7 @@ export class Match {
   bucket(p) {
     const a=p.yaw+p.turret, bucketAngle=p.boom+p.stick+Math.PI/2-p.curl;
     const reach=2.4*Math.cos(p.boom)+2.1*Math.cos(p.boom+p.stick)-.73*Math.cos(bucketAngle)+.48*Math.sin(bucketAngle);
-    return {x:p.x+Math.sin(a)*reach,z:p.z+Math.cos(a)*reach,height:1.45+2.4*Math.sin(p.boom)+2.1*Math.sin(p.boom+p.stick)-.73*Math.sin(bucketAngle)-.48*Math.cos(bucketAngle)};
+    return {x:p.x+Math.sin(a)*reach,z:p.z+Math.cos(a)*reach,height:(p.y||0)+1.45+2.4*Math.sin(p.boom)+2.1*Math.sin(p.boom+p.stick)-.73*Math.sin(bucketAngle)-.48*Math.cos(bucketAngle)};
   }
   inZone(point, team) {return Math.abs(point.x-team.x)<=3.1&&Math.abs(point.z-team.z)<=3.1;}
   pileHeight(point, center, radius, amount, maximum, central=false) {
@@ -110,10 +119,11 @@ export class Match {
     return Math.max(.2,(4.6-d)*.55)*scale;
   }
   action(id, action) {
-    if(this.game==='racing')return;
+    if(this.game!=='excavator')return;
     const p=this.players.get(id);
     if(this.phase!=='running'||!p||!p.connected||p.cooldown>0) return;
     const tip=this.bucket(p); p.cooldown=.45;
+    if(this.water){waterAction(this,p,action,tip);return;}
     if(action==='scoop') {
       if(p.cargo>=40) {p.message='버킷이 가득 찼어요';return;}
       const origin={x:0,z:0};
@@ -156,34 +166,38 @@ export class Match {
         const next={x:clamp(p.x+Math.sin(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit),z:clamp(p.z+Math.cos(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit)};
         if(![...this.players.values()].some(q=>q!==p&&distance(next,q)<1.5)) {p.x=next.x;p.z=next.z;}
       }
+      if(this.water&&!ceremony)p.y=waterHeight(this,p);
       p.turret+=i.swing*1.4*dt;
       const old={boom:p.boom,stick:p.stick,curl:p.curl};
       const target={boom:clamp(p.boom+i.boom*.7*dt,-.25,1.35),stick:clamp(p.stick+i.stick*.9*dt,-2.4,-.25),curl:clamp(p.curl+i.curl*1.8*dt,-1.2,1.2)};
       Object.assign(p,target);
-      if(this.bucket(p).height<.02) {
+      const floor=()=>{const tip=this.bucket(p);return .02+(this.water&&!ceremony?waterHeight(this,tip):0);};
+      if(this.bucket(p).height<floor()) {
         let low=0,high=1;
         for(let step=0;step<14;step++) {
           const fraction=(low+high)/2;
           for(const key of Object.keys(old))p[key]=old[key]+(target[key]-old[key])*fraction;
-          if(this.bucket(p).height>=.02)low=fraction;else high=fraction;
+          if(this.bucket(p).height>=floor())low=fraction;else high=fraction;
         }
         for(const key of Object.keys(old))p[key]=old[key]+(target[key]-old[key])*low;
       }
-      if(i.curl>.2&&p.curl>.1&&p.cargo<40) this.action(p.id,'scoop');
+      if(i.curl>.2&&(this.water||p.curl>.1)&&p.cargo<40) this.action(p.id,'scoop');
       if(i.curl<-.2&&p.curl<-.5&&p.cargo>0) this.action(p.id,'drop');
     }
-    if(!ceremony&&this.remaining<=0) {
+    const waterFinished=!ceremony&&this.water&&waterTick(this,dt);
+    if(!ceremony&&(this.remaining<=0||waterFinished)) {
       this.phase='finished';this.results=this.buildResults();
       const winners=[...this.players.values()].filter(p=>this.results.winnerIds.includes(p.team));
       const columns=Math.min(4,winners.length);
       winners.forEach((p,i)=>{
         const row=Math.floor(i/columns),rowSize=Math.min(columns,winners.length-row*columns);
-        p.x=(i%columns-(rowSize-1)/2)*5;p.z=ARENA.driveLimit-row*6;p.yaw=0;p.turret=0;
+        p.y=0;p.x=(i%columns-(rowSize-1)/2)*5;p.z=ARENA.driveLimit-row*6;p.yaw=0;p.turret=0;
         p.boom=.75;p.stick=-1.2;p.curl=.2;p.cargo=0;p.input=this.neutral();p.lastInput=0;
       });
     }
   }
   buildResults() {
+    if(this.water)return waterResults(this);
     const rank=entries=>{
       entries.sort((a,b)=>b.score-a.score);
       let place=1;
@@ -196,6 +210,7 @@ export class Match {
   }
   snapshot() {
     return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
+      ...(this.game==='excavator'?{excavatorMap:this.excavatorMap,excavatorMaps:EXCAVATOR_MAPS,water:waterSnapshot(this.water)}:{}),
       ...(this.game==='racing'?{race:{laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,cars:CARS,tracks:TRACKS},circuit:this.circuit}:{}),
       players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,...(this.game==='excavator'?{bucket:this.bucket(p)}:{})}))};
   }

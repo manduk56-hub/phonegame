@@ -344,6 +344,11 @@ button:disabled{opacity:.45}p{color:#c8c8ac}h1,h2,strong,b{font-weight:400}h2{co
 #hub-play:hover:not(:disabled){background:#ff947c!important}
 #hub-play:disabled{background:#d3d2c7!important;opacity:1;color:#70776e!important;justify-content:center}
 .hub-detail .hub-footnote{font-size:11px;line-height:1.5;text-align:center}
+.hub-join{display:flex;gap:12px;align-items:center;border-top:2px solid #c7cabc;padding-top:16px;margin-top:auto}
+.hub-join img{width:144px;height:144px;flex:none;background:white}
+.hub-join>div{min-width:0}.hub-join strong{font-size:16px}.hub-join p{font-size:12px;line-height:1.5;margin-top:8px}
+.hub-join #hub-url{font-size:10px;overflow-wrap:anywhere}
+.hub-detail #hub-preview .hub-art{height:130px;object-fit:contain}
 .hub-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:28px;color:#9ba6a5;font-size:12px}
 .hub-footer b{color:#f17c64;font-weight:400;margin-right:6px}.hub-footer i{font-style:normal;margin:0 18px;color:#59615b}
 .hub-footer>span:last-child{letter-spacing:.1em;font-size:11px}
@@ -351,3 +356,5 @@ button:disabled{opacity:.45}p{color:#c8c8ac}h1,h2,strong,b{font-weight:400}h2{co
 @media(min-width:1500px){.game-hub{padding-top:40px}.hub-intro{padding:40px 0}.hub-layout{grid-template-columns:minmax(0,1fr) 410px}}
 @media(max-width:1000px){.game-hub{padding:24px}.hub-layout{grid-template-columns:minmax(0,1fr) 300px;gap:18px}.hub-detail{padding:18px}.hub-card-heading{align-items:flex-start;flex-direction:column}.hub-device{font-size:12px}.hub-brand span{display:none}}
 @media(max-width:720px){.game-hub{padding:20px 16px}.hub-header{padding-bottom:18px}.hub-brand{font-size:21px}.hub-device{font-size:10px}.hub-intro{padding:28px 0}.hub-layout{grid-template-columns:1fr}.hub-catalog{gap:12px}.hub-card{padding:10px!important;gap:6px}.hub-card-heading{flex-direction:row;margin-top:0}.hub-card-heading strong{font-size:clamp(11px,3vw,16px)}.hub-tag{display:none}.hub-card-subtitle{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hub-card-status{font-size:10px;padding-top:6px}.hub-card-status span{display:none}.hub-card>.hub-game-render{object-fit:contain}.hub-detail{gap:14px}.hub-detail .hub-art{max-height:260px}.hub-footer{font-size:11px}.hub-footer i{margin:0 5px}.hub-footer>span:last-child{display:none}}
+
+#excavator-map-picker{margin:24px 0}#excavator-map-picker .track-card{min-height:104px;padding:20px}#water-overview{display:block;width:100%;height:420px;border-radius:16px;margin:16px 0}#water-overview[hidden]{display:none}

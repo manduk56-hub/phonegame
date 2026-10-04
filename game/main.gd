@@ -35,6 +35,10 @@ var last_config := -5.0
 var lobby_panel: PanelContainer
 var lobby_title: Label
 var lobby_message: Label
+var map_select: OptionButton
+var map_hint: Label
+var water_root: Node3D
+var map_signature := ""
 var team_select: OptionButton
 var duration_input: SpinBox
 var network_select: OptionButton
@@ -50,6 +54,7 @@ var reset_dialog: ConfirmationDialog
 var result_panel: PanelContainer
 var result_title: Label
 var result_body: RichTextLabel
+var result_note: Label
 var result_return: Button
 var result_signature := ""
 var camera: Camera3D
@@ -426,9 +431,23 @@ func teams_changed(count: int) -> void:
 		var title := label3(root,"팀 "+str(i+1),Vector3(0,3.4,0),Color(COLORS[i]),64)
 		team_nodes.append({"root":root,"pile":mound,"label":title})
 
+func update_water(m: Dictionary) -> void:
+	if not m.get("water") is Dictionary:
+		if is_instance_valid(water_root):
+			water_root.hide()
+		return
+	if not is_instance_valid(water_root):
+		water_root = Node3D.new()
+		water_root.set_script(load("res://water_terrain.gd"))
+		add_child(water_root)
+	water_root.call("update_surface",m)
+
 func accept_state(m: Dictionary) -> void:
 	state = m
+	update_water(m)
 	update_lobby(m)
+	if m.get("water") is Dictionary and m.phase != "finished":
+		camera.size = maxf(26,float(m.teamCount)*5.5+12)
 	if m.has("connection"):
 		var key := str(m.connection.room) + str(m.connection.address) + str(m.connection.get("internetStatus", "local"))
 		if key != connection_key:
@@ -473,17 +492,17 @@ func accept_state(m: Dictionary) -> void:
 	status.modulate = Color("#ff957c") if m.phase == "running" and float(m.remaining) <= 30.0 else Color.WHITE
 	attendance.text = "참가 %d / 16명" % m.players.size()
 	var rankings: Array = m.teams.duplicate()
-	rankings.sort_custom(func(a,b): return a.dirt > b.dirt)
+	rankings.sort_custom(func(a,b): return float(m.water.lanes[int(a.id)].progress) > float(m.water.lanes[int(b.id)].progress) if m.get("water") is Dictionary else a.dirt > b.dirt)
 	scores.clear()
 	scores.push_color(Color("#eef4f6"))
-	scores.add_text("팀 순위 · 모래 운반량\n\n")
+	scores.add_text("팀 순위 · 물길 진행률\n\n" if m.get("water") is Dictionary else "팀 순위 · 모래 운반량\n\n")
 	scores.pop()
 	var rank := 1
 	for t in rankings:
 		scores.push_color(Color(COLORS[int(t.id)]))
 		scores.add_text("%02d  팀 %d" % [rank,int(t.id)+1])
 		scores.pop()
-		scores.add_text("   %5d\n" % int(t.dirt))
+		scores.add_text("   %d%%\n" % int(m.water.lanes[int(t.id)].progress) if m.get("water") is Dictionary else "   %5d\n" % int(t.dirt))
 		rank += 1
 	if m.phase == "finished":
 		var winners: Array = rankings.filter(func(t):return t.dirt == rankings[0].dirt)
@@ -492,6 +511,9 @@ func accept_state(m: Dictionary) -> void:
 		hint.text = "QR로 참가 → 게임 안에서 팀 설정 → 경기 시작"
 	else:
 		hint.text = "우리 구역을 채우거나 상대 모래를 가져와 구역 밖에 버리세요"
+
+	if m.get("water") is Dictionary:
+		hint.text = "버킷을 내리며 조금씩 이어 파세요 · 흙은 물길 밖으로 · 물이 목표선에 먼저 도착하면 승리"
 
 func _process(delta: float) -> void:
 	elapsed += delta
@@ -544,7 +566,7 @@ func _process(delta: float) -> void:
 				continue
 			var node: Dictionary = machines[p.id]
 			var ceremony: bool = state.phase == "finished" and state.get("results") is Dictionary and not state.results.winnerIds.is_empty()
-			var stage_height := maxf(0.0,(float(arena.driveLimit)-float(p.z))/6.0)*2.4 if ceremony else 0.0
+			var stage_height := maxf(0.0,(float(arena.driveLimit)-float(p.z))/6.0)*2.4 if ceremony else float(p.get("y",0))
 			node.root.position = node.root.position.lerp(Vector3(p.x,stage_height,p.z),minf(1,delta*15))
 			node.root.visible = not ceremony or state.results.winnerIds.has(p.team)
 			node.root.rotation.y = lerp_angle(node.root.rotation.y,p.yaw,minf(1,delta*15))
@@ -563,12 +585,12 @@ func _process(delta: float) -> void:
 			node.marker.text = "%d · %s%s" % [state.players.find(p)+1,p.name," (OFFLINE)" if not p.connected else ""]
 		var showing_results: bool = state.phase == "finished" and state.get("results") is Dictionary and not state.results.winnerIds.is_empty()
 		for team in team_nodes:
-			team.root.visible = state.phase != "finished"
-			team.label.visible = not showing_results
+			team.root.visible = state.phase != "finished" and not state.get("water") is Dictionary
+			team.label.visible = not showing_results and not state.get("water") is Dictionary
 			team.pile.visible = state.phase != "finished" and float(state.teams[team_nodes.find(team)].dirt) > 0.0
 		for visual in arena_visuals:
-			visual.visible = not showing_results if visual is Label3D else true
-		center_pile.visible = state.phase != "finished" and float(state.central) > 0.0
+			visual.visible = (not showing_results if visual is Label3D else true) and not state.get("water") is Dictionary
+		center_pile.visible = state.phase != "finished" and float(state.central) > 0.0 and not state.get("water") is Dictionary
 		for loose in ground_piles.values():
 			loose.visible = state.phase != "finished"
 	if "--capture" in OS.get_cmdline_user_args() and elapsed > 3 and not capture_done:
@@ -801,6 +823,7 @@ func make_results(ui: Control) -> void:
 	style_hud_text(result_body)
 	layout.add_child(result_body)
 	var note := Label.new()
+	result_note = note
 	note.text = "운반: 우리 팀에 내려놓은 누적량\n방해: 상대 팀에서 퍼낸 누적량\n반복 작업 포함 · 개인 순위는 운반량\n우승 팀은 조이스틱으로 세리머니!"
 	style_label(note,14,Color("#b9c5ab"))
 	layout.add_child(note)
@@ -851,18 +874,20 @@ func update_results(m: Dictionary) -> void:
 	var names: Array = results.winnerIds.map(func(id):return "팀 %d" % (int(id)+1))
 	result_title.text = "이번 경기는 무승부" if names.is_empty() else " · ".join(names) + (" 공동 우승!" if names.size() > 1 else " 우승!")
 	result_body.clear()
-	result_body.add_text("최종 확보 모래 %d점\n\n팀 최종 순위\n" % int(results.total))
+	var water_result: bool = results.get("mode") == "water"
+	result_note.text = "폭포와 연결된 물이 목표선에\n먼저 도착한 팀이 승리합니다.\n개인 기록: 파낸 흙의 양\n우승 팀은 조이스틱으로 세리머니!" if water_result else "운반: 우리 팀에 내려놓은 누적량\n방해: 상대 팀에서 퍼낸 누적량\n반복 작업 포함 · 개인 순위는 운반량\n우승 팀은 조이스틱으로 세리머니!"
+	result_body.add_text(("시간 종료 · 목표선 미도달, 무승부\n\n" if results.get("timedOut",false) else "목표선에 물이 도달했습니다!\n\n") if water_result else "최종 확보 모래 %d점\n\n팀 최종 순위\n" % int(results.total))
 	for team in results.teams:
 		result_body.push_color(Color(COLORS[int(team.id)]))
 		result_body.add_text("%d위   팀 %d" % [int(team.rank),int(team.id)+1])
 		result_body.pop()
-		result_body.add_text("    %d점\n" % int(team.score))
-	result_body.add_text("\n개인 운반 기록\n")
+		result_body.add_text("    물길 %d%%\n" % int(team.score) if water_result else "    %d점\n" % int(team.score))
+	result_body.add_text("\n개인 굴착 기록\n" if water_result else "\n개인 운반 기록\n")
 	for player in results.players:
 		result_body.push_color(Color(COLORS[int(player.team)]))
 		result_body.add_text("%d위   %s · 팀 %d" % [int(player.rank),str(player.name),int(player.team)+1])
 		result_body.pop()
-		result_body.add_text("\n     운반 %d · 방해 %d\n" % [int(player.score),int(player.get("disrupted",0))])
+		result_body.add_text("\n     굴착 %d\n" % int(player.score) if water_result else "\n     운반 %d · 방해 %d\n" % [int(player.score),int(player.get("disrupted",0))])
 	result_body.scroll_to_line(0)
 	var tween := create_tween()
 	result_panel.modulate.a = 0.0
@@ -893,6 +918,20 @@ func make_lobby(ui: Control) -> void:
 	style_label(lobby_title,30,Color("#faad28"))
 	header.add_child(lobby_title)
 	lobby_button("닫기",header,func():lobby_panel.hide())
+	var map_row := HBoxContainer.new()
+	layout.add_child(map_row)
+	var map_label := Label.new()
+	map_label.text = "맵 선택  "
+	map_row.add_child(map_label)
+	map_select = OptionButton.new()
+	map_select.name = "ExcavatorMapSelect"
+	map_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_row.add_child(map_select)
+	map_select.item_selected.connect(func(index):send_admin({"type":"excavator-map","map":map_select.get_item_metadata(index)}))
+	map_hint = Label.new()
+	map_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	style_label(map_hint,17,Color("#b9c5ab"))
+	layout.add_child(map_hint)
 	var settings := HBoxContainer.new()
 	settings.add_theme_constant_override("separation",12)
 	layout.add_child(settings)
@@ -969,6 +1008,7 @@ func make_lobby(ui: Control) -> void:
 	lock_lobby()
 
 func lock_lobby() -> void:
+	map_select.disabled = true
 	team_select.disabled = true
 	duration_input.editable = false
 	configure_button.disabled = true
@@ -1003,6 +1043,16 @@ func update_lobby(m: Dictionary) -> void:
 		roster.append([p.id,p.name,p.team,p.connected])
 	lobby_title.text = "%s · %d / 16명 접속" % ["대기실" if phase == "lobby" else ("경기 중" if phase == "running" else "경기 종료"),connected]
 	var locked := phase != "lobby" or not authenticated or preview_mode
+	map_select.disabled = locked
+	if m.has("excavatorMaps") and map_signature != str(m.excavatorMap.id):
+		map_signature = str(m.excavatorMap.id)
+		map_select.clear()
+		for item in m.excavatorMaps:
+			map_select.add_item(str(item.name))
+			map_select.set_item_metadata(map_select.item_count-1,item.id)
+			if item.id == m.excavatorMap.id:
+				map_select.select(map_select.item_count-1)
+		map_hint.text = str(m.excavatorMap.description)
 	team_select.disabled = locked
 	duration_input.editable = not locked
 	configure_button.disabled = locked

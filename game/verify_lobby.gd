@@ -30,6 +30,16 @@ func run() -> void:
 	if not await wait_until(func():return game.chat_log.get_parsed_text().contains("모바일 채팅 연동 확인 <b>그대로 표시</b>")):
 		return
 	print("VERIFY_CHAT")
+	if not check(game.map_select.item_count == 2 and not game.map_select.disabled,"Lobby must offer two excavator maps"):
+		return
+	game.map_select.item_selected.emit(1)
+	if not await wait_until(func():return game.state.get("water") is Dictionary):
+		return
+	if not check(game.water_root.get("lanes").size() == 4,"Waterfall must render all four lanes"):
+		return
+	game.map_select.item_selected.emit(0)
+	if not await wait_until(func():return game.state.excavatorMap.id == "sand"):
+		return
 	game.team_select.select(7)
 	game.duration_input.get_line_edit().text = "60"
 	game.configure_button.pressed.emit()

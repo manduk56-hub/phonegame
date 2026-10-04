@@ -1,3 +1,4 @@
+import {createWaterTerrain} from './water-view.js';
 import * as THREE from '/vendor/three.module.js';
 
 // Local rendering from the authoritative match state, with no video streams.
@@ -10,6 +11,7 @@ export function createCabView(canvas, status) {
   scene.fog=new THREE.Fog('#b9c6b1',45,120);
   scene.add(new THREE.HemisphereLight(0xe4f2ff,0x786346,2));
   const sun=new THREE.DirectionalLight(0xfff2d4,2);sun.position.set(-12,30,18);scene.add(sun);
+  const waterTerrain=createWaterTerrain(scene);
   const camera=new THREE.PerspectiveCamera(75,1,.08,150);
   const materials=new Map(),geometry=new THREE.BoxGeometry(1,1,1);
   const material=color=>{if(!materials.has(color))materials.set(color,new THREE.MeshLambertMaterial({color}));return materials.get(color);};
@@ -122,7 +124,8 @@ export function createCabView(canvas, status) {
         const mound=pile(root,2.5);batch(root);zones.push({root,pile:mound});
       }
     }
-    central.visible=m.central>0;central.scale.y=Math.max(.025,m.central/4000);
+    waterTerrain.update(m);terrain.visible=!m.water;for(const z of zones)z.root.visible=!m.water;
+    central.visible=!m.water&&m.central>0;central.scale.y=Math.max(.025,m.central/4000);
     const loosePresent=new Set((m.groundPiles||[]).map(s=>s.id));
     for(const [key,node] of groundPiles)if(!loosePresent.has(key)){remove(node);groundPiles.delete(key);}
     for(const s of m.groundPiles||[]){
@@ -147,7 +150,7 @@ export function createCabView(canvas, status) {
     if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
     for(const v of vehicles.values()){
       const p=v.p,t=v.initialized?Math.min(1,dt*15):1;v.initialized=true;
-      v.root.position.lerp(position.set(p.x,0,p.z),t);v.root.rotation.y=turn(v.root.rotation.y,p.yaw,t);
+      v.root.position.lerp(position.set(p.x,p.y||0,p.z),t);v.root.rotation.y=turn(v.root.rotation.y,p.yaw,t);
       v.upper.rotation.y=turn(v.upper.rotation.y,p.turret,t);
       v.boom.rotation.x=-p.boom;v.stick.rotation.x=-p.stick;v.bucket.rotation.x=p.curl-Math.PI/2;
     }
@@ -155,7 +158,7 @@ export function createCabView(canvas, status) {
     const own=vehicles.get(ownId),heading=own.root.rotation.y+own.upper.rotation.y;
     camera.position.copy(own.upper.localToWorld(position.set(-.42,.58,.13)));
     target.copy(camera.position).add(position.set(Math.sin(heading),-.16,Math.cos(heading)));camera.lookAt(target);
-    renderer.render(scene,camera);canvas.dataset.frames=String(++frames);
+    waterTerrain.animate(now/1000);renderer.render(scene,camera);canvas.dataset.frames=String(++frames);
     canvas.dataset.drawCalls=String(renderer.info.render.calls);
     // Evidence also lets the browser check that articulation matches server geometry.
     const teeth=own.bucket.localToWorld(position.set(0,-.48,-.73));

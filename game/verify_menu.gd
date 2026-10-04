@@ -15,6 +15,14 @@ func run() -> void:
 			quit(1)
 			return
 	assert(not hub.play_button.disabled)
+	var qr_deadline := Time.get_ticks_msec()+6000
+	while hub.qr.texture == null or not hub.roster_label.text.contains("1 / 16"):
+		if Time.get_ticks_msec()>qr_deadline:
+			push_error("Game selection QR or connected roster did not load")
+			quit(1)
+			return
+		await process_frame
+	assert(hub.join_label.text.contains("/controller?room="))
 	for index in range(2,4):
 		hub.cards[index].pressed.emit()
 		assert(hub.selected == index and hub.play_button.disabled)
@@ -70,5 +78,5 @@ func run() -> void:
 	assert(hub.active_game.qr.texture != null)
 	hub.return_to_menu()
 	await process_frame
-	print("PASS: both playable games, coming-soon lock, host connection, running lock and return")
+	print("PASS: selection QR and roster, both playable games, coming-soon lock, host connection, running lock and return")
 	quit()
