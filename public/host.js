@@ -52,6 +52,23 @@ chooseGame(0);showScreen(location.hash.slice(1));
 let config,ws,latest,retry,authenticated=false,hostKey='';
 const raceCanvas=document.createElement('canvas');raceCanvas.id='race-overview';raceCanvas.hidden=true;lobby.insertBefore(raceCanvas,lobby.querySelector('.grid'));let raceScene;
 const raceSummary=document.createElement('p');raceSummary.hidden=true;lobby.append(raceSummary);
+const trackPicker=document.createElement('section');trackPicker.id='race-track-picker';trackPicker.hidden=true;
+trackPicker.innerHTML='<h2>서킷 선택</h2><p>코스를 고른 뒤 QR로 참가하세요. 모든 드라이버가 같은 서킷에서 경주합니다.</p><div class="track-grid"></div><p id="race-track-detail" aria-live="polite"></p>';
+lobby.insertBefore(trackPicker,raceCanvas);
+let trackSignature='';
+function renderTrackPicker(m){
+  trackPicker.hidden=m.game!=='racing';if(m.game!=='racing')return;
+  const signature=JSON.stringify([m.circuit.id,m.phase,authenticated]);if(signature===trackSignature)return;trackSignature=signature;
+  const grid=trackPicker.querySelector('.track-grid');grid.replaceChildren();
+  for(const track of m.race.tracks){
+    const button=document.createElement('button');button.className='track-card';button.dataset.track=track.id;button.setAttribute('aria-pressed',String(track.id===m.circuit.id));button.disabled=!authenticated||m.phase!=='lobby';
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','-240 -180 480 360');svg.setAttribute('aria-hidden','true');
+    const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',track.anchors.map(([x,z],i)=>`${i?'L':'M'}${x} ${z}`).join(' ')+' Z');path.setAttribute('fill','none');path.setAttribute('stroke',track.color);path.setAttribute('stroke-width','12');path.setAttribute('stroke-linejoin','round');svg.append(path);
+    const title=document.createElement('strong');title.textContent=track.name;const meta=document.createElement('small');meta.textContent=`${(track.length/1000).toFixed(2)} km · ${track.difficulty}`;button.append(svg,title,meta);
+    button.onclick=()=>send({type:'track',track:track.id});grid.append(button);
+  }
+  document.getElementById('race-track-detail').textContent=`${m.circuit.name} · ${m.circuit.description}${m.phase!=='lobby'?' · 대기실로 돌아오면 변경할 수 있습니다.':''}`;
+}
 const send=m=>{if(ws?.readyState===1)ws.send(JSON.stringify(m));};
 for(let n=1;n<=8;n++)$('teams').add(new Option(`${n}개`,n));
 function lockControls(){for(const id of ['teams','duration','configure','start','lobby'])$(id).disabled=true;for(const el of $('players').querySelectorAll('select,button'))el.disabled=true;}
@@ -71,9 +88,10 @@ function updateConnection(next){
   qr();
 }
 function render(m){
+  renderTrackPicker(m);
   const racing=m.game==='racing';raceCanvas.hidden=!racing;raceSummary.hidden=!racing;
   lobby.classList.toggle('racing-lobby',racing);
-  if(racing){if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`그린밸리 서킷 · 3바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
+  if(racing){if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · 3바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
     $('results').hidden=true;
   }
   currentPhase=m.phase;
@@ -82,7 +100,7 @@ function render(m){
   if(m.phase==='running'&&!hub.hidden){location.hash='dirt-rally';showScreen('dirt-rally');}
   if(!racing)renderResults($('results'),m);
   if(m.connection&&m.connection.address!==$('address').value){$('address').value=m.connection.address;qr();}
-  const signature=JSON.stringify([m.game,m.phase,m.teamCount,m.duration,m.players.map(p=>[p.id,p.name,p.team,p.connected,p.car,p.color])]);
+  const signature=JSON.stringify([m.game,m.circuit?.id,m.phase,m.teamCount,m.duration,m.players.map(p=>[p.id,p.name,p.team,p.connected,p.car,p.color])]);
   $('status').textContent=`${m.players.filter(p=>p.connected).length}/16 접속 · ${m.phase==='lobby'?'대기':m.phase==='running'?`${Math.ceil(m.remaining)}초`:'종료'}`;
   $('scores').replaceChildren(...(racing?[...m.players].sort((a,b)=>a.rank-b.rank).map(p=>{const d=document.createElement('div');d.className='score';d.style.color=p.color;d.textContent=`${p.rank}위 · ${p.name} · ${Math.min(3,p.lap+1)}/3 LAP`;return d;}):m.teams.map(t=>{const d=document.createElement('div');d.className='score';d.style.color=t.color;d.textContent=`팀 ${t.id+1} · ${t.dirt} 모래`;return d;})));
   if(signature===latest)return;

@@ -22,6 +22,9 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   const server=http.createServer(async(req,res)=>{
     try {
       const url=new URL(req.url,'http://localhost');
+      if(url.pathname==='/circuits.json'){
+        res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/circuits.json',import.meta.url)));return;
+      }
       if(url.pathname==='/car-shapes.json'){
         res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/car-shapes.json',import.meta.url)));return;
       }
@@ -97,6 +100,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
             joinAddress=m.address;
           }
           if(m.type==='configure') match.configure(m.teams,m.duration);
+          if(m.type==='track')match.selectTrack(m.track);
           if(m.type==='assign') match.assign(m.id,m.team);
           if(m.type==='remove') {
             match.remove(m.id);

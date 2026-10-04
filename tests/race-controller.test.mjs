@@ -6,7 +6,7 @@ import {screenTilt} from '../public/race-sensors.js';
 const source=readFileSync(new URL('../public/race-controller.js',import.meta.url),'utf8').replace(/^import .*\r?\n/gm,'').replace('export function createRaceController','function createRaceController');
 function setup({permission='granted',secure=true}={}){
   const elements=new Map(),events=new Map(),sent=[];let tick,clock=100,root;
-  const element=()=>({hidden:false,children:[],style:{setProperty(){}},classList:{add(){},remove(){}},listeners:{},setAttribute(){},setPointerCapture(){},addEventListener(type,fn){this.listeners[type]=fn;}});
+  const element=()=>({hidden:false,children:[],style:{setProperty(){}},classList:{add(){},remove(){},toggle(){}},listeners:{},attributes:{},setAttribute(key,value){this.attributes[key]=value;},setPointerCapture(){},addEventListener(type,fn){this.listeners[type]=fn;}});
   const get=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
   const body={append(e){root=e;},classList:{add(){},remove(){}}};
   const document={body,visibilityState:'visible',createElement(){const e=element();e.querySelector=selector=>get(selector);e.querySelectorAll=()=>[get('#race-brake'),get('#race-throttle')];return e;}};

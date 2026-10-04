@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {raceSpawn,raceTick,chooseCar,CIRCUIT,CARS} from './racing.mjs';
+import {raceSpawn,raceTick,chooseCar,CIRCUITS,TRACKS,CARS} from './racing.mjs';
 export const ARENA=JSON.parse(readFileSync(new URL('./game/arena.json',import.meta.url),'utf8'));
 export const COLORS = ['#faad28','#52c8fa','#f078a6','#77d99b','#a99aff','#fb775b','#e0d16c','#69d3cb'];
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a,b) => Math.hypot(a.x-b.x, a.z-b.z);
 export class Match {
   constructor() {
+    this.circuit=CIRCUITS[0];
     this.players = new Map(); this.teamCount = 4; this.duration = 180;
     this.phase = 'lobby'; this.remaining = this.duration; this.central = 4000;
     this.teams = []; this.game = 'excavator'; this.results = null; this.raceLaps=3;this.raceCollisions=true;this.countdown=0;this.raceElapsed=0;this.resetTeams();
@@ -47,8 +48,16 @@ export class Match {
     if(this.phase!=='lobby')throw Error('대기실에서 게임을 변경하세요.');
     if(!['excavator','racing'].includes(game))throw Error('지원하지 않는 게임입니다.');
     this.game=game;this.results=null;for(const p of this.players.values())this.spawn(p);
+    if(game==='racing'){this.duration=Math.max(300,this.duration);this.remaining=this.duration;}
   }
   chooseCar(id,car){chooseCar(this,id,car);}
+  selectTrack(id){
+    if(this.game!=='racing'||this.phase!=='lobby')throw Error('트랙은 레이싱 대기실에서 선택하세요.');
+    const circuit=CIRCUITS.find(t=>t.id===id);
+    if(!circuit)throw Error('올바른 트랙을 선택하세요.');
+    this.circuit=circuit;this.results=null;this.raceElapsed=0;this.countdown=0;
+    for(const p of this.players.values())this.spawn(p);
+  }
   disconnect(id) { const p=this.players.get(id); if(p) {p.connected=false;p.input=this.neutral();} }
   configure(count, duration=this.duration) {
     if(this.phase!=='lobby') throw Error('팀 편성은 대기실에서 변경할 수 있습니다.');
@@ -187,7 +196,7 @@ export class Match {
   }
   snapshot() {
     return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
-      ...(this.game==='racing'?{race:{laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,cars:CARS},circuit:CIRCUIT}:{}),
+      ...(this.game==='racing'?{race:{laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,cars:CARS,tracks:TRACKS},circuit:this.circuit}:{}),
       players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,...(this.game==='excavator'?{bucket:this.bucket(p)}:{})}))};
   }
 }

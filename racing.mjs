@@ -1,5 +1,7 @@
 import {readFileSync} from 'node:fs';
 export const CIRCUIT=JSON.parse(readFileSync(new URL('./game/circuit.json',import.meta.url),'utf8'));
+export const CIRCUITS=JSON.parse(readFileSync(new URL('./game/circuits.json',import.meta.url),'utf8')).map(({scenery,...track})=>track);
+export const TRACKS=CIRCUITS.map(({points,bounds,width,radius,...info})=>info);
 export const CARS=[
   {id:'wedge',name:'에이펙스',description:'낮은 쐐기형 · 대형 공기흡입구'},
   {id:'classic',name:'클래식',description:'둥근 헤드램프 · 곡선 루프'},
@@ -10,8 +12,8 @@ export const CARS=[
 ];
 export const RACE_COLORS=['#ffbf26','#50c8ff','#f775a5','#65d888','#af8aff','#ff764b','#eee9dc','#4de0d4','#db4259','#5886ff','#a7d940','#ec983c','#cd7be1','#36ad85','#d2b788','#93abbf'];
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-const points=CIRCUIT.points;
-export function nearestTrack(x,z){
+export function nearestTrack(x,z,circuit=CIRCUIT){
+  const points=circuit.points;
   let best={distance:Infinity};
   for(let index=0;index<points.length;index++){
     const a=points[index],b=points[(index+1)%points.length],dx=b.x-a.x,dz=b.z-a.z,len2=dx*dx+dz*dz;
@@ -20,12 +22,13 @@ export function nearestTrack(x,z){
   }return best;
 }
 export function raceSpawn(match,p){
+  const points=match.circuit.points;
   const index=[...match.players.keys()].indexOf(p.id),n=points.length;
-  const a=points[(n-2-Math.floor(index/2)*4+n)%n],b=points[(n-1-Math.floor(index/2)*4+n)%n];
+  const a=points[(n-2-Math.floor(index/2)*3+n)%n],b=points[(n-1-Math.floor(index/2)*3+n)%n];
   p.yaw=Math.atan2(b.x-a.x,b.z-a.z);const lane=index%2?2.0:-2.0;
   p.x=a.x+Math.cos(p.yaw)*lane;p.z=a.z-Math.sin(p.yaw)*lane;
   p.car=CARS.some(c=>c.id===p.car)?p.car:CARS[index%CARS.length].id;
-  p.color=RACE_COLORS[index];p.speed=0;p.steer=0;p.lap=0;p.checkpoint=0;p.raceDistance=0;
+  p.color=RACE_COLORS[index];p.speed=0;p.steer=0;p.driveThrottle=0;p.reverseHold=0;p.lap=0;p.checkpoint=0;p.raceDistance=0;
   p.finishedAt=null;p.rank=index+1;p.offroad=false;p.wallContact=false;p.message='';p.input=match.neutral();p.lastInput=0;
 }
 export function chooseCar(match,id,car){
@@ -37,7 +40,31 @@ export function raceResults(match){
   const sorted=[...match.players.values()].sort((a,b)=>(a.finishedAt??Infinity)-(b.finishedAt??Infinity)||b.raceDistance-a.raceDistance);
   return {race:true,winnerIds:sorted.length?[sorted[0].id]:[],players:sorted.map((p,i)=>({id:p.id,name:p.name,color:p.color,car:p.car,rank:i+1,lap:p.lap,time:p.finishedAt,score:p.raceDistance})),teams:[],total:0};
 }
+const slowTowardsStop=(speed,amount)=>Math.abs(speed)<=amount?0:Math.sign(speed)*(Math.abs(speed)-amount);
+function driveSpeed(p,input,live,dt){
+  const throttle=live?input.throttle:0,brake=live?input.brake:0;
+  // Engine response builds progressively; braking always takes priority.
+  p.driveThrottle+=(throttle-p.driveThrottle)*Math.min(1,dt*4);
+  if(!live){p.reverseHold=0;p.speed=slowTowardsStop(p.speed,26*dt);return;}
+  if(brake>0){
+    if(p.speed>0||throttle>0){p.speed=slowTowardsStop(p.speed,24*brake*dt);p.reverseHold=0;}
+    else{
+      p.reverseHold+=dt;
+      if(p.speed<0||p.reverseHold>=.35)p.speed=Math.max(-8,p.speed-7.5*brake*dt);
+    }
+  }else{
+    p.reverseHold=0;
+    if(throttle>0){
+      if(p.speed<0)p.speed=slowTowardsStop(p.speed,18*throttle*dt);
+      else p.speed=Math.min(42,p.speed+11.5*p.driveThrottle/(1+p.speed/26)*dt);
+    }
+  }
+  // Rolling resistance, engine braking on lift-off and increasing air drag.
+  const resistance=.65+Math.abs(p.speed)*.035+p.speed*p.speed*.002+(throttle===0&&brake===0?1.6:0);
+  p.speed=slowTowardsStop(p.speed,resistance*dt);
+}
 export function raceTick(match,dt,now){
+  const circuit=match.circuit,points=circuit.points;
   if(match.phase!=='running')return;
   dt=Math.min(.1,Math.max(0,dt));
   if(match.countdown>0){match.countdown=Math.max(0,match.countdown-dt);return;}
@@ -46,23 +73,27 @@ export function raceTick(match,dt,now){
     if(p.finishedAt!==null)continue;
     const live=p.connected&&now-p.lastInput<=350,i=live?p.input:match.neutral();
     p.steer+=(i.steer-p.steer)*Math.min(1,dt*9);
-    p.speed=clamp(p.speed+((live?i.throttle:0)*13-(live?i.brake:1)*26-1.2-p.speed*.055)*dt,0,42);
+    driveSpeed(p,i,live,dt);
     // +Z forward; screen-right steering must decrease the world Y angle.
     p.yaw-=Math.tan(p.steer*.48)*p.speed/3.4*dt;
     p.x+=Math.sin(p.yaw)*p.speed*dt;p.z+=Math.cos(p.yaw)*p.speed*dt;
-    let track=nearestTrack(p.x,p.z);p.offroad=track.distance>CIRCUIT.width/2;
-    if(p.offroad)p.speed=Math.max(0,p.speed-4*dt);
-    const limit=CIRCUIT.width/2+2.0;
-    if(track.distance>limit){
+    let track=nearestTrack(p.x,p.z,circuit);p.offroad=track.distance>circuit.width/2;
+    if(p.offroad)p.speed=slowTowardsStop(p.speed,4*dt);
+    const limit=circuit.width/2+2.0;
+    if(track.distance>=limit-.08){
       const nx=(p.x-track.x)/track.distance,nz=(p.z-track.z)/track.distance;
-      const impact=Math.abs(nx*Math.sin(p.yaw)+nz*Math.cos(p.yaw));
-      if(!p.wallContact)p.speed*=1-.25*impact;
-      p.wallContact=true;const scale=limit/track.distance;p.x=track.x+(p.x-track.x)*scale;p.z=track.z+(p.z-track.z)*scale;
-    }else if(track.distance<limit-.4)p.wallContact=false;
+      const outward=(nx*Math.sin(p.yaw)+nz*Math.cos(p.yaw))*Math.sign(p.speed);
+      if(outward>=-1e-6){
+        // The wall absorbs motion into it; tangential scraping has continuous friction.
+        if(track.distance>limit)p.speed*=Math.sqrt(Math.max(0,1-outward*outward));
+        p.speed=slowTowardsStop(p.speed,(6+Math.abs(p.speed)*.18)*dt);p.wallContact=true;
+      }else p.wallContact=false;
+      if(track.distance>limit){const scale=limit/track.distance;p.x=track.x+(p.x-track.x)*scale;p.z=track.z+(p.z-track.z)*scale;}
+    }else p.wallContact=false;
     // Ordered gates prevent finish-line rocking, reversing and corner cuts from awarding laps.
     const gates=12,target=points[Math.round(p.checkpoint*points.length/gates)%points.length];
-    const heading=Math.cos(p.yaw-nearestTrack(target.x,target.z).yaw);
-    if(Math.hypot(p.x-target.x,p.z-target.z)<CIRCUIT.width*.7&&heading>.25){
+    const heading=Math.cos(p.yaw-nearestTrack(target.x,target.z,circuit).yaw);
+    if(p.speed>0&&Math.hypot(p.x-target.x,p.z-target.z)<circuit.width*.7&&heading>.25){
       p.checkpoint++;
       if(p.checkpoint>gates){p.lap++;p.checkpoint=1;if(p.lap>=match.raceLaps){p.finishedAt=match.raceElapsed;p.speed=0;}}
     }

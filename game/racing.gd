@@ -2,6 +2,11 @@ extends Node3D
 
 const FONT = preload("res://fonts/NeoDunggeunmoPro-Regular.ttf")
 var circuit: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://circuit.json"))
+var circuits: Array = JSON.parse_string(FileAccess.get_file_as_string("res://circuits.json"))
+var circuit_world: Node3D
+var track_choice: OptionButton
+var track_info: Label
+var track_preview: Control
 var car_shapes: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://car-shapes.json"))
 var socket := WebSocketPeer.new()
 var state: Dictionary = {}
@@ -9,6 +14,7 @@ var cars: Dictionary = {}
 var camera: Camera3D
 var status: Label
 var ranking: Label
+var score_panel: PanelContainer
 var roster: Label
 var join_label: Label
 var qr: TextureRect
@@ -84,27 +90,57 @@ func _ready() -> void:
 	fetch_config()
 
 func build_circuit() -> void:
+	if is_instance_valid(circuit_world):
+		remove_child(circuit_world)
+		circuit_world.queue_free()
 	var world := Node3D.new()
+	circuit_world = world
 	add_child(world)
-	block(world,Vector3(200,.3,150),Vector3(0,-.21,0),Color("#79965a"))
+	for track in circuits:
+		if track.id != circuit.id:
+			continue
+		for prop in track.scenery:
+			var mesh := block(world,Vector3(prop.size[0],prop.size[1],prop.size[2]),Vector3(prop.pos[0],prop.pos[1],prop.pos[2]),Color(prop.color))
+			mesh.rotation.y = float(prop.yaw)
 	var points: Array = circuit.points
+	var edges: Array = []
+	for i in range(points.size()):
+		var prev: Dictionary = points[(i+points.size()-1)%points.size()]
+		var next: Dictionary = points[(i+1)%points.size()]
+		var tangent := Vector2(float(next.x)-float(prev.x),float(next.z)-float(prev.z)).normalized()
+		var p: Dictionary = points[i]
+		var normal := Vector3(tangent.y,0,-tangent.x)*float(circuit.width)/2
+		var center := Vector3(float(p.x),.075,float(p.z))
+		edges.append([center+normal,center-normal])
+	var road_tool := SurfaceTool.new()
+	road_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(edges.size()):
+		var next: int = (i+1)%edges.size()
+		triangle(road_tool,edges[i][0],edges[i][1],edges[next][0])
+		triangle(road_tool,edges[i][1],edges[next][1],edges[next][0])
+	road_tool.index()
+	var asphalt := MeshInstance3D.new()
+	asphalt.mesh = road_tool.commit()
+	var road_material := StandardMaterial3D.new()
+	road_material.albedo_color = Color("#404a50")
+	asphalt.material_override = road_material
+	world.add_child(asphalt)
 	for i in range(points.size()):
 		var a: Dictionary = points[i]
 		var b: Dictionary = points[(i+1)%points.size()]
 		var delta := Vector2(float(b.x)-float(a.x),float(b.z)-float(a.z))
 		var yaw := atan2(delta.x,delta.y)
 		var mid := Vector3((float(a.x)+float(b.x))/2,.02,(float(a.z)+float(b.z))/2)
-		var road := block(world,Vector3(float(circuit.width),.1,delta.length()+.15),mid,Color("#404a50"))
-		road.rotation.y = yaw
 		for side in [-1,1]:
 			var normal: Vector3 = Vector3(cos(yaw),0,-sin(yaw))*side
 			var curb := block(world,Vector3(.9,.18,delta.length()+.12),mid+normal*(float(circuit.width)/2+.45)+Vector3(0,.11,0),Color("#e7ddd0") if i%6 < 3 else Color("#cf6757"))
 			curb.rotation.y = yaw
 			var rail := block(world,Vector3(.25,.6,delta.length()+.15),mid+normal*(float(circuit.width)/2+2.05)+Vector3(0,.38,0),Color("#b6beb5"))
 			rail.rotation.y = yaw
-		if i%6 == 0:
-			var mark := block(world,Vector3(.12,.01,delta.length()*3),mid+Vector3(0,.061,0),Color("#c9c9b8"))
-			mark.rotation.y = yaw
+			var edge := block(world,Vector3(.16,.02,delta.length()+.15),mid+normal*(float(circuit.width)/2-.2)+Vector3(0,.06,0),Color("#e5e8df"))
+			edge.rotation.y = yaw
+			if i%4 == 0:
+				block(world,Vector3(.14,2.1,.14),mid+normal*(float(circuit.width)/2+2.05)+Vector3(0,1.08,0),Color("#7c918f"))
 	var start: Dictionary = points[0]
 	var next: Dictionary = points[1]
 	var start_yaw := atan2(float(next.x)-float(start.x),float(next.z)-float(start.z))
@@ -118,15 +154,8 @@ func build_circuit() -> void:
 	var gantry := block(world,Vector3(14,.65,.5),origin+Vector3(0,5,0),Color("#efc369"))
 	gantry.rotation.y = start_yaw
 	for i in range(5):
-		block(world,Vector3(18,.8,1.8),Vector3(25,1+i*.7,-47-i*1.8),Color("#e8c482") if i%2 else Color("#738795"))
-	block(world,Vector3(28,3,8),Vector3(-28,1.5,-48),Color("#d9ceae"))
-	block(world,Vector3(29,.4,9),Vector3(-28,3.2,-48),Color("#555e58"))
-	for i in range(36):
-		var x := -85+(i%12)*15
-		var z := -62 if i<12 else (57 if i<24 else 65)
-		block(world,Vector3(.55,2,.55),Vector3(x,1,z),Color("#766148"))
-		block(world,Vector3(3,3,3),Vector3(x,3,z),Color("#496b45"))
-		block(world,Vector3(2,1.5,2),Vector3(x,5,z),Color("#678653"))
+		var light := block(world,Vector3(.48,.48,.55),origin+Vector3((i-2)*.8,4.5,0).rotated(Vector3.UP,start_yaw),Color("#da4b41"))
+		light.rotation.y = start_yaw
 	merge_parts(world)
 
 func merge_parts(parent: Node3D, brick := false) -> void:
@@ -240,7 +269,7 @@ func build_ui() -> void:
 	status = text_label("POCKET RACING · 연결 중",28)
 	status.position = Vector2(24,22)
 	ui.add_child(status)
-	var score_panel := PanelContainer.new()
+	score_panel = PanelContainer.new()
 	score_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
 	score_panel.offset_left = -280
 	score_panel.offset_right = -20
@@ -253,12 +282,25 @@ func build_ui() -> void:
 	lobby.custom_minimum_size = Vector2(440,600)
 	ui.add_child(lobby)
 	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation",10)
+	layout.add_theme_constant_override("separation",8)
 	lobby.add_child(layout)
-	layout.add_child(text_label("그린밸리 서킷 / 대기실",30))
+	layout.add_child(text_label("서킷 선택 / 대기실",28))
+	track_choice = OptionButton.new()
+	for track in circuits:
+		track_choice.add_item("%s · %.2f km · %s" % [track.name,float(track.length)/1000.0,track.difficulty])
+	track_choice.item_selected.connect(func(index):send_admin({"type":"track","track":circuits[index].id}))
+	layout.add_child(track_choice)
+	track_preview = Control.new()
+	track_preview.set_script(preload("res://track_map.gd"))
+	track_preview.custom_minimum_size = Vector2(400,100)
+	layout.add_child(track_preview)
+	track_info = text_label("",16)
+	track_info.custom_minimum_size.x = 400
+	track_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	layout.add_child(track_info)
 	layout.add_child(text_label("QR로 참가 → 폰에서 차 선택 → 출발",18))
 	qr = TextureRect.new()
-	qr.custom_minimum_size = Vector2(190,190)
+	qr.custom_minimum_size = Vector2(145,145)
 	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	qr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	layout.add_child(qr)
@@ -338,6 +380,18 @@ func accept_state(message: Dictionary) -> void:
 	state = message
 	if message.game != "racing":
 		return
+	if circuit.get("id","") != message.circuit.id:
+		circuit = message.circuit
+		build_circuit()
+		for car in cars.values():
+			car.root.queue_free()
+		cars.clear()
+	for index in range(circuits.size()):
+		if circuits[index].id == message.circuit.id:
+			track_choice.select(index)
+	track_choice.disabled = not authenticated or message.phase != "lobby"
+	track_preview.set_track(circuit)
+	track_info.text = str(circuit.description)
 	var signature := JSON.stringify(message.get("connection",{}))
 	if signature != connection_signature:
 		connection_signature = signature
@@ -356,16 +410,17 @@ func accept_state(message: Dictionary) -> void:
 			cars[id].root.queue_free()
 			cars.erase(id)
 	lobby.visible = state.phase == "lobby"
+	score_panel.visible = state.phase != "lobby"
 	var connected: Array = state.players.filter(func(p):return p.connected)
 	start_button.disabled = not authenticated or connected.is_empty() or state.phase != "lobby"
 	return_button.disabled = not authenticated or state.phase == "lobby"
 	roster.text = "접속 %d / 16명\n" % connected.size()
 	for p in state.players:
-		roster.text += "%s · %s%s\n" % [p.name,p.car," (연결 끊김)" if not p.connected else ""]
+		roster.text += "%s%s  " % [p.name," (오프라인)" if not p.connected else ""]
 	status.text = "POCKET RACING / %s" % ("대기실 · 3바퀴" if state.phase == "lobby" else ("체커기! 경기 종료" if state.phase == "finished" else ("출발 %d" % ceili(state.race.countdown) if state.race.countdown > 0 else "%d초 · 3바퀴" % ceili(state.remaining))))
 	var players: Array = state.players.duplicate()
 	players.sort_custom(func(a,b):return a.rank < b.rank)
-	ranking.text = "그린밸리 서킷\n3바퀴 · 차량 충돌 사용\n\n"
+	ranking.text = "%s\n%.2f km · 3바퀴\n\n" % [circuit.name,float(circuit.length)/1000.0]
 	for p in players:
 		ranking.text += "%02d · %s · %d/3%s\n" % [int(p.rank),p.name,mini(3,int(p.lap)+1)," ✓" if p.finishedAt != null else ""]
 	if state.phase == "finished":
@@ -410,8 +465,16 @@ func _process(delta: float) -> void:
 			var car: Dictionary = cars[p.id]
 			car.root.position = car.root.position.lerp(Vector3(p.x,0,p.z),minf(1,delta*16))
 			car.root.rotation.y = lerp_angle(car.root.rotation.y,p.yaw,minf(1,delta*16))
-	camera.size = maxf(115,180/get_viewport().get_visible_rect().size.aspect())
-	camera.h_offset = 9
+	var viewport_size := get_viewport().get_visible_rect().size
+	var bounds: Dictionary = circuit.bounds
+	var center := Vector3((float(bounds.minX)+float(bounds.maxX))/2,0,(float(bounds.minZ)+float(bounds.maxZ))/2)
+	var in_lobby: bool = state.get("phase","lobby") == "lobby"
+	var reserved_width := 720.0 if in_lobby else 290.0
+	var available_aspect := maxf(.7,(viewport_size.x-reserved_width)/viewport_size.y)
+	camera.size = maxf((float(bounds.maxZ)-float(bounds.minZ))*.97+12,(float(bounds.maxX)-float(bounds.minX))/available_aspect)
+	camera.position = center+Vector3(0,600,170)
+	camera.look_at(center)
+	camera.h_offset = -55 if in_lobby else 32
 	if "--race-capture" in OS.get_cmdline_user_args() and elapsed>4 and not captured:
 		captured = true
 		capture.call_deferred()
@@ -423,5 +486,5 @@ func capture() -> void:
 		directory = "res://../.runtime"
 	get_viewport().get_texture().get_image().save_png(directory.path_join("racing-pc.png"))
 	var file := FileAccess.open(directory.path_join("racing-render.json"),FileAccess.WRITE)
-	file.store_string(JSON.stringify({"game":state.get("game"),"players":cars.size(),"updates":network_updates,"qr":qr.texture != null,"fps":Performance.get_monitor(Performance.TIME_FPS)}))
+	file.store_string(JSON.stringify({"game":state.get("game"),"players":cars.size(),"updates":network_updates,"qr":qr.texture != null,"track":circuit.id,"fps":Performance.get_monitor(Performance.TIME_FPS)}))
 	get_tree().quit()

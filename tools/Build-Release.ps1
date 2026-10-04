@@ -43,6 +43,7 @@ try{
     Copy-Item -LiteralPath $CloudflaredExe -Destination (Join-Path $bundle 'runtime/cloudflared.exe')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/arena.json') -Destination (Join-Path $bundle 'game/arena.json')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/circuit.json') -Destination (Join-Path $bundle 'game/circuit.json')
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'game/circuits.json') -Destination (Join-Path $bundle 'game/circuits.json')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/car-shapes.json') -Destination (Join-Path $bundle 'game/car-shapes.json')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/fonts/LICENSE.txt') -Destination (Join-Path $bundle 'licenses/Font-LICENSE.txt')
     & npm.cmd ci --prefix $bundle --omit=dev --no-audit --no-fund

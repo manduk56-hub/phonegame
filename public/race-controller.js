@@ -3,16 +3,27 @@ import {screenTilt} from './race-sensors.js';
 export function createRaceController({send,fullscreen}){
   const root=document.createElement('section');root.id='race-controller';root.hidden=true;
   root.innerHTML=`<canvas id="race-view" aria-label="내 스포츠카 운전석 1인칭 화면"></canvas>
-    <div class="race-hud"><strong id="race-driver"></strong><span id="race-lap"></span><span id="race-rank"></span><button id="race-fullscreen">전체화면</button></div>
+    <div class="race-hud"><strong id="race-driver"></strong><span id="race-lap"></span><span id="race-rank"></span><div class="race-view-choice" role="group" aria-label="주행 시점"><button id="race-view-first" aria-pressed="true">1인칭</button><button id="race-view-third" aria-pressed="false">3인칭</button></div><button id="race-fullscreen">전체화면</button></div>
     <div class="race-speed"><strong id="race-speed">0</strong><small>km/h</small></div><div class="race-dashboard" aria-hidden="true">POCKET RACING</div>
-    <button id="race-brake" class="race-pedal brake" aria-label="브레이크 페달"><span class="pedal-metal"><i></i><i></i><i></i><i></i></span><b>브레이크</b></button>
+    <button id="race-brake" class="race-pedal brake" aria-label="브레이크 · 정지 후 계속 누르면 후진"><span class="pedal-metal"><i></i><i></i><i></i><i></i></span><b>브레이크 / 후진</b></button>
     <button id="race-throttle" class="race-pedal accelerator" aria-label="가속 페달"><span class="pedal-metal"><i></i><i></i><i></i><i></i><i></i></span><b>엑셀</b></button>
     <div class="race-wheel-wrap"><svg id="race-wheel" viewBox="0 0 240 240" role="img" aria-label="기울기에 따라 회전하는 핸들"><circle cx="120" cy="120" r="98" fill="none" stroke="#10171c" stroke-width="30"/><circle cx="120" cy="120" r="98" fill="none" stroke="#47535b" stroke-width="3"/><path d="M20 111h67l25 16-15 13H24zm200 0h-67l-25 16 15 13h73zM105 141h30l7 76h-44z" fill="#9aaab3" stroke="#182229" stroke-width="5"/><circle cx="120" cy="120" r="37" fill="#29363f" stroke="#10171c" stroke-width="5"/><path d="m109 126 11-20 11 20" fill="none" stroke="#eac371" stroke-width="5"/><path d="M116 12h8v21h-8z" fill="#eac371"/></svg></div>
     <div class="race-sensor"><button id="race-sensor">기울기 조작 시작</button><button id="race-calibrate">중립 보정</button><span id="race-sensor-status">폰을 가로로 잡고 센서를 켜주세요</span></div>
     <div class="race-touch-steer" hidden><button id="race-left" aria-label="왼쪽 조향">◀</button><button id="race-right" aria-label="오른쪽 조향">▶</button></div><div id="race-countdown" role="status"></div>
-    <section id="race-garage"><span class="eyebrow">POCKET RACING / GARAGE</span><h1>오늘의 차를 고르세요</h1><p>여섯 차종의 성능은 같습니다. 내 색상으로 서킷을 달려보세요.</p><div id="race-car-list"></div><p id="race-garage-status"></p><button id="race-garage-sensor">기울기 조작 시작</button><span id="race-garage-sensor-status"></span></section><section id="race-finish" hidden role="status"></section>`;
+    <section id="race-garage"><span class="eyebrow">POCKET RACING / GARAGE</span><h1>오늘의 차를 고르세요</h1><p>여섯 차종의 성능은 같습니다. 브레이크를 정지 후 계속 누르면 후진, 후진 중 엑셀은 제동 후 전진합니다.</p><div class="race-view-choice garage-view-choice" role="group" aria-label="주행 시점 선택"><span>주행 시점</span><button id="race-garage-view-first" aria-pressed="true">1인칭 · 운전석</button><button id="race-garage-view-third" aria-pressed="false">3인칭 · 가까운 추적</button></div><div id="race-car-list"></div><p id="race-garage-status"></p><button id="race-garage-sensor">기울기 조작 시작</button><span id="race-garage-sensor-status"></span></section><section id="race-finish" hidden role="status"></section>`;
   document.body.append(root);let scene,state,enabled=false,baseline=null,angle=0,lastSensor=0,sensorReady=false,sensorTimer,touchSteer=0;
   const input={steer:0,throttle:0,brake:0},resets=[],$=id=>root.querySelector('#'+id);
+  let viewMode='first';
+  try{if(localStorage.getItem('race-view-mode')==='third')viewMode='third';}catch{}
+  function selectView(mode){
+    viewMode=mode;root.classList.toggle('race-third-person',mode==='third');
+    $('race-view').setAttribute('aria-label',mode==='third'?'내 스포츠카 가까운 3인칭 추적 화면':'내 스포츠카 운전석 1인칭 화면');
+    for(const prefix of ['race-view-','race-garage-view-'])for(const choice of ['first','third'])$(prefix+choice).setAttribute('aria-pressed',String(choice===mode));
+    scene?.setViewMode(mode);
+    try{localStorage.setItem('race-view-mode',mode);}catch{}
+  }
+  for(const prefix of ['race-view-','race-garage-view-'])for(const mode of ['first','third'])$(prefix+mode).onclick=()=>selectView(mode);
+  selectView(viewMode);
   const allowed=()=>enabled&&!matchMedia('(orientation: portrait)').matches&&document.visibilityState==='visible';
   function stop(){for(const reset of resets)reset();Object.assign(input,{steer:0,throttle:0,brake:0});touchSteer=0;for(const pedal of root.querySelectorAll('.race-pedal'))pedal.classList.remove('pressed');if(state?.game==='racing'&&!root.hidden)send({type:'input',...input});}
   function sensorText(text){$('race-sensor-status').textContent=text;$('race-garage-sensor-status').textContent=text;}
@@ -45,9 +56,9 @@ export function createRaceController({send,fullscreen}){
   return {stop,offline(){enabled=false;stop();sensorText('연결 끊김 · 재접속 중');},hide(){if(!root.hidden)stop();enabled=false;root.hidden=true;state=null;document.body.classList.remove('racing-phone');},update(m,p){
     document.title='POCKET RACING · 운전석';
     state=m;root.hidden=false;document.body.classList.add('racing-phone');enabled=m.phase==='running'&&m.race.countdown===0&&p.finishedAt===null;if(!enabled)stop();
-    if(!scene){try{scene=createRaceScene($('race-view'));}catch{sensorText('3D 화면을 열지 못했습니다. WebGL 지원 브라우저로 접속하세요.');}}scene?.update(m,p.id);
+    if(!scene){try{scene=createRaceScene($('race-view'),{viewMode});}catch{sensorText('3D 화면을 열지 못했습니다. WebGL 지원 브라우저로 접속하세요.');}}scene?.update(m,p.id);
     $('race-driver').textContent=`${m.players.findIndex(q=>q.id===p.id)+1} · ${p.name}`;$('race-driver').style.color=p.color;
-    $('race-lap').textContent=`LAP ${Math.min(p.lap+1,m.race.laps)} / ${m.race.laps}`;$('race-rank').textContent=`${p.rank} / ${m.players.length}위`;$('race-speed').textContent=Math.round(p.speed*3.6);
+    $('race-lap').textContent=`LAP ${Math.min(p.lap+1,m.race.laps)} / ${m.race.laps}`;$('race-rank').textContent=`${p.rank} / ${m.players.length}위`;$('race-speed').textContent=(p.speed<0?'R ':'')+Math.round(Math.abs(p.speed)*3.6);
     $('race-countdown').textContent=m.phase==='running'&&m.race.countdown>0?Math.ceil(m.race.countdown):p.offroad?'코스 밖 · 감속':p.finishedAt!==null?'완주!':'';
     $('race-garage').hidden=m.phase!=='lobby';$('race-finish').hidden=m.phase!=='finished';
     if(m.phase==='lobby'){
@@ -58,7 +69,7 @@ export function createRaceController({send,fullscreen}){
         button.append(art,title,info);button.onclick=()=>send({type:'car',car:car.id});$('race-car-list').append(button);
       }
       for(const button of $('race-car-list').children){button.setAttribute('aria-pressed',String(button.dataset.car===p.car));button.style.setProperty('--car-color',p.color);if(button.dataset.color!==p.color){renderCarPreview(button.querySelector('canvas'),button.dataset.car,p.color);button.dataset.color=p.color;}}
-      $('race-garage-status').textContent=`내 색상 ${m.players.findIndex(q=>q.id===p.id)+1}번 · 3바퀴 · 충돌 사용 · PC에서 시작을 기다리는 중`;$('race-garage-status').style.color=p.color;
+      $('race-garage-status').textContent=`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · 내 색상 ${m.players.findIndex(q=>q.id===p.id)+1}번 · 3바퀴 · 충돌 사용 · PC에서 시작을 기다리는 중`;$('race-garage-status').style.color=p.color;
     }
     if(m.phase==='finished'){
       const results=$('race-finish');results.replaceChildren();const heading=document.createElement('h1');heading.textContent='체커기!';results.append(heading);
