@@ -23,7 +23,8 @@ fi
 stage=$(mktemp -d /var/lib/dirt-rally/deploy-stage.XXXXXX)
 trap 'rm -rf -- "$stage"' EXIT
 git -C "$repo" archive "$commit" | tar -x -C "$stage"
-for file in server.mjs simulation.mjs package.json package-lock.json game/arena.json; do
+runtime_files=(server.mjs simulation.mjs racing.mjs package.json package-lock.json game/arena.json game/circuit.json game/car-shapes.json)
+for file in "${runtime_files[@]}"; do
   test -f "$stage/$file"
 done
 test -d "$stage/public"
@@ -31,12 +32,17 @@ chown -R dirt-rally:dirt-rally "$stage"
 # Repository lifecycle scripts and tests run as the game account, not root.
 runuser -u dirt-rally -- bash -euc 'cd "$1"; npm ci --no-audit --no-fund; npm test' -- "$stage"
 backend_changed=false
-for file in server.mjs simulation.mjs package.json package-lock.json game/arena.json; do
+for file in "${runtime_files[@]}"; do
   cmp -s "$stage/$file" "$app/$file" || backend_changed=true
 done
 backup=/var/lib/dirt-rally/backups/$(date +%Y%m%d-%H%M%S)-${commit:0:12}
 install -d -m 700 "$backup"
-tar -czf "$backup/runtime.tgz" -C "$app" server.mjs simulation.mjs package.json package-lock.json game/arena.json public
+backup_files=(public)
+new_files=()
+for file in "${runtime_files[@]}"; do
+  if [[ -f $app/$file ]]; then backup_files+=("$file"); else new_files+=("$file"); fi
+done
+tar -czf "$backup/runtime.tgz" -C "$app" "${backup_files[@]}"
 stopped=false
 updated=false
 rollback() {
@@ -45,6 +51,7 @@ rollback() {
   if [[ $stopped == true ]]; then systemctl stop dirt-rally; fi
   if [[ $updated == true ]]; then
     tar -xzf "$backup/runtime.tgz" -C "$app"
+    for file in "${new_files[@]}"; do rm -f -- "$app/$file"; done
     if [[ -d $backup/node_modules ]]; then
       rm -rf -- "$app/node_modules"
       mv "$backup/node_modules" "$app/node_modules"
@@ -62,7 +69,7 @@ fi
 updated=true
 rsync -a --delete --chown=dirt-rally:dirt-rally "$stage/public/" "$app/public/"
 if [[ $backend_changed == true ]]; then
-  for file in server.mjs simulation.mjs package.json package-lock.json game/arena.json; do
+  for file in "${runtime_files[@]}"; do
     install -o dirt-rally -g dirt-rally -m 644 "$stage/$file" "$app/$file"
   done
   if [[ -d $app/node_modules ]]; then mv "$app/node_modules" "$backup/node_modules"; fi
