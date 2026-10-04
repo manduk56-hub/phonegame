@@ -23,7 +23,7 @@ func verify() -> void:
 	world._process(1.0)
 	var maximum_error := 0.0
 	for p in fixture.players:
-		var actual: Vector3 = world.machines[p.id].bucket.to_global(Vector3(0,-0.02,-0.6))
+		var actual: Vector3 = world.machines[p.id].bucket.to_global(Vector3(0,-0.48,-0.73))
 		var expected := Vector3(p.bucket.x,p.bucket.height,p.bucket.z)
 		var error := actual.distance_to(expected)
 		maximum_error = maxf(maximum_error,error)

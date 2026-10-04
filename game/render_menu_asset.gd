@@ -45,7 +45,7 @@ func _ready() -> void:
 	model.dirt.show()
 	update_ram(model.boom_ram,Vector3(0,0.05,0.35),model.upper.to_local(model.boom.to_global(Vector3(0,0.18,1.55))))
 	update_ram(model.stick_ram,Vector3(0,0.43,0.65),model.boom.to_local(model.stick.to_global(Vector3(0,0.3,0.7))))
-	update_ram(model.bucket_ram,Vector3(0,0.25,0.5),model.stick.to_local(model.bucket.to_global(Vector3(0,0.3,-0.15))))
+	update_ram(model.bucket_ram,Vector3(0,0.25,0.5),model.stick.to_local(model.bucket.to_global(Vector3(0,0.08,-0.1))))
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = 6.5

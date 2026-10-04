@@ -175,7 +175,7 @@ test('disruption counts only actual sand removed from an opponent and resets for
   p.cargo=20;m.teams[1].dirt=400;position(m.teams[1]);m.action(p.id,'scoop');assert.equal(p.disrupted,20);
   p.cooldown=0;m.action(p.id,'scoop');assert.equal(p.disrupted,20);
   p.cargo=0;p.boom=1.35;p.stick=-.25;p.cooldown=0;m.action(p.id,'scoop');assert.equal(p.disrupted,20);
-  p.boom=.42;p.stick=-1.4;p.curl=-.7;position(m.teams[1]);m.action(p.id,'scoop');assert.equal(p.disrupted,60);
+  p.boom=.50;p.stick=-1.4;p.curl=-.7;position(m.teams[1]);m.action(p.id,'scoop');assert.equal(p.disrupted,60);
   m.disconnect(p.id);m.join('ignored',p.token);assert.equal(p.disrupted,60);
   m.tick(901);assert.equal(m.results.players[0].disrupted,60);
   m.lobby();assert.equal(p.disrupted,0);m.start();assert.equal(p.disrupted,0);

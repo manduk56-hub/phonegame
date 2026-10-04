@@ -97,10 +97,14 @@ export function createCabView(canvas, status) {
     const bucket=new THREE.Group();bucket.position.z=2.1;stick.add(bucket);
     function beam(parent,length,width,height,arch){for(let i=0;i<12;i++){const t=(i+.5)/12;box(parent,[width,height,length/12+.02],[0,Math.sin(t*Math.PI)*arch,t*length],paint);}}
     beam(boom,2.4,.35,.32,.28);beam(stick,2.1,.26,.28,.1);
-    box(bucket,[.95,.12,.7],[0,0,-.2],dark);box(bucket,[.95,.45,.1],[0,.23,.13],dark);
-    for(const side of [-1,1])box(bucket,[.1,.4,.7],[side*.45,.18,-.2],dark);
-    for(let i=0;i<4;i++)box(bucket,[.12,.09,.26],[-.33+i*.22,-.02,-.6],'#85868a');
-    const dirt=box(bucket,[.7,.27,.4],[0,.16,-.15],'#c29652');
+    const bowl=new THREE.Group();bowl.position.set(0,-.46,-.13);bucket.add(bowl);
+    for(const side of [-1,1])box(bucket,[.09,.19,.24],[side*.17,-.015,-.035],dark);
+    box(bucket,[.43,.12,.12],[0,0,0],'#858b91');
+    box(bucket,[.18,.12,.16],[0,.065,-.1],dark);
+    box(bowl,[.95,.12,.7],[0,0,-.2],dark);box(bowl,[.95,.45,.1],[0,.23,.13],dark);
+    for(const side of [-1,1])box(bowl,[.1,.4,.7],[side*.45,.18,-.2],dark);
+    for(let i=0;i<4;i++)box(bowl,[.12,.09,.26],[-.33+i*.22,-.02,-.6],'#85868a');
+    const dirt=box(bowl,[.7,.27,.4],[0,.16,-.15],'#c29652');
     dirt.userData.dynamic=true;
     batch(root);
     const model={root,upper,cab,boom,stick,bucket,dirt,paint,p,initialized:false};vehicles.set(p.id,model);return model;
@@ -154,7 +158,7 @@ export function createCabView(canvas, status) {
     renderer.render(scene,camera);canvas.dataset.frames=String(++frames);
     canvas.dataset.drawCalls=String(renderer.info.render.calls);
     // Evidence also lets the browser check that articulation matches server geometry.
-    const teeth=own.bucket.localToWorld(position.set(0,-.02,-.6));
+    const teeth=own.bucket.localToWorld(position.set(0,-.48,-.73));
     canvas.dataset.bucket=JSON.stringify([teeth.x,teeth.y,teeth.z]);
     canvas.dataset.camera=JSON.stringify([camera.position.x,camera.position.y,camera.position.z]);
   }

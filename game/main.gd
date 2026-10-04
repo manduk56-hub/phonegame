@@ -383,16 +383,24 @@ func excavator(p: Dictionary, index: int) -> Dictionary:
 	bucket.position.z = 2.1
 	stick.add_child(bucket)
 	axle(bucket,0.12,0.43,Vector3.ZERO,dark)
-	box(bucket,Vector3(0.95,0.12,0.7),Vector3(0,0,-0.2),dark)
-	box(bucket,Vector3(0.95,0.45,0.1),Vector3(0,0.23,0.13),dark)
+	# The stick pin belongs at the upper rear rim, above the scoop floor.
+	var bowl := Node3D.new()
+	bowl.position = Vector3(0,-0.46,-0.13)
+	bucket.add_child(bowl)
+	for side in [-1,1]:
+		box(bucket,Vector3(0.09,0.19,0.24),Vector3(side*0.17,-0.015,-0.035),dark)
+		axle(bucket,0.065,0.035,Vector3(side*0.235,0,0),Color("#858b91"))
+	box(bucket,Vector3(0.18,0.12,0.16),Vector3(0,0.065,-0.1),dark)
+	box(bowl,Vector3(0.95,0.12,0.7),Vector3(0,0,-0.2),dark)
+	box(bowl,Vector3(0.95,0.45,0.1),Vector3(0,0.23,0.13),dark)
 	for side in [-1,1]:
 		for section in range(4):
 			var height := 0.46-section*0.085
-			box(bucket,Vector3(0.1,height,0.18),Vector3(side*0.45,height/2, 0.06-section*0.18),dark.lightened(section*0.025))
-		box(bucket,Vector3(0.11,0.08,0.65),Vector3(side*0.45,0.065,-0.2),Color("#626874"))
+			box(bowl,Vector3(0.1,height,0.18),Vector3(side*0.45,height/2, 0.06-section*0.18),dark.lightened(section*0.025))
+		box(bowl,Vector3(0.11,0.08,0.65),Vector3(side*0.45,0.065,-0.2),Color("#626874"))
 	for tooth in range(4):
-		box(bucket,Vector3(0.12,0.09,0.26),Vector3(-0.33+tooth*0.22,-0.02,-0.6),Color("#85868a"))
-	var dirt := box(bucket,Vector3(0.7,0.27,0.4),Vector3(0,0.16,-0.15),Color("#c29652"))
+		box(bowl,Vector3(0.12,0.09,0.26),Vector3(-0.33+tooth*0.22,-0.02,-0.6),Color("#85868a"))
+	var dirt := box(bowl,Vector3(0.7,0.27,0.4),Vector3(0,0.16,-0.15),Color("#c29652"))
 	dirt.set_meta("dynamic_mesh",true)
 	var marker := label3(root,str(index+1)+" · "+str(p.name),Vector3(0,3.6,0),Color(COLORS[int(p.team)]),48)
 	var model := {"root":root,"upper":upper,"boom":boom,"stick":stick,"bucket":bucket,"dirt":dirt,"marker":marker,"team_band":team_band,"number":driver_number,"paint_material":paint_material,"boom_ram":ram(upper),"stick_ram":ram(boom),"bucket_ram":ram(stick)}
@@ -545,7 +553,7 @@ func _process(delta: float) -> void:
 			node.bucket.rotation.x = float(p.curl)-PI/2
 			update_ram(node.boom_ram,Vector3(0,0.05,0.35),node.upper.to_local(node.boom.to_global(Vector3(0,0.18,1.55))))
 			update_ram(node.stick_ram,Vector3(0,0.43,0.65),node.boom.to_local(node.stick.to_global(Vector3(0,0.3,0.7))))
-			update_ram(node.bucket_ram,Vector3(0,0.25,0.5),node.stick.to_local(node.bucket.to_global(Vector3(0,0.3,-0.15))))
+			update_ram(node.bucket_ram,Vector3(0,0.25,0.5),node.stick.to_local(node.bucket.to_global(Vector3(0,0.08,-0.1))))
 			node.dirt.visible = int(p.cargo)>0
 			node.team_band.material_override.albedo_color = Color(COLORS[int(p.team)])
 			node.paint_material.set_shader_parameter("team_color",Color(COLORS[int(p.team)]))

@@ -27,7 +27,7 @@ export class Match {
     const angle = p.team*sector+(col-(rowSize-1)/2)*Math.min(.24,sector*.8/columns);
     const radius = ARENA.spawnRadius+row*2.2;
     p.x = Math.sin(angle)*radius; p.z = Math.cos(angle)*radius;
-    p.yaw = angle + Math.PI; p.turret = 0; p.boom=.42; p.stick=-1.4; p.curl=-.7; p.cargo=0;
+    p.yaw = angle + Math.PI; p.turret = 0; p.boom=.50; p.stick=-1.4; p.curl=-.7; p.cargo=0;
     p.input=this.neutral(); p.lastInput=0; p.cooldown=0; p.message=''; p.delivered=0; p.disrupted=0;
   }
   join(name, token) {
@@ -77,8 +77,8 @@ export class Match {
   }
   bucket(p) {
     const a=p.yaw+p.turret, bucketAngle=p.boom+p.stick+Math.PI/2-p.curl;
-    const reach=2.4*Math.cos(p.boom)+2.1*Math.cos(p.boom+p.stick)-.6*Math.cos(bucketAngle)+.02*Math.sin(bucketAngle);
-    return {x:p.x+Math.sin(a)*reach,z:p.z+Math.cos(a)*reach,height:1.45+2.4*Math.sin(p.boom)+2.1*Math.sin(p.boom+p.stick)-.6*Math.sin(bucketAngle)-.02*Math.cos(bucketAngle)};
+    const reach=2.4*Math.cos(p.boom)+2.1*Math.cos(p.boom+p.stick)-.73*Math.cos(bucketAngle)+.48*Math.sin(bucketAngle);
+    return {x:p.x+Math.sin(a)*reach,z:p.z+Math.cos(a)*reach,height:1.45+2.4*Math.sin(p.boom)+2.1*Math.sin(p.boom+p.stick)-.73*Math.sin(bucketAngle)-.48*Math.cos(bucketAngle)};
   }
   inZone(point, team) {return Math.abs(point.x-team.x)<=3.1&&Math.abs(point.z-team.z)<=3.1;}
   pileHeight(point, center, radius, amount, maximum, central=false) {
