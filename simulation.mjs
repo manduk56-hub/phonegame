@@ -1,3 +1,4 @@
+import {FPS_ARENA,resetFps,fpsSpawn,fpsAim,fpsFire,fpsTick,fpsResults,dropFlag} from './fps.mjs';
 import {EXCAVATOR_MAPS,resetWater,waterAction,waterTick,waterResults,waterHeight,waterSnapshot} from './waterway.mjs';
 import { randomUUID } from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -21,8 +22,10 @@ export class Match {
       return { id, color:COLORS[id], x:Math.sin(angle)*ARENA.teamRadius, z:Math.cos(angle)*ARENA.teamRadius, dirt:0 };
     });
     resetWater(this);
+    resetFps(this);
   }
   spawn(p) {
+    if(this.game==='fps'){fpsSpawn(this,p);return;}
     if(this.game==='racing'){raceSpawn(this,p);return;}
     const members = [...this.players.values()].filter(q=>q.team===p.team);
     const slot = members.findIndex(q=>q.id===p.id);
@@ -46,12 +49,12 @@ export class Match {
     p={id:randomUUID(),token:randomUUID(),name:String(name||'플레이어').trim().slice(0,16)||'플레이어',team:counts.indexOf(Math.min(...counts)),connected:true};
     this.players.set(p.id,p); for(const q of this.players.values()) this.spawn(q); return p;
   }
-  neutral() {return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
+  neutral() {if(this.game==='fps')return {forward:0,strafe:0};return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
   selectGame(game){
     if(this.game===game)return;
     if(this.phase!=='lobby')throw Error('대기실에서 게임을 변경하세요.');
-    if(!['excavator','racing'].includes(game))throw Error('지원하지 않는 게임입니다.');
-    this.game=game;this.resetTeams();for(const p of this.players.values())p.team%=this.teamCount;this.results=null;for(const p of this.players.values())this.spawn(p);
+    if(!['excavator','racing','fps'].includes(game))throw Error('지원하지 않는 게임입니다.');
+    this.game=game;if(game==='fps'&&this.teamCount<2)this.teamCount=2;this.resetTeams();for(const p of this.players.values())p.team%=this.teamCount;this.results=null;for(const p of this.players.values())this.spawn(p);
     if(game==='racing'){this.duration=Math.max(300,this.duration);this.remaining=this.duration;}
   }
   selectExcavatorMap(id){
@@ -67,9 +70,10 @@ export class Match {
     this.circuit=circuit;this.results=null;this.raceElapsed=0;this.countdown=0;
     for(const p of this.players.values())this.spawn(p);
   }
-  disconnect(id) { const p=this.players.get(id); if(p) {p.connected=false;p.input=this.neutral();} }
+  disconnect(id) { const p=this.players.get(id); if(p) {p.connected=false;p.input=this.neutral();dropFlag(this,p);} }
   configure(count, duration=this.duration) {
     if(this.phase!=='lobby') throw Error('팀 편성은 대기실에서 변경할 수 있습니다.');
+    if(this.game==='fps'&&count<2)throw Error('깃발 쟁탈전은 2팀 이상으로 플레이하세요.');
     if(!Number.isInteger(count)||count<1||count>8) throw Error('팀 수는 1~8개입니다.');
     if(!Number.isFinite(duration)||duration<30||duration>900) throw Error('경기 시간은 30~900초입니다.');
     this.teamCount=count; this.duration=duration; this.remaining=duration; this.resetTeams();
@@ -102,8 +106,10 @@ export class Match {
     const p=this.players.get(id); if(!p||!p.connected) return;
     p.input=Object.fromEntries(Object.keys(this.neutral()).map(k=>[k,clamp(Number.isFinite(value[k])?value[k]:0,-1,1)]));
     if(this.game==='racing'){p.input.throttle=clamp(p.input.throttle,0,1);p.input.brake=clamp(p.input.brake,0,1);}
+    if(this.game==='fps'&&p.hp>0)fpsAim(p,value);
     p.lastInput=now;
   }
+  fire(id,value){fpsFire(this,id,value);}
   bucket(p) {
     const a=p.yaw+p.turret, bucketAngle=p.boom+p.stick+Math.PI/2-p.curl;
     const reach=2.4*Math.cos(p.boom)+2.1*Math.cos(p.boom+p.stick)-.73*Math.cos(bucketAngle)+.48*Math.sin(bucketAngle);
@@ -151,6 +157,7 @@ export class Match {
     }
   }
   tick(dt,now=Date.now()) {
+    if(this.game==='fps'){fpsTick(this,dt,now);return;}
     if(this.game==='racing'){raceTick(this,dt,now);return;}
     const ceremony=this.phase==='finished';
     if(this.phase!=='running'&&!ceremony) return;
@@ -197,6 +204,7 @@ export class Match {
     }
   }
   buildResults() {
+    if(this.game==='fps')return fpsResults(this);
     if(this.water)return waterResults(this);
     const rank=entries=>{
       entries.sort((a,b)=>b.score-a.score);
@@ -211,6 +219,7 @@ export class Match {
   snapshot() {
     return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
       ...(this.game==='excavator'?{excavatorMap:this.excavatorMap,excavatorMaps:EXCAVATOR_MAPS,water:waterSnapshot(this.water)}:{}),
+      ...(this.game==='fps'?{fps:{...this.fps,arena:FPS_ARENA}}:{}),
       ...(this.game==='racing'?{race:{laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,cars:CARS,tracks:TRACKS},circuit:this.circuit}:{}),
       players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,...(this.game==='excavator'?{bucket:this.bucket(p)}:{})}))};
   }

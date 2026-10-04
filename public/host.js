@@ -1,3 +1,5 @@
+import {createFpsScene} from './fps-scene.js';
+const fpsStyle=document.createElement('link');fpsStyle.rel='stylesheet';fpsStyle.href='/fps.css';document.head.append(fpsStyle);
 import {createWaterOverview} from './water-view.js';
 import {renderResults} from './results.js';
 import {createRaceScene} from './race-scene.js';
@@ -10,7 +12,7 @@ hub.className='game-hub';
 const catalog=[
   {title:'플레이룸',subtitle:'모래 쟁탈전 · 폭포 물길 경주',type:'팀 대결',description:'휴대폰을 운전석으로! 포크레인을 조작해 우리 팀 구역에 가장 많은 모래를 모으세요.',meta:'2–16명 · 1–10분 · 휴대폰 컨트롤러',ready:true},
   {title:'POCKET RACING',subtitle:'작은 차, 커다란 승부',type:'레이싱',description:'가로로 든 폰을 기울여 핸들을 돌리고 실제 페달 모양의 버튼을 밟으세요. 여섯 스포츠카로 3바퀴를 먼저 완주하세요.',meta:'1–16명 · 3바퀴 · 차량 충돌 · 동일 성능',ready:true},
-  {title:'KITCHEN PANIC',subtitle:'우당탕탕 협동 주방',type:'협동',description:'주문이 쏟아지는 주방에서 함께 요리하세요. 새로운 협동 게임을 준비하고 있어요.'},
+  {title:'FLAG STRIKE',subtitle:'조준하고, 탈환하고, 귀환하라',type:'FPS',description:'휴대폰 전체 화면에서 1인칭으로 조준하세요. 벽 뒤의 상대는 맞지 않습니다. 중앙 깃발을 우리 진영으로 가져오면 1점, 사망하면 2초 후 그 자리에서 부활합니다.',meta:'2–16명 · 2–8팀 · 깃발 쟁탈전',ready:true},
   {title:'PARTY MIX',subtitle:'다 같이 즐기는 미니게임',type:'파티',description:'짧고 신나는 미니게임으로 한판 더! 새로운 파티 게임을 준비하고 있어요.'}
 ];
 const illustrations=[
@@ -19,6 +21,7 @@ const illustrations=[
   '<path fill="#252b30" d="M120 106h160v16H120zm18 16h18v30h-18zm106 0h18v30h-18z"/><circle cx="200" cy="80" r="37" fill="#f1d077"/><path fill="#fff2ca" d="M175 58h50v35h-50z"/><g fill="#252b30"><circle cx="190" cy="73" r="4"/><circle cx="210" cy="73" r="4"/><path d="M187 86h26v4h-26z"/></g>',
   '<g fill="#252b30"><path d="M82 109h48v35H82zm63-32h48v35h-48zm64 32h48v35h-48zm63-32h48v35h-48z"/></g><circle cx="106" cy="87" r="22" fill="#f0c667"/><circle cx="169" cy="55" r="22" fill="#d77a88"/><circle cx="233" cy="87" r="22" fill="#80bab1"/><circle cx="296" cy="55" r="22" fill="#eee4d4"/><path stroke="#252b30" stroke-width="5" stroke-dasharray="5 10" d="M96 87h25m38-32h25m39 32h25m38-32h25"/>'
 ];
+illustrations[2]='<path fill="#657d75" d="M0 110h400v50H0z"/><path fill="#b4ad92" d="M50 60h75v65H50zm220 20h80v65h-80z"/><path stroke="#eee9d4" stroke-width="6" d="M195 140V22"/><path fill="#ffe45c" d="M198 24h65l-16 25h-49z"/><path fill="#f07866" d="M130 112h35v40h-35z"/><circle cx="147" cy="101" r="12" fill="#ead5ae"/><path stroke="white" stroke-width="3" d="M200 66v28m-14-14h28"/>';
 const art=i=>i===1?'<img class="hub-art" src="/assets/racing-models.png" alt="선택 가능한 여섯 스포츠카">':i===0?'<img class="hub-art hub-game-render" src="/assets/dirt-rally-card.png" alt="실제 게임 속 노란 포크레인이 모래를 담은 버킷을 들어 올린 모습" width="1024" height="1024">':`<svg class="hub-art art-${i}" viewBox="0 0 400 160" aria-hidden="true"><defs><pattern id="grid-${i}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="white" stroke-opacity=".13"/></pattern></defs><path fill="url(#grid-${i})" d="M0 0h400v160H0z"/>${illustrations[i]}</svg>`;
 hub.innerHTML=`<header class="hub-header"><a class="hub-brand" href="#games">▦ 플레이룸 <span>함께 노는 시간</span></a><span class="hub-device">하나의 화면 · 각자의 휴대폰</span></header><section class="hub-intro"><p class="hub-kicker">PICK A GAME. MAKE A MEMORY.</p><h1>오늘은 어떤 게임을 할까요<span>?</span></h1><p>친구들을 모으고, 게임을 고르고, 함께 시작하세요.</p></section><div class="hub-layout"><section aria-label="게임 목록" class="hub-catalog">${catalog.map((g,i)=>`<button class="hub-card" data-game="${i}" aria-pressed="false">${art(i)}<span class="hub-card-heading"><strong>${g.title}</strong><span class="hub-tag">${g.type}</span></span><span class="hub-card-subtitle">${g.subtitle}</span><span class="hub-card-status ${g.ready?'is-ready':''}">${g.ready?'● 플레이 가능 <span>2–16명</span>':'준비 중 <span>COMING SOON</span>'}</span></button>`).join('')}</section><aside class="hub-detail" aria-label="선택한 게임 정보"><p class="hub-detail-kicker">선택한 게임 <span>GAME INFO ↗</span></p><div id="hub-preview"></div><h2 id="hub-title"></h2><p id="hub-subtitle"></p><p id="hub-description" aria-live="polite"></p><p id="hub-meta"></p><button id="hub-play">대기실 입장 <span>→</span></button><p class="hub-footnote" id="hub-footnote"></p></aside></div><footer class="hub-footer"><span><b>01</b> 게임 선택 <i>→</i> <b>02</b> QR로 참가 <i>→</i> <b>03</b> 함께 플레이</span><span>PLAY TOGETHER.</span></footer>`;
 document.body.prepend(hub);
@@ -47,10 +50,11 @@ function showScreen(screen){
   if(inLobby)backToGames.focus();else hub.querySelector(`[data-game="${selectedGame}"]`).focus();
   window.scrollTo(0,0);
 }
-$('hub-play').onclick=()=>{if(catalog[selectedGame].ready){send({type:'game',game:selectedGame===1?'racing':'excavator'});location.hash='dirt-rally';showScreen('dirt-rally');}};
+$('hub-play').onclick=()=>{if(catalog[selectedGame].ready){send({type:'game',game:['excavator','racing','fps'][selectedGame]});location.hash='dirt-rally';showScreen('dirt-rally');}};
 backToGames.onclick=()=>{if(currentPhase!=='running'){if(currentPhase==='finished')send({type:'lobby'});location.hash='games';showScreen('games');}};
 window.addEventListener('hashchange',()=>{if(currentPhase==='running'&&location.hash!=='#dirt-rally'){location.hash='dirt-rally';return;}showScreen(location.hash.slice(1));});
 chooseGame(0);showScreen(location.hash.slice(1));
+const fpsCanvas=document.createElement('canvas');fpsCanvas.id='fps-overview';fpsCanvas.hidden=true;lobby.insertBefore(fpsCanvas,lobby.querySelector('.grid'));let fpsScene;
 let config,ws,latest,retry,authenticated=false,hostKey='';
 const raceCanvas=document.createElement('canvas');raceCanvas.id='race-overview';raceCanvas.hidden=true;lobby.insertBefore(raceCanvas,lobby.querySelector('.grid'));let raceScene;
 const raceSummary=document.createElement('p');raceSummary.hidden=true;lobby.append(raceSummary);
@@ -111,6 +115,10 @@ function updateConnection(next){
   qr();
 }
 function render(m){
+  const shooting=m.game==='fps';fpsCanvas.hidden=!shooting;
+  if(shooting){if(!fpsScene)fpsScene=createFpsScene(fpsCanvas,{overview:true});fpsScene.update(m);lobby.querySelector('.title-caption').textContent='깃발을 탈환하라!';lobby.querySelector('.worksite-hero h1').firstChild.textContent='FLAG STRIKE';lobby.querySelector('.worksite-hero .eyebrow').textContent='최대 16명 · FPS 깃발 쟁탈전';lobby.querySelector('.pixel-scene').hidden=true;lobby.querySelector('.worksite-hero p').textContent='중앙 깃발을 우리 진영에 가져오면 1점 · 2초 뒤 제자리 부활 · 벽 관통 금지';}
+  lobby.querySelector('.field-guide').hidden=shooting;
+  for(const option of $('teams').options)option.disabled=shooting&&Number(option.value)<2;
   renderMapPicker(m);
   renderTrackPicker(m);
   const racing=m.game==='racing';raceCanvas.hidden=!racing;raceSummary.hidden=!racing;
@@ -127,7 +135,7 @@ function render(m){
   if(m.connection&&m.connection.address!==$('address').value){$('address').value=m.connection.address;qr();}
   const signature=JSON.stringify([m.game,m.circuit?.id,m.phase,m.teamCount,m.duration,m.players.map(p=>[p.id,p.name,p.team,p.connected,p.car,p.color])]);
   $('status').textContent=`${m.players.filter(p=>p.connected).length}/16 접속 · ${m.phase==='lobby'?'대기':m.phase==='running'?`${Math.ceil(m.remaining)}초`:'종료'}`;
-  $('scores').replaceChildren(...(racing?[...m.players].sort((a,b)=>a.rank-b.rank).map(p=>{const d=document.createElement('div');d.className='score';d.style.color=p.color;d.textContent=`${p.rank}위 · ${p.name} · ${Math.min(3,p.lap+1)}/3 LAP`;return d;}):m.teams.map(t=>{const d=document.createElement('div');d.className='score';d.style.color=t.color;d.textContent=m.water?`팀 ${t.id+1} · 물길 ${Math.floor(m.water.lanes[t.id].progress)}%`:`팀 ${t.id+1} · ${t.dirt} 모래`;return d;})));
+  $('scores').replaceChildren(...(racing?[...m.players].sort((a,b)=>a.rank-b.rank).map(p=>{const d=document.createElement('div');d.className='score';d.style.color=p.color;d.textContent=`${p.rank}위 · ${p.name} · ${Math.min(3,p.lap+1)}/3 LAP`;return d;}):m.teams.map(t=>{const d=document.createElement('div');d.className='score';d.style.color=t.color;d.textContent=m.water?`팀 ${t.id+1} · 물길 ${Math.floor(m.water.lanes[t.id].progress)}%`:shooting?`팀 ${t.id+1} · 깃발 ${t.captures}점`:`팀 ${t.id+1} · ${t.dirt} 모래`;return d;})));
   if(signature===latest)return;
   latest=signature;
   $('teams').value=m.teamCount;$('duration').value=m.duration;

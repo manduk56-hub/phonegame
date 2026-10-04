@@ -23,7 +23,7 @@ func run() -> void:
 			return
 		await process_frame
 	assert(hub.join_label.text.contains("/controller?room="))
-	for index in range(2,4):
+	for index in range(3,4):
 		hub.cards[index].pressed.emit()
 		assert(hub.selected == index and hub.play_button.disabled)
 		hub.launch_game()
@@ -78,5 +78,30 @@ func run() -> void:
 	assert(hub.active_game.qr.texture != null)
 	hub.return_to_menu()
 	await process_frame
-	print("PASS: selection QR and roster, both playable games, coming-soon lock, host connection, running lock and return")
+	hub.select_game(2)
+	assert(not hub.play_button.disabled)
+	hub.launch_game()
+	deadline = Time.get_ticks_msec()+6000
+	while hub.active_game.state.get("game") != "fps" or hub.active_game.qr.texture == null:
+		if Time.get_ticks_msec()>deadline:
+			push_error("FPS menu did not select the server game")
+			quit(1)
+			return
+		await process_frame
+	assert(hub.active_game.camera.position == Vector3(34,40,42))
+	assert(hub.active_game.state.fps.arena.walls.size() == 12)
+	hub.active_game.send_admin({"type":"start"})
+	deadline = Time.get_ticks_msec()+6000
+	while hub.active_game.state.get("phase") != "running":
+		if Time.get_ticks_msec()>deadline:
+			push_error("FPS did not start")
+			quit(1)
+			return
+		await process_frame
+	hub.active_game.send_admin({"type":"lobby"})
+	while hub.active_game.state.get("phase") != "lobby":
+		await process_frame
+	hub.return_to_menu()
+	await process_frame
+	print("PASS: selection QR and roster, all three playable games, coming-soon lock, host connection, running lock and return")
 	quit()

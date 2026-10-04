@@ -4,7 +4,7 @@ import {once} from 'node:events';
 import {WebSocket} from 'ws';
 import {createServer} from '../server.mjs';
 
-test('one phone connection plays both games repeatedly with the same room and identity',async()=>{
+test('one phone connection plays all three games repeatedly with the same room and identity',async()=>{
   const app=await createServer({host:'127.0.0.1',port:0,manualTick:true});
   const clients=[];
   async function connect(hello){
@@ -23,16 +23,16 @@ test('one phone connection plays both games repeatedly with the same room and id
     const host=await connect({type:'host',key:cfg.adminKey});await wait(host,m=>m.type==='host-ready');
     const phone=await connect({type:'join',room:app.room,name:'한 번 참가'});
     const joined=await wait(phone,m=>m.type==='joined');
-    for(const game of ['excavator','racing','excavator','racing']){
+    for(const game of ['excavator','racing','fps','excavator','fps','racing']){
       phone.messages.length=0;host.send({type:'game',game});
       const state=await wait(phone,m=>m.type==='state'&&m.game===game&&m.phase==='lobby');
       assert.equal(state.connection.room,app.room);assert.equal(state.players.length,1);
       assert.equal(state.players[0].id,joined.id);assert.equal(state.players[0].name,'한 번 참가');
       assert.equal(state.players[0].connected,true);
       host.send({type:'start'});await wait(phone,m=>m.phase==='running'&&m.game===game);
-      phone.send({type:'input',...(game==='racing'?{throttle:1}:{travelL:1})});
+      phone.send({type:'input',...(game==='racing'?{throttle:1}:game==='fps'?{forward:1}:{travelL:1})});
       await new Promise(r=>setTimeout(r,30));
-      assert.equal(app.match.players.get(joined.id).input[game==='racing'?'throttle':'travelL'],1);
+      assert.equal(app.match.players.get(joined.id).input[game==='racing'?'throttle':game==='fps'?'forward':'travelL'],1);
       host.send({type:'lobby'});await new Promise(r=>setTimeout(r,60));
     }
     assert.equal(phone.messages.filter(m=>m.type==='joined').length,0);

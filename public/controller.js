@@ -1,3 +1,4 @@
+import {createFpsController} from './fps-controller.js';
 import {bindPad} from './pointer-pad.js';
 import {createCabView} from './cab-view.js';
 import {createRaceController} from './race-controller.js';
@@ -9,11 +10,11 @@ function renderResults(container,state,playerId) {
   if(container.dataset.signature===signature)return;
   container.dataset.signature=signature;
   const element=(tag,text,className)=>{const el=document.createElement(tag);el.textContent=text;if(className)el.className=className;return el;};
-  const water=r.mode==='water';
+  const water=r.mode==='water',fps=r.mode==='fps';
   const winners=r.winnerIds.map(id=>`팀 ${id+1}`).join(' · ');
   const title=winners?`${winners} ${r.winnerIds.length>1?'공동 우승!':'우승!'}`:'이번 경기는 무승부';
   const heading=element('h2',title,'result-winner');
-  const summary=element('p',water?(r.timedOut?'시간 종료 · 목표선에 도달한 팀이 없어 무승부입니다.':'목표선에 물이 도달했습니다!'):`작업 완료! 최종 확보 모래 ${r.total}점`);
+  const summary=element('p',water?(r.timedOut?'시간 종료 · 목표선에 도달한 팀이 없어 무승부입니다.':'목표선에 물이 도달했습니다!'):fps?`깃발 쟁탈전 종료 · 운반 ${r.total}회`:`작업 완료! 최종 확보 모래 ${r.total}점`);
   const sections=element('div','','result-columns');
   function standings(title,entries,personal=false){
     const section=element('section','');section.append(element('h3',title));
@@ -24,14 +25,15 @@ function renderResults(container,state,playerId) {
       if(personal&&item.id===playerId)row.classList.add('is-me');
       const name=personal?`${item.name} · 팀 ${item.team+1}${item.id===playerId?' (나)':''}`:`팀 ${item.id+1}`;
       row.style.setProperty('--team',state.teams[personal?item.team:item.id].color);
-      row.append(element('span',`${item.rank}위`),element('strong',name),element('span',water?(personal?`굴착 ${item.score}`:`물길 ${item.score}%${item.time!==null?' · '+item.time.toFixed(2)+'초':''}`):personal?`운반 ${item.score} · 방해 ${item.disrupted??0}`:`${item.score}점`,personal?'result-metrics':undefined));list.append(row);
+      row.append(element('span',`${item.rank}위`),element('strong',name),element('span',water?(personal?`굴착 ${item.score}`:`물길 ${item.score}%${item.time!==null?' · '+item.time.toFixed(2)+'초':''}`):fps?(personal?`깃발 ${item.score} · ${item.kills}킬 · ${item.deaths}데스`:`깃발 ${item.score}점`):personal?`운반 ${item.score} · 방해 ${item.disrupted??0}`:`${item.score}점`,personal?'result-metrics':undefined));list.append(row);
     }
     section.append(list);return section;
   }
-  sections.append(standings('팀 최종 순위',r.teams),standings(water?'개인 굴착 기록':'개인 운반 기록',r.players,true));
+  sections.append(standings('팀 최종 순위',r.teams),standings(water?'개인 굴착 기록':fps?'개인 전투 기록':'개인 운반 기록',r.players,true));
   const note=element('p','팀 점수는 최종 모래량입니다. 개인 운반량은 자기 팀에 내려놓은 누적량, 방해량은 상대 팀 구역에서 퍼낸 누적량입니다. 반복한 작업도 포함하며 개인 순위는 운반량 기준입니다.','result-note');
   if(water)note.textContent='폭포와 연결된 물이 목표선에 먼저 도착한 팀이 우승합니다. 개인 기록은 파낸 흙의 양입니다.';
-  if(!water&&playerId){const me=r.players.find(p=>p.id===playerId);if(me)summary.textContent+=` · 내 기록 ${me.rank}위 / 운반 ${me.score} · 방해 ${me.disrupted??0}`;}
+  if(fps)note.textContent='팀 순위는 깃발 운반 횟수 기준입니다. 처치 횟수는 팀 점수에 포함되지 않습니다.';
+  if(!water&&!fps&&playerId){const me=r.players.find(p=>p.id===playerId);if(me)summary.textContent+=` · 내 기록 ${me.rank}위 / 운반 ${me.score} · 방해 ${me.disrupted??0}`;}
   container.replaceChildren(element('span','FINAL RESULTS','eyebrow'),heading,summary,sections,note,element('p','진행자가 대기실로 돌아가면 다음 경기를 준비합니다.','result-note'));
   if(playerId){
     container.classList.remove('expanded');
@@ -161,8 +163,9 @@ async function landscapeFullscreen(showFeedback=false){
 }
 const send=m=>{if(ws?.readyState===1&&ws.bufferedAmount<4096)ws.send(JSON.stringify(m));};
 const race=createRaceController({send,fullscreen:landscapeFullscreen});
+const fps=createFpsController({send,fullscreen:landscapeFullscreen});
 function remember(value){try{if(value)localStorage.setItem(storageKey,JSON.stringify(value));else localStorage.removeItem(storageKey);}catch{}}
-function stop(){for(const reset of pads)reset();for(const k of Object.keys(input))input[k]=0;showParts();race.stop();send({type:'input',...input});}
+function stop(){for(const reset of pads)reset();for(const k of Object.keys(input))input[k]=0;showParts();race.stop();fps.stop();send({type:'input',...input});}
 function connect(){clearTimeout(retry);id=null;active=false;chatConnected(false);stop();ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);ws.onopen=()=>send({type:'join',room,name:$('name').value,token:saved?.token});
 ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='joined'){id=m.id;chatConnected(true);saved={token:m.token};remember(saved);$('join').classList.add('hidden');$('controller').classList.remove('hidden');$('join-button').disabled=false;return;}
 if(m.type==='chat-history'){
@@ -173,14 +176,14 @@ if(m.type==='chat'){appendChat(m.message);return;}
 if(m.type==='chat-error'){$('chat-error').textContent=m.message;$('chat-error').classList.remove('hidden');return;}
 if(m.type==='removed'){removed=true;remember(null);saved=null;$('join').classList.remove('hidden');$('controller').classList.add('hidden');$('join-error').textContent='진행자가 참가자를 제외했습니다.';return;}
 if(m.type==='error'){if(!id){removed=true;$('join').classList.remove('hidden');$('controller').classList.add('hidden');$('join-error').textContent=m.message;$('join-button').disabled=false;ws.close();}else $('message').textContent=m.message;return;}
-if(m.type==='state'){const p=m.players.find(p=>p.id===id);if(!p)return;if(connectedGame!==m.game){active=false;stop();connectedGame=m.game;$('results').hidden=true;document.title=m.game==='racing'?'POCKET RACING · 운전석':'플레이룸 · 포크레인 운전석';}if(m.game==='racing'){active=false;race.update(m,p);return;}race.hide();const ceremony=m.phase==='finished'&&m.results?.winnerIds.includes(p.team);active=(m.phase==='running'||ceremony)&&m.game==='excavator';if(!active)stop();
+if(m.type==='state'){const p=m.players.find(p=>p.id===id);if(!p)return;if(connectedGame!==m.game){active=false;stop();connectedGame=m.game;$('results').hidden=true;document.title=m.game==='racing'?'POCKET RACING · 운전석':'플레이룸 · 포크레인 운전석';}if(m.game==='fps'){active=false;race.hide();fps.update(m,p);return;}fps.hide();if(m.game==='racing'){active=false;race.update(m,p);return;}race.hide();const ceremony=m.phase==='finished'&&m.results?.winnerIds.includes(p.team);active=(m.phase==='running'||ceremony)&&m.game==='excavator';if(!active)stop();
 renderResults($('results'),m,id);
 if(m.game==='excavator')cab.update(m,id);
 for(const view of document.querySelectorAll('[data-game]'))view.classList.toggle('hidden',view.dataset.game!==m.game);
 $('controller').dataset.state=active?'running':m.phase;
 $('control-status').textContent=m.game!=='excavator'?'이 게임의 컨트롤러를 준비 중입니다.':m.phase==='lobby'?'PC에서 경기를 시작하면 조작할 수 있습니다.':ceremony?'우승 세리머니! 상부·붐·암·버킷을 움직여 보세요.':m.phase==='finished'?'경기가 끝났습니다. PC에서 다음 경기를 준비하세요.':'조작 중 · 공유 화면에서 내 번호와 팀 색상을 확인하세요.';
 document.documentElement.style.setProperty('--accent',m.teams[p.team].color);$('identity').textContent=`${m.players.findIndex(q=>q.id===id)+1}번 · 팀 ${p.team+1} · ${p.name}`;$('cargo').textContent=`버킷 ${Math.round(p.cargo)} / 40`;$('phase').textContent=m.phase==='lobby'?'대기실':m.phase==='finished'?'경기 종료':`${Math.ceil(m.remaining)}초`;$('message').textContent=(m.water?p.message:p.message?.replaceAll('흙','모래'))||(m.water?`우리 팀 물길 ${Math.floor(m.water.lanes[p.team].progress)}% · 버킷을 내리며 이어 파고 흙은 물길 밖에 버리세요`:'모래더미 가까이 버킷을 내린 뒤 닫으세요');}};
-ws.onclose=e=>{chatConnected(false);stop();race.offline();cab.offline();active=false;$('controller').dataset.state='offline';$('control-status').textContent='연결이 끊겼습니다. 재접속하는 동안 조작이 멈춥니다.';if(e.code===4001){removed=true;$('message').textContent='다른 탭에서 운전석에 접속했습니다.';}if(!removed){$('phase').textContent='재접속 중';retry=setTimeout(connect,1200);}};}
+ws.onclose=e=>{chatConnected(false);stop();race.offline();fps.offline();cab.offline();active=false;$('controller').dataset.state='offline';$('control-status').textContent='연결이 끊겼습니다. 재접속하는 동안 조작이 멈춥니다.';if(e.code===4001){removed=true;$('message').textContent='다른 탭에서 운전석에 접속했습니다.';}if(!removed){$('phase').textContent='재접속 중';retry=setTimeout(connect,1200);}};}
 $('join-button').onclick=()=>{void landscapeFullscreen();removed=false;$('join-error').textContent='';$('join-button').disabled=true;connect();};if(saved)connect();
 // Models face +Z: positive Y rotation turns left from the driver's seat.
 pads.push(bindPad($('left'),(x,y)=>{input.swing=-x;input.stick=-y;showParts();},{eightWay:true,enabled:canControl}));

@@ -5,7 +5,7 @@ const ART = preload("res://menu_art.gd")
 const GAMES = [
 	["플레이룸", "모래 쟁탈전 · 폭포 물길 경주", "팀 대결", "2–16명", "휴대폰을 운전석으로! 포크레인을 조작해\n모래를 모으거나 폭포에서 목표선까지 물길을 파세요."],
 	["POCKET RACING", "작은 차, 커다란 승부", "레이싱", "1–16명", "폰을 기울여 핸들을 돌리고 페달을 밟으세요.\n여섯 스포츠카 · 3바퀴 · 차량 충돌 사용"],
-	["KITCHEN PANIC", "우당탕탕 협동 주방", "협동", "준비 중", "주문이 쏟아지는 주방에서 함께 요리하세요.\n새로운 협동 게임을 준비하고 있어요."],
+	["FLAG STRIKE", "조준 · 탈환 · 귀환", "FPS", "2–16명", "폰 전체 화면에서 1인칭으로 조준하고 발사!\n중앙 깃발을 우리 진영으로 가져오세요."],
 	["PARTY MIX", "다 같이 즐기는 미니게임", "파티", "준비 중", "짧고 신나는 미니게임으로 한판 더!\n새로운 파티 게임을 준비하고 있어요."]
 ]
 var menu: MarginContainer
@@ -124,7 +124,7 @@ func _ready() -> void:
 		contents.add_child(art)
 		contents.add_child(label(GAMES[i][0],22))
 		contents.add_child(label(GAMES[i][1],16,"#a8b1ac"))
-		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 2 else "준비 중   /   " + GAMES[i][2],14,"#f1bd75" if i < 2 else "#a8b1ac"))
+		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 3 else "준비 중   /   " + GAMES[i][2],14,"#f1bd75" if i < 3 else "#a8b1ac"))
 		for child in contents.get_children():
 			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.pressed.connect(select_game.bind(i))
@@ -205,14 +205,14 @@ func select_game(index: int) -> void:
 	detail_title.text = GAMES[index][0]
 	detail_subtitle.text = GAMES[index][1]
 	detail_description.text = GAMES[index][4]
-	detail_meta.text = "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else GAMES[index][2] + "   ·   새로운 게임 준비 중")
-	play_button.text = "대기실 입장   →" if index < 2 else "곧 만나요!"
-	play_button.disabled = index > 1
+	detail_meta.text = "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else GAMES[index][2] + "   ·   새로운 게임 준비 중"))
+	play_button.text = "대기실 입장   →" if index < 3 else "곧 만나요!"
+	play_button.disabled = index > 2
 
 func launch_game() -> void:
-	if selected > 1 or is_instance_valid(active_game):
+	if selected > 2 or is_instance_valid(active_game):
 		return
-	active_game = load("res://main.tscn" if selected == 0 else "res://racing.tscn").instantiate()
+	active_game = load(["res://main.tscn","res://racing.tscn","res://fps.tscn"][selected]).instantiate()
 	add_child(active_game)
 	menu.hide()
 	background.hide()

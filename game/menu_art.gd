@@ -47,14 +47,15 @@ func _draw() -> void:
 			for wheel in [x+12,x+56]:
 				draw_circle(Vector2(wheel,106),11,ink)
 	elif kind == 2:
-		draw_rect(Rect2(120,106,160,16),ink)
-		draw_rect(Rect2(138,122,18,30),ink)
-		draw_rect(Rect2(244,122,18,30),ink)
-		draw_circle(Vector2(200,80),37,Color("#f1d077"))
-		draw_rect(Rect2(175,58,50,35),Color("#fff2ca"))
-		draw_circle(Vector2(190,73),4,ink)
-		draw_circle(Vector2(210,73),4,ink)
-		draw_rect(Rect2(187,86,26,4),ink)
+		draw_rect(Rect2(0,110,400,50),Color("#657d75"))
+		draw_rect(Rect2(50,60,75,65),Color("#b4ad92"))
+		draw_rect(Rect2(270,80,80,65),Color("#b4ad92"))
+		draw_line(Vector2(195,140),Vector2(195,22),Color("#eee9d4"),6)
+		draw_rect(Rect2(198,24,65,25),Color("#ffe45c"))
+		draw_rect(Rect2(130,112,35,40),Color("#f07866"))
+		draw_circle(Vector2(147,101),12,Color("#ead5ae"))
+		draw_line(Vector2(200,66),Vector2(200,94),Color.WHITE,3)
+		draw_line(Vector2(186,80),Vector2(214,80),Color.WHITE,3)
 	else:
 		for item in [Vector3(106,87,0),Vector3(169,55,1),Vector3(233,87,2),Vector3(296,55,3)]:
 			draw_rect(Rect2(item.x-24,item.y+22,48,35),ink)

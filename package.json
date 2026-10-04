@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test",
+    "verify:fps": "node tools/verify-fps.mjs",
     "verify:geometry": "node tools/verify-geometry.mjs",
     "verify:render": "node tools/verify-geometry.mjs --render",
     "verify:live": "node tools/verify-live.mjs",
