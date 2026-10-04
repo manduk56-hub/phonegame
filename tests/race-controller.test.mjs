@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {screenTilt} from '../public/race-sensors.js';
-const source=readFileSync(new URL('../public/race-controller.js',import.meta.url),'utf8').replace(/^import .*\n/gm,'').replace('export function createRaceController','function createRaceController');
+const source=readFileSync(new URL('../public/race-controller.js',import.meta.url),'utf8').replace(/^import .*\r?\n/gm,'').replace('export function createRaceController','function createRaceController');
 function setup({permission='granted',secure=true}={}){
   const elements=new Map(),events=new Map(),sent=[];let tick,clock=100,root;
   const element=()=>({hidden:false,children:[],style:{setProperty(){}},classList:{add(){},remove(){}},listeners:{},setAttribute(){},setPointerCapture(){},addEventListener(type,fn){this.listeners[type]=fn;}});
