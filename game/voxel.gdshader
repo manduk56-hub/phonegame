@@ -1,6 +1,7 @@
 shader_type spatial;
 render_mode diffuse_burley;
 uniform vec4 team_color : source_color = vec4(0.93, 0.70, 0.14, 1.0);
+uniform float cell_contrast = 0.025;
 
 varying vec3 local_position;
 varying vec4 part_color;
@@ -13,7 +14,7 @@ void vertex() {
 void fragment() {
     vec3 cell = floor(local_position * 10.0);
     float grain = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-    float shade = 0.96 + floor(grain * 3.0) * 0.025;
+    float shade = 1.01 - cell_contrast * 2.0 + floor(grain * 3.0) * cell_contrast;
     vec3 base = part_color.rgb;
     if (part_color.a < 0.75) {
         float paint_value = max(max(base.r, base.g), base.b);
