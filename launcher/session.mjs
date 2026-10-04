@@ -3,17 +3,43 @@ import {randomBytes} from 'node:crypto';
 import {mkdir,readFile,writeFile,rename,unlink,access} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {lookup} from 'node:dns/promises';
+import {Resolver} from 'node:dns/promises';
+import https from 'node:https';
 import {createServer} from '../server.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url));
 export const tunnelAddress=text=>text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com\b/i)?.[0]||'';
+const tunnelResolver=new Resolver({timeout:2000,tries:1});
+tunnelResolver.setServers(['1.1.1.1','1.0.0.1']);
+export async function resolveTunnelHost(hostname,{systemLookup=lookup,publicResolve=name=>tunnelResolver.resolve4(name)}={}) {
+  try {return await systemLookup(hostname,{all:true});}
+  catch(error) {
+    if(!['ENOTFOUND','EAI_AGAIN'].includes(error.code)||!/^[a-z0-9-]+\.trycloudflare\.com$/i.test(hostname))throw error;
+    return (await publicResolve(hostname)).map(address=>({address,family:4}));
+  }
+}
+function readTunnelConfig(url,signal) {
+  // Keep the URL hostname for TLS validation and HTTP routing; only DNS falls back.
+  if(!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com\/?$/i.test(url))return fetch(`${url}/config`,{signal}).then(async response=>({ok:response.ok,config:await response.json()}));
+  return new Promise((resolve,reject)=>{
+    const request=https.get(`${url}/config`,{signal,lookup:(hostname,options,callback)=>{
+      resolveTunnelHost(hostname).then(addresses=>options.all?callback(null,addresses):callback(null,addresses[0].address,addresses[0].family),callback);
+    }},response=>{
+      let body='';response.setEncoding('utf8');
+      response.on('data',chunk=>{body+=chunk;if(body.length>65536)response.destroy(Error('Invalid tunnel response'));});
+      response.once('error',reject);
+      response.once('end',()=>{try{resolve({ok:response.statusCode===200,config:JSON.parse(body)});}catch(error){reject(error);}});
+    });
+    request.once('error',reject);
+  });
+}
 export async function verifyTunnel(url,room,{timeout=60000,signal}={}) {
   const end=Date.now()+timeout;
   while(Date.now()<end&&!signal?.aborted) {
     try {
-      const response=await fetch(`${url}/config`,{signal:AbortSignal.any([AbortSignal.timeout(5000),...(signal?[signal]:[])])});
-      const config=await response.json();
-      if(response.ok&&config.app==='dirt-rally'&&config.room===room&&config.hostAuth==='token'&&config.adminKey===null)return;
+      const {ok,config}=await readTunnelConfig(url,AbortSignal.any([AbortSignal.timeout(5000),...(signal?[signal]:[])]));
+      if(ok&&config.app==='dirt-rally'&&config.room===room&&config.hostAuth==='token'&&config.adminKey===null)return;
     } catch { }
     await new Promise(resolve=>setTimeout(resolve,1000));
   }

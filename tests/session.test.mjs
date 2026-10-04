@@ -7,7 +7,17 @@ import {once} from 'node:events';
 import {WebSocket} from 'ws';
 import QRCode from 'qrcode';
 import {createServer} from '../server.mjs';
-import {runSession,tunnelAddress,verifyTunnel} from '../launcher/session.mjs';
+import {runSession,tunnelAddress,verifyTunnel,resolveTunnelHost} from '../launcher/session.mjs';
+
+test('new tunnel DNS falls back only when system DNS cannot resolve a Quick Tunnel',async()=>{
+  const missing=Object.assign(Error('DNS name not found'),{code:'ENOTFOUND'});
+  let fallbacks=0;
+  const options={systemLookup:async()=>{throw missing;},publicResolve:async hostname=>{fallbacks++;assert.equal(hostname,'new-room.trycloudflare.com');return ['104.16.230.132'];}};
+  assert.deepEqual(await resolveTunnelHost('new-room.trycloudflare.com',options),[{address:'104.16.230.132',family:4}]);
+  await assert.rejects(resolveTunnelHost('example.com',options),error=>error===missing);
+  assert.deepEqual(await resolveTunnelHost('new-room.trycloudflare.com',{...options,systemLookup:async()=>[{address:'127.0.0.1',family:4}]}),[{address:'127.0.0.1',family:4}]);
+  assert.equal(fallbacks,1);
+});
 
 test('publishing and replacing a tunnel preserves players, room and host authorization',async()=>{
   const key='session-test-key-'.repeat(4);
