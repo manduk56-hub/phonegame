@@ -2,8 +2,14 @@ extends Control
 
 var kind := 0
 var excavator_texture: Texture2D
+var racing_texture: Texture2D
 
 func _draw() -> void:
+	if kind == 1 and racing_texture != null:
+		var image_size := Vector2(1920,840)
+		var ratio := minf(size.x/image_size.x,size.y/image_size.y)
+		draw_texture_rect(racing_texture,Rect2((size-image_size*ratio)/2,image_size*ratio),false)
+		return
 	if kind == 0 and excavator_texture != null:
 		# Cover the image area while preserving the square render's proportions.
 		var edge := maxf(size.x,size.y)
@@ -65,4 +71,5 @@ func track_style() -> StyleBoxFlat:
 func _ready() -> void:
 	clip_contents = true
 	excavator_texture = load("res://assets/dirt-rally-card.png")
+	racing_texture = load("res://assets/racing-models.png")
 	resized.connect(queue_redraw)

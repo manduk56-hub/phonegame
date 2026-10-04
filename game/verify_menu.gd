@@ -15,7 +15,7 @@ func run() -> void:
 			quit(1)
 			return
 	assert(not hub.play_button.disabled)
-	for index in range(1,4):
+	for index in range(2,4):
 		hub.cards[index].pressed.emit()
 		assert(hub.selected == index and hub.play_button.disabled)
 		hub.launch_game()
@@ -32,13 +32,22 @@ func run() -> void:
 			quit(1)
 			return
 		await process_frame
-	hub.active_game.state.phase = "running"
-	await process_frame
+	hub.active_game.send_admin({"type":"start"})
+	deadline = Time.get_ticks_msec()+6000
+	while hub.active_game.state.get("phase") != "running":
+		if Time.get_ticks_msec()>deadline:
+			push_error("Test match did not start")
+			quit(1)
+			return
+		await process_frame
+	hub._process(0)
 	assert(hub.back_button.disabled)
 	hub.return_to_menu()
 	assert(not hub.menu.visible)
-	hub.active_game.state.phase = "lobby"
-	await process_frame
+	hub.active_game.send_admin({"type":"lobby"})
+	while hub.active_game.state.get("phase") != "lobby":
+		await process_frame
+	hub._process(0)
 	hub.back_button.pressed.emit()
 	await process_frame
 	assert(hub.menu.visible and hub.background.visible)
@@ -48,5 +57,18 @@ func run() -> void:
 	assert(is_instance_valid(hub.active_game))
 	hub.return_to_menu()
 	await process_frame
-	print("PASS: game selection, coming-soon lock, arena launch, host connection, running lock, return and relaunch")
+	hub.select_game(1)
+	assert(not hub.play_button.disabled)
+	hub.launch_game()
+	deadline = Time.get_ticks_msec()+6000
+	while hub.active_game.state.get("game") != "racing" or hub.active_game.qr.texture == null:
+		if Time.get_ticks_msec()>deadline:
+			push_error("Racing menu did not select the server game")
+			quit(1)
+			return
+		await process_frame
+	assert(hub.active_game.qr.texture != null)
+	hub.return_to_menu()
+	await process_frame
+	print("PASS: both playable games, coming-soon lock, host connection, running lock and return")
 	quit()

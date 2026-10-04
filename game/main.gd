@@ -516,6 +516,7 @@ func _process(delta: float) -> void:
 			var message = JSON.parse_string(socket.get_packet().get_string_from_utf8())
 			if message is Dictionary and message.get("type") == "host-ready":
 				authenticated = true
+				send_admin({"type":"game","game":"excavator"})
 				lobby_message.text = ""
 			elif message is Dictionary and message.get("type") == "state" and authenticated:
 				network_updates += 1

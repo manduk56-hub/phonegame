@@ -11,9 +11,9 @@ config_version=5
 [application]
 
 config/name="플레이룸"
-config/icon="res://playroom.png"
 run/main_scene="res://main_menu.tscn"
 config/features=PackedStringArray("4.6")
+config/icon="res://playroom.png"
 
 [display]
 

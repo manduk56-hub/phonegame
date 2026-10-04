@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {readFileSync} from 'node:fs';
+import {raceSpawn,raceTick,chooseCar,CIRCUIT,CARS} from './racing.mjs';
 export const ARENA=JSON.parse(readFileSync(new URL('./game/arena.json',import.meta.url),'utf8'));
 export const COLORS = ['#faad28','#52c8fa','#f078a6','#77d99b','#a99aff','#fb775b','#e0d16c','#69d3cb'];
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
@@ -8,7 +9,7 @@ export class Match {
   constructor() {
     this.players = new Map(); this.teamCount = 4; this.duration = 180;
     this.phase = 'lobby'; this.remaining = this.duration; this.central = 4000;
-    this.teams = []; this.game = 'excavator'; this.results = null; this.resetTeams();
+    this.teams = []; this.game = 'excavator'; this.results = null; this.raceLaps=3;this.raceCollisions=true;this.countdown=0;this.raceElapsed=0;this.resetTeams();
   }
   resetTeams() {
     this.groundPiles = []; this.nextPileId = 0;
@@ -18,6 +19,7 @@ export class Match {
     });
   }
   spawn(p) {
+    if(this.game==='racing'){raceSpawn(this,p);return;}
     const members = [...this.players.values()].filter(q=>q.team===p.team);
     const slot = members.findIndex(q=>q.id===p.id);
     const sector = Math.PI*2/this.teamCount;
@@ -39,7 +41,14 @@ export class Match {
     p={id:randomUUID(),token:randomUUID(),name:String(name||'플레이어').trim().slice(0,16)||'플레이어',team:counts.indexOf(Math.min(...counts)),connected:true};
     this.players.set(p.id,p); for(const q of this.players.values()) this.spawn(q); return p;
   }
-  neutral() {return {travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
+  neutral() {return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
+  selectGame(game){
+    if(this.game===game)return;
+    if(this.phase!=='lobby')throw Error('대기실에서 게임을 변경하세요.');
+    if(!['excavator','racing'].includes(game))throw Error('지원하지 않는 게임입니다.');
+    this.game=game;this.results=null;for(const p of this.players.values())this.spawn(p);
+  }
+  chooseCar(id,car){chooseCar(this,id,car);}
   disconnect(id) { const p=this.players.get(id); if(p) {p.connected=false;p.input=this.neutral();} }
   configure(count, duration=this.duration) {
     if(this.phase!=='lobby') throw Error('팀 편성은 대기실에서 변경할 수 있습니다.');
@@ -64,6 +73,7 @@ export class Match {
     if(this.phase!=='lobby'||![...this.players.values()].some(p=>p.connected)) throw Error('접속한 참가자가 있어야 시작할 수 있습니다.');
     this.central=4000; this.remaining=this.duration; this.results=null; this.resetTeams();
     for(const p of this.players.values()) this.spawn(p);
+    this.countdown=this.game==='racing'?3:0;this.raceElapsed=0;
     this.phase='running';
   }
   lobby() {
@@ -73,6 +83,7 @@ export class Match {
   input(id, value, now=Date.now()) {
     const p=this.players.get(id); if(!p||!p.connected) return;
     p.input=Object.fromEntries(Object.keys(this.neutral()).map(k=>[k,clamp(Number.isFinite(value[k])?value[k]:0,-1,1)]));
+    if(this.game==='racing'){p.input.throttle=clamp(p.input.throttle,0,1);p.input.brake=clamp(p.input.brake,0,1);}
     p.lastInput=now;
   }
   bucket(p) {
@@ -90,6 +101,7 @@ export class Match {
     return Math.max(.2,(4.6-d)*.55)*scale;
   }
   action(id, action) {
+    if(this.game==='racing')return;
     const p=this.players.get(id);
     if(this.phase!=='running'||!p||!p.connected||p.cooldown>0) return;
     const tip=this.bucket(p); p.cooldown=.45;
@@ -120,6 +132,7 @@ export class Match {
     }
   }
   tick(dt,now=Date.now()) {
+    if(this.game==='racing'){raceTick(this,dt,now);return;}
     const ceremony=this.phase==='finished';
     if(this.phase!=='running'&&!ceremony) return;
     if(!ceremony)this.remaining=Math.max(0,this.remaining-dt);
@@ -174,6 +187,7 @@ export class Match {
   }
   snapshot() {
     return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
-      players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,bucket:this.bucket(p)}))};
+      ...(this.game==='racing'?{race:{laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,cars:CARS},circuit:CIRCUIT}:{}),
+      players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,...(this.game==='excavator'?{bucket:this.bucket(p)}:{})}))};
   }
 }

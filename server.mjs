@@ -16,11 +16,18 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   const chatHistory=[],chatSentAt=new Map();
   let chatSequence=0;
   const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/results.js':'results.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js'};
+  Object.assign(files,{'/race-scene.js':'race-scene.js','/race-controller.js':'race-controller.js','/race-sensors.js':'race-sensors.js','/race.css':'race.css'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{
     try {
       const url=new URL(req.url,'http://localhost');
+      if(url.pathname==='/car-shapes.json'){
+        res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/car-shapes.json',import.meta.url)));return;
+      }
+      if(/^\/assets\/(racing-models|race-(wedge|classic|tourer|muscle|exotic|gt))\.png$/.test(url.pathname)){
+        res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public'+url.pathname,import.meta.url)));return;
+      }
       if(url.pathname==='/assets/dirt-rally-card.png') {
         res.setHeader('Content-Type','image/png');
         res.end(await readFile(new URL('./public/assets/dirt-rally-card.png',import.meta.url)));return;
@@ -81,8 +88,10 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
             for(const client of wss.clients)if(client.playerId||['host','display'].includes(client.sessionRole))send(client,{type:'chat',message});
           }
           if(m.type==='input') match.input(id,m);
+          if(m.type==='car')match.chooseCar(id,m.car);
           if(m.type==='action'&&['scoop','drop'].includes(m.action)) match.action(id,m.action);
         } else if(role==='host') {
+          if(m.type==='game')match.selectGame(m.game);
           if(m.type==='network') {
             if(!addresses.includes(m.address))throw Error('현재 PC의 네트워크 주소를 선택하세요.');
             joinAddress=m.address;

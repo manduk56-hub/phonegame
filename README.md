@@ -12,6 +12,12 @@
 
 ### 개발 결과 바로 확인
 
+레이싱은 게임 선택에서 **POCKET RACING**으로 입장합니다. 폰은 가로로 잡고 차를 선택한 뒤 **기울기 조작 시작**을 누릅니다. 센서 접근은 HTTPS 터널 QR을 사용하고, 현재 자세를 기준으로 **중립 보정**할 수 있습니다. 왼쪽은 브레이크, 오른쪽은 엑셀 페달입니다. 폰에는 자신의 1인칭 운전석이, PC에는 서킷 전체와 실시간 순위가 표시됩니다. 여섯 차종은 참조 이미지의 특징을 입체 모델로 만들었으며 선택지는 실제 모델을 렌더링합니다. 같은 차도 참가자별 색상이 다릅니다. 모든 차의 가속·최고속도·조향·제동 성능은 같고 3바퀴 완주 순서로 순위를 정합니다. 충돌과 코스 밖 감속을 사용합니다. 최대 경기 시간이 끝나면 미완주 차량은 진행 거리로 순위를 정합니다.
+
+기울기 감도는 모든 참가자에게 동일하며 중립에서 50도 기울였을 때 최대 조향입니다. 잔디 위 추가 감속은 초당 4m/s이고, 벽에 닿으면 최초 충격에만 속도가 줄어 연속 접촉 중 급격히 정지하지 않습니다.
+
+레이싱 검증: `npm test`, `node tools/verify-racing.mjs`(16명 동시 조작·실제 PC 렌더), `node tools/verify-menu.mjs`(두 게임의 메뉴 전환). 모델·서킷 원본은 `game/car-shapes.json`, `game/circuit.json`입니다. `tools/Generate-Racing-Models.mjs`에 참조 순서 1~6번의 차체·휠·창문·램프·흡기구를 각각 정의하며, `node tools/Generate-Racing-Models.mjs 1`처럼 한 모델씩 갱신합니다. 브라우저와 PC가 동일한 기하 데이터를 읽고, 메뉴 이미지는 `game/render_racing_cars.tscn`을 실행해 실제 모델로 생성합니다. 실제 폰의 센서 허용·조작감은 기기에서 별도로 확인해야 합니다.
+
 `Start-DevGame.cmd`는 현재 작업 폴더의 소스로 게임·서버·터널을 실행합니다. 모바일 HTML/CSS/JS는 저장 후 휴대폰 새로고침으로 확인하고, 서버·Godot 소스는 게임을 종료하고 다시 개발 실행하면 반영됩니다. 패키지 빌드나 Git 업로드는 필요하지 않습니다. 개발용 Node.js·Godot는 필요하며 이 PC의 `.runtime/godot`를 재사용합니다. 같은 네트워크에서 개발하려면 `./tools/Start-DevGame.ps1 -Mode lan`을 사용합니다.
 
 ### push 시 자동 배포
@@ -22,13 +28,13 @@
 
 로컬 패키지는 `./tools/Build-Release.ps1 -Version 0.3.0`으로 `.runtime/releases`에 만듭니다. 로컬 확인은 `.runtime/releases/Playroom-Installer/Install-Playroom.cmd`로 시작합니다. 상위 폴더의 manifest와 게임 ZIP을 자동으로 찾으므로 이 경우 동봉된 패키지로 설치할 수 있습니다. Godot 4.6.2를 사용하며 필요한 엔진·템플릿·cloudflared는 공식 SHA256을 확인합니다.
 
+로컬 배포 폴더의 게임 ZIP은 빌드가 성공하면 이번 빌드와 직전 빌드 두 개만 남기고 자동 정리합니다. 인스톨러 ZIP과 manifest는 유지합니다. 설치된 게임의 `versions` 폴더와 GitHub Release 이력은 이 정리 대상에 포함되지 않습니다. 정리 검증은 `powershell.exe -File tools/verify-release-retention.ps1`로 실행합니다.
+
 검증: `npm test`, `powershell.exe -File tools/verify-install.ps1`(먼저 패키지 빌드), `node tools/verify-tunnel.mjs`(인터넷 연결 및 cloudflared 필요). Windows PowerShell 5.1 스크립트는 한국어 표시를 위해 UTF-8 BOM을 사용합니다. 개인 설치 경로·상태는 설치 폴더와 `%LOCALAPPDATA%/Playroom`에 저장하고 Git에 포함하지 않습니다.
 
 ## 게임 선택 메인 (2026-10-03)
 
 PC 게임과 웹 메인이 여러 게임을 선택하는 PLAYROOM 화면으로 시작합니다. 바탕화면 게임 바로가기·개발 실행도 게임 선택 화면을 먼저 표시합니다. 4개 카드에서 게임을 고르면 오른쪽 설명과 입장 버튼이 바뀝니다. DIRT RALLY의 ‘대기실 입장’은 기존 포크레인 경기·QR 참가·팀 설정으로 연결됩니다. POCKET RACING, KITCHEN PANIC, PARTY MIX는 향후 게임을 위한 예시이며 현재 ‘준비 중’으로 표시합니다.
-
-로컬 배포 폴더의 게임 ZIP은 빌드가 성공하면 이번 빌드와 직전 빌드 두 개만 남기고 자동 정리합니다. 인스톨러 ZIP과 manifest는 유지합니다. 설치된 게임의 `versions` 폴더와 GitHub Release 이력은 이 정리 대상에 포함되지 않습니다. 정리 검증은 `powershell.exe -File tools/verify-release-retention.ps1`로 실행합니다.
 
 PC에서는 기존 실행 스크립트 또는 Godot F5로, 웹에서는 `http://localhost:3000`으로 확인하세요. 게임을 이미 실행 중이라면 다시 실행하고 웹은 새로고침하세요. 대기실의 ‘← 게임 선택’으로 목록에 복귀할 수 있습니다. 경기 중에는 이 버튼이 잠기므로 기존 ‘대기실로 돌아가기’로 경기를 마친 뒤 게임을 변경하세요. 게임 선택으로 돌아와도 서버의 참가자와 팀 설정은 유지됩니다. 웹 대기실은 `/#dirt-rally`로 바로 열 수 있습니다.
 

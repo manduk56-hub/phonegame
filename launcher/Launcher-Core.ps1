@@ -114,7 +114,7 @@ function Install-Playroom {
         Write-JobStatus $StatusPath 'installing' '게임 파일을 설치하고 있습니다.'
         $expanded = Join-Path $staging 'expanded'
         Expand-CheckedArchive -Archive $archive -Destination $expanded
-        foreach ($required in @('release.json','server.mjs','simulation.mjs','launcher/session.mjs','launcher/Start-Launcher.ps1','launcher/Launcher-Core.ps1','launcher/Launcher-Worker.ps1','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd','launcher/Start-Installer.ps1','launcher/Start-InstalledGame.ps1','launcher/Ui-Common.ps1','runtime/node.exe','runtime/cloudflared.exe','game/Playroom.exe','game/Playroom.pck','node_modules/ws/package.json','node_modules/qrcode/package.json','node_modules/three/package.json','public/controller.html')) {
+        foreach ($required in @('release.json','server.mjs','simulation.mjs','racing.mjs','game/circuit.json','game/car-shapes.json','public/race-controller.js','public/race-scene.js','public/race-sensors.js','launcher/session.mjs','launcher/Start-Launcher.ps1','launcher/Launcher-Core.ps1','launcher/Launcher-Worker.ps1','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd','launcher/Start-Installer.ps1','launcher/Start-InstalledGame.ps1','launcher/Ui-Common.ps1','runtime/node.exe','runtime/cloudflared.exe','game/Playroom.exe','game/Playroom.pck','node_modules/ws/package.json','node_modules/qrcode/package.json','node_modules/three/package.json','public/controller.html')) {
             if (-not (Test-Path -LiteralPath (Join-Path $expanded $required) -PathType Leaf)) { throw "설치파일에 필요한 파일이 없습니다: $required" }
         }
         $packageRelease=[IO.File]::ReadAllText((Join-Path $expanded 'release.json'))|ConvertFrom-Json

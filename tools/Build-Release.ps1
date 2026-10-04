@@ -35,13 +35,15 @@ if(-not $CloudflaredExe){$CloudflaredExe=Join-Path $cache 'cloudflared.exe';Get-
 $bundle=Join-Path $OutputDirectory ('build-'+[Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($bundle)|Out-Null
 try{
-    foreach($name in @('server.mjs','simulation.mjs','package.json','package-lock.json','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle}
+    foreach($name in @('server.mjs','simulation.mjs','racing.mjs','package.json','package-lock.json','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle}
     foreach($name in @('launcher','public')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle -Recurse}
     foreach($name in @('runtime','game','licenses')){[IO.Directory]::CreateDirectory((Join-Path $bundle $name))|Out-Null}
     [IO.File]::WriteAllText((Join-Path $bundle 'release.json'),(@{app='playroom';version=$Version}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath $NodeExe -Destination (Join-Path $bundle 'runtime/node.exe')
     Copy-Item -LiteralPath $CloudflaredExe -Destination (Join-Path $bundle 'runtime/cloudflared.exe')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/arena.json') -Destination (Join-Path $bundle 'game/arena.json')
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'game/circuit.json') -Destination (Join-Path $bundle 'game/circuit.json')
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'game/car-shapes.json') -Destination (Join-Path $bundle 'game/car-shapes.json')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/fonts/LICENSE.txt') -Destination (Join-Path $bundle 'licenses/Font-LICENSE.txt')
     & npm.cmd ci --prefix $bundle --omit=dev --no-audit --no-fund
     if($LASTEXITCODE -ne 0){throw 'Dependency packaging failed.'}
@@ -62,11 +64,11 @@ try{
     foreach($name in @('Start-Launcher.ps1','Start-Installer.ps1','Start-InstalledGame.ps1','Ui-Common.ps1','Launcher-Core.ps1','Launcher-Worker.ps1','playroom.ico')){Copy-Item -LiteralPath (Join-Path $projectRoot "launcher/$name") -Destination (Join-Path $launcherBundle 'launcher') -Force}
     Copy-Item -LiteralPath (Join-Path $projectRoot 'Install-Playroom.cmd') -Destination $launcherBundle -Force
     Compress-Archive -Path (Join-Path $launcherBundle '*') -DestinationPath (Join-Path $OutputDirectory 'Playroom-Installer.zip') -Force
-    Write-Host "Ready: $archive"
-}finally{
     # Only prune after the game, manifest and installer have all been produced.
     try { Remove-OldPlayroomArchives -Directory $OutputDirectory -CurrentFileName $fileName }
     catch { Write-Warning ('Release built, but old archive cleanup failed: ' + $_.Exception.Message) }
+    Write-Host "Ready: $archive"
+}finally{
     $resolvedBundle=[IO.Path]::GetFullPath($bundle)
     if($resolvedBundle.StartsWith($OutputDirectory.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase) -and (Split-Path -Leaf $resolvedBundle) -like 'build-*'){Remove-Item -LiteralPath $resolvedBundle -Recurse -Force}
 }

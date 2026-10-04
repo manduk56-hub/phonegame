@@ -1,5 +1,6 @@
 import {bindPad} from './pointer-pad.js';
 import {createCabView} from './cab-view.js';
+import {createRaceController} from './race-controller.js';
 // Keep results bundled: deployed servers may not expose a /results.js route.
 function renderResults(container,state,playerId) {
   container.hidden=state.phase!=='finished'||!state.results;
@@ -157,8 +158,9 @@ async function landscapeFullscreen(showFeedback=false){
   }
 }
 const send=m=>{if(ws?.readyState===1&&ws.bufferedAmount<4096)ws.send(JSON.stringify(m));};
+const race=createRaceController({send,fullscreen:landscapeFullscreen});
 function remember(value){try{if(value)localStorage.setItem(storageKey,JSON.stringify(value));else localStorage.removeItem(storageKey);}catch{}}
-function stop(){for(const reset of pads)reset();for(const k of Object.keys(input))input[k]=0;showParts();send({type:'input',...input});}
+function stop(){for(const reset of pads)reset();for(const k of Object.keys(input))input[k]=0;showParts();race.stop();send({type:'input',...input});}
 function connect(){clearTimeout(retry);id=null;active=false;chatConnected(false);stop();ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);ws.onopen=()=>send({type:'join',room,name:$('name').value,token:saved?.token});
 ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.type==='joined'){id=m.id;chatConnected(true);saved={token:m.token};remember(saved);$('join').classList.add('hidden');$('controller').classList.remove('hidden');$('join-button').disabled=false;return;}
 if(m.type==='chat-history'){
@@ -169,14 +171,14 @@ if(m.type==='chat'){appendChat(m.message);return;}
 if(m.type==='chat-error'){$('chat-error').textContent=m.message;$('chat-error').classList.remove('hidden');return;}
 if(m.type==='removed'){removed=true;remember(null);saved=null;$('join').classList.remove('hidden');$('controller').classList.add('hidden');$('join-error').textContent='진행자가 참가자를 제외했습니다.';return;}
 if(m.type==='error'){if(!id){removed=true;$('join').classList.remove('hidden');$('controller').classList.add('hidden');$('join-error').textContent=m.message;$('join-button').disabled=false;ws.close();}else $('message').textContent=m.message;return;}
-if(m.type==='state'){const p=m.players.find(p=>p.id===id);if(!p)return;const ceremony=m.phase==='finished'&&m.results?.winnerIds.includes(p.team);active=(m.phase==='running'||ceremony)&&m.game==='excavator';if(!active)stop();
+if(m.type==='state'){const p=m.players.find(p=>p.id===id);if(!p)return;if(m.game==='racing'){active=false;race.update(m,p);return;}race.hide();const ceremony=m.phase==='finished'&&m.results?.winnerIds.includes(p.team);active=(m.phase==='running'||ceremony)&&m.game==='excavator';if(!active)stop();
 renderResults($('results'),m,id);
 if(m.game==='excavator')cab.update(m,id);
 for(const view of document.querySelectorAll('[data-game]'))view.classList.toggle('hidden',view.dataset.game!==m.game);
 $('controller').dataset.state=active?'running':m.phase;
 $('control-status').textContent=m.game!=='excavator'?'이 게임의 컨트롤러를 준비 중입니다.':m.phase==='lobby'?'PC에서 경기를 시작하면 조작할 수 있습니다.':ceremony?'우승 세리머니! 상부·붐·암·버킷을 움직여 보세요.':m.phase==='finished'?'경기가 끝났습니다. PC에서 다음 경기를 준비하세요.':'조작 중 · 공유 화면에서 내 번호와 팀 색상을 확인하세요.';
 document.documentElement.style.setProperty('--accent',m.teams[p.team].color);$('identity').textContent=`${m.players.findIndex(q=>q.id===id)+1}번 · 팀 ${p.team+1} · ${p.name}`;$('cargo').textContent=`버킷 ${p.cargo} / 40`;$('phase').textContent=m.phase==='lobby'?'대기실':m.phase==='finished'?'경기 종료':`${Math.ceil(m.remaining)}초`;$('message').textContent=p.message?.replaceAll('흙','모래')||'모래더미 가까이 버킷을 내린 뒤 닫으세요';}};
-ws.onclose=e=>{chatConnected(false);stop();cab.offline();active=false;$('controller').dataset.state='offline';$('control-status').textContent='연결이 끊겼습니다. 재접속하는 동안 조작이 멈춥니다.';if(e.code===4001){removed=true;$('message').textContent='다른 탭에서 운전석에 접속했습니다.';}if(!removed){$('phase').textContent='재접속 중';retry=setTimeout(connect,1200);}};}
+ws.onclose=e=>{chatConnected(false);stop();race.offline();cab.offline();active=false;$('controller').dataset.state='offline';$('control-status').textContent='연결이 끊겼습니다. 재접속하는 동안 조작이 멈춥니다.';if(e.code===4001){removed=true;$('message').textContent='다른 탭에서 운전석에 접속했습니다.';}if(!removed){$('phase').textContent='재접속 중';retry=setTimeout(connect,1200);}};}
 $('join-button').onclick=()=>{void landscapeFullscreen();removed=false;$('join-error').textContent='';$('join-button').disabled=true;connect();};if(saved)connect();
 // Models face +Z: positive Y rotation turns left from the driver's seat.
 pads.push(bindPad($('left'),(x,y)=>{input.swing=-x;input.stick=-y;showParts();},{eightWay:true,enabled:canControl}));
