@@ -12,7 +12,7 @@ test('16 drivers may select the same model and receive distinct colors; reconnec
   assert.equal(new Set(players.map(p=>`${p.x},${p.z}`)).size,16);
   const p=players[0];m.disconnect(p.id);assert.equal(m.join('',p.token),p);assert.equal(p.car,'classic');
   assert.throws(()=>m.chooseCar(p.id,'unknown'));m.start();assert.throws(()=>m.chooseCar(p.id,'gt'));assert.throws(()=>m.selectGame('excavator'));
-  const snapshot=m.snapshot();assert(!snapshot.players.some(p=>p.token||p.input));assert.equal(snapshot.race.laps,3);assert.equal(snapshot.race.collisions,true);
+  const snapshot=m.snapshot();assert(!snapshot.players.some(p=>p.token||p.input));assert.equal(snapshot.race.laps,5);assert.equal(snapshot.race.collisions,true);
 });
 test('countdown blocks movement, right steering turns right, brakes and expired input decelerate',()=>{
   const m=setup(),p=m.join('driver');m.start();let now=1000;
@@ -33,13 +33,13 @@ test('car collisions separate vehicles, dampen speed and leave finite positions'
   q.x=p.x;q.z=p.z;p.speed=q.speed=10;m.input(p.id,{throttle:1},1000);m.input(q.id,{throttle:1},1000);m.tick(.05,1000);
   assert(Math.hypot(p.x-q.x,p.z-q.z)>=2.09);assert(p.speed<10);assert(Number.isFinite(q.x));
 });
-test('ordered circuit gates prevent finish-line rocking; three actual laps finish and restart resets progress',()=>{
+test('ordered circuit gates prevent finish-line rocking; five actual laps finish and restart resets progress',()=>{
   const m=setup(),p=m.join('driver');m.chooseCar(p.id,'muscle');m.configure(1,300);m.start();m.countdown=0;
   const point=CIRCUIT.points[0];p.x=point.x;p.z=point.z;
   let now=1000;for(let step=0;step<50;step++){m.input(p.id,{},now);m.tick(.05,now);now+=50;}
   assert.equal(p.lap,0);assert.equal(p.checkpoint,0);
   for(let step=0;step<6000&&m.phase==='running';step++){pilot(m,p,now);m.tick(.05,now);now+=50;}
-  assert.equal(m.phase,'finished');assert.equal(p.lap,3);assert(p.finishedAt>CIRCUIT.length*3/42&&p.finishedAt<300);assert.deepEqual(m.results.winnerIds,[p.id]);assert.equal(m.results.players[0].rank,1);
+  assert.equal(m.phase,'finished');assert.equal(p.lap,5);assert(p.finishedAt>CIRCUIT.length*m.raceLaps/60&&p.finishedAt<300);assert.deepEqual(m.results.winnerIds,[p.id]);assert.equal(m.results.players[0].rank,1);
   m.lobby();assert.equal(p.lap,0);assert.equal(p.car,'muscle');assert.equal(p.finishedAt,null);
 });
 test('temporary disconnection does not finish a race and returning identity preserves progress',()=>{
@@ -69,12 +69,29 @@ test('engine builds acceleration progressively and braking slows more strongly t
   coast.step({},10);brake.step({brake:1},10);assert(coast.p.speed<20&&coast.p.speed>15);assert(brake.p.speed<coast.p.speed-8);
 });
 test('brake stops before delayed reverse; accelerator stops reverse before forward; both pedals prioritize stopping',()=>{
-  const s=straightDrive();s.p.speed=2;s.step({brake:1},2);assert.equal(s.p.speed,0);
+  const s=straightDrive();s.p.speed=2;s.step({brake:1});assert.equal(s.p.speed,0);
   s.step({brake:1},6);assert.equal(s.p.speed,0);s.step({brake:1},2);assert(s.p.speed<0);
   const z=s.p.z;s.step({brake:1},60);assert(s.p.z<z);assert(s.p.speed>=-8&&s.p.speed<-5);
   s.step({brake:1,throttle:1},10);assert.equal(s.p.speed,0);
   s.step({brake:1},10);assert(s.p.speed<0);s.step({throttle:1},30);assert(s.p.speed>0);
   s.p.speed=-5;s.m.disconnect(s.p.id);s.step({},20);assert.equal(s.p.speed,0);
+});
+
+test('full throttle reaches highway speed quickly, pulls through high speed and brakes from the new top speed',()=>{
+  const s=straightDrive();
+  s.step({throttle:1},60);assert(s.p.speed*3.6>200,'compact straights should allow 200 km/h within three seconds');
+  s.step({throttle:1},60);assert(s.p.speed*3.6>280,'high-speed acceleration should reach 280 km/h within six seconds');
+  s.step({throttle:1},40);assert(s.p.speed>89&&s.p.speed<=90,'full throttle should approach the 324 km/h cap');
+  s.step({brake:1},40);assert.equal(s.p.speed,0,'full braking stops the car within two seconds');
+});
+
+test('high-speed steering stays responsive with less curvature than low-speed cornering',()=>{
+  const low=straightDrive(),high=straightDrive();low.p.speed=30;high.p.speed=80;
+  low.step({steer:.4,throttle:1});high.step({steer:.4,throttle:1});
+  assert(low.p.yaw<0&&high.p.yaw<0,'right tilt must turn right at both speeds');
+  const lowCurve=Math.abs(low.p.yaw)/Math.hypot(low.p.x,low.p.z-100);
+  const highCurve=Math.abs(high.p.yaw)/Math.hypot(high.p.x,high.p.z-100);
+  assert(highCurve<lowCurve*.85,'high speed should soften small steering corrections');
 });
 test('wall scraping continuously dissipates speed and reverse escapes a head-on wall',()=>{
   const scrape=straightDrive(),free=straightDrive();scrape.p.x=7.96;scrape.p.speed=free.p.speed=20;
@@ -89,17 +106,17 @@ test('both landscape orientations yield consistent screen-right roll; flat or in
   assert(Math.abs(screenTilt(-20,90,90)+20)<1e-8);assert.equal(screenTilt(0,0,90),null);assert.equal(screenTilt(null,90,90),null);
 });
 
-test('every large circuit supports sixteen separated grid slots, full laps and selected-track reset',()=>{
+test('every compact circuit supports sixteen separated grid slots, five laps and selected-track reset',()=>{
   const m=setup();const players=Array.from({length:16},(_,i)=>m.join('driver'+i));
   assert.throws(()=>m.selectTrack('unknown'));
   for(const circuit of CIRCUITS){
-    m.selectTrack(circuit.id);assert.equal(m.snapshot().circuit.id,circuit.id);assert(circuit.length>1000);
+    m.selectTrack(circuit.id);assert.equal(m.snapshot().circuit.id,circuit.id);assert(circuit.length>=650&&circuit.length<=900);assert.equal(circuit.width,12);assert.equal(m.raceLaps,5);
     for(const p of players){assert(nearestTrack(p.x,p.z,circuit).distance<circuit.width/2);assert.equal(p.lap,0);}
     for(let i=0;i<players.length;i++)for(let j=i+1;j<players.length;j++)assert(Math.hypot(players[i].x-players[j].x,players[i].z-players[j].z)>2.1);
     const p=players[0];for(const q of players.slice(1))m.remove(q.id);
     m.configure(1,900);m.start();m.countdown=0;assert.throws(()=>m.selectTrack(CIRCUITS[0].id));
     let now=1000;for(let step=0;step<18000&&m.phase==='running';step++){pilot(m,p,now);m.tick(.05,now);now+=50;}
-    assert.equal(p.lap,3,circuit.id+' lap completion');assert(p.finishedAt>circuit.length*3/42);assert.equal(m.results.players[0].time,p.finishedAt);
+    assert.equal(p.lap,5,circuit.id+' lap completion');assert(p.finishedAt>circuit.length*m.raceLaps/60);assert.equal(m.results.players[0].time,p.finishedAt);
     m.lobby();assert.equal(m.circuit.id,circuit.id);assert.equal(p.checkpoint,0);
     players.splice(1);while(players.length<16)players.push(m.join('driver'+players.length));
   }

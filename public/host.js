@@ -11,8 +11,8 @@ const hub=document.createElement('main');
 hub.className='game-hub';
 const catalog=[
   {title:'플레이룸',subtitle:'모래 쟁탈전 · 폭포 물길 경주',type:'팀 대결',description:'휴대폰을 운전석으로! 포크레인을 조작해 우리 팀 구역에 가장 많은 모래를 모으세요.',meta:'2–16명 · 1–10분 · 휴대폰 컨트롤러',ready:true},
-  {title:'POCKET RACING',subtitle:'작은 차, 커다란 승부',type:'레이싱',description:'가로로 든 폰을 기울여 핸들을 돌리고 실제 페달 모양의 버튼을 밟으세요. 여섯 스포츠카로 3바퀴를 먼저 완주하세요.',meta:'1–16명 · 3바퀴 · 차량 충돌 · 동일 성능',ready:true},
-  {title:'FLAG STRIKE',subtitle:'조준하고, 탈환하고, 귀환하라',type:'FPS',description:'PC 화면을 보며 휴대폰 이동 패드로 이동과 조준을 함께 하세요. 벽 뒤의 상대는 맞지 않습니다. 중앙 깃발을 우리 진영으로 가져오면 1점, 사망하면 2초 후 그 자리에서 부활합니다.',meta:'2–16명 · 2–8팀 · 깃발 쟁탈전',ready:true},
+  {title:'POCKET RACING',subtitle:'작은 차, 커다란 승부',type:'레이싱',description:'가로로 든 폰을 기울여 핸들을 돌리고 실제 페달 모양의 버튼을 밟으세요. 여섯 스포츠카로 5바퀴를 먼저 완주하세요.',meta:'1–16명 · 5바퀴 · 차량 충돌 · 동일 성능',ready:true},
+  {title:'FLAG STRIKE',subtitle:'조준하고, 탈환하고, 귀환하라',type:'FPS',description:'PC 화면 기준 방향키로 이동하고, 폰의 1인칭 십자가에 상대를 맞추세요. 벽 뒤의 상대는 맞지 않습니다. 중앙 깃발을 우리 진영으로 가져오면 1점, 사망하면 2초 후 그 자리에서 부활합니다.',meta:'2–16명 · 2–8팀 · 깃발 쟁탈전',ready:true},
   {title:'PARTY MIX',subtitle:'다 같이 즐기는 미니게임',type:'파티',description:'짧고 신나는 미니게임으로 한판 더! 새로운 파티 게임을 준비하고 있어요.'}
 ];
 const illustrations=[
@@ -123,7 +123,7 @@ function render(m){
   renderTrackPicker(m);
   const racing=m.game==='racing';raceCanvas.hidden=!racing;raceSummary.hidden=!racing;
   lobby.classList.toggle('racing-lobby',racing);
-  if(racing){if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · 3바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
+  if(racing){if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · ${m.race.laps}바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
     $('results').hidden=true;
   }
   currentPhase=m.phase;

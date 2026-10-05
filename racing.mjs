@@ -44,10 +44,10 @@ const slowTowardsStop=(speed,amount)=>Math.abs(speed)<=amount?0:Math.sign(speed)
 function driveSpeed(p,input,live,dt){
   const throttle=live?input.throttle:0,brake=live?input.brake:0;
   // Engine response builds progressively; braking always takes priority.
-  p.driveThrottle+=(throttle-p.driveThrottle)*Math.min(1,dt*4);
+  p.driveThrottle+=(throttle-p.driveThrottle)*Math.min(1,dt*10);
   if(!live){p.reverseHold=0;p.speed=slowTowardsStop(p.speed,26*dt);return;}
   if(brake>0){
-    if(p.speed>0||throttle>0){p.speed=slowTowardsStop(p.speed,24*brake*dt);p.reverseHold=0;}
+    if(p.speed>0||throttle>0){p.speed=slowTowardsStop(p.speed,48*brake*dt);p.reverseHold=0;}
     else{
       p.reverseHold+=dt;
       if(p.speed<0||p.reverseHold>=.35)p.speed=Math.max(-8,p.speed-7.5*brake*dt);
@@ -56,11 +56,11 @@ function driveSpeed(p,input,live,dt){
     p.reverseHold=0;
     if(throttle>0){
       if(p.speed<0)p.speed=slowTowardsStop(p.speed,18*throttle*dt);
-      else p.speed=Math.min(42,p.speed+11.5*p.driveThrottle/(1+p.speed/26)*dt);
+      else p.speed=Math.min(90,p.speed+30*p.driveThrottle/(1+p.speed/90)*dt);
     }
   }
   // Rolling resistance, engine braking on lift-off and increasing air drag.
-  const resistance=.65+Math.abs(p.speed)*.035+p.speed*p.speed*.002+(throttle===0&&brake===0?1.6:0);
+  const resistance=.65+Math.abs(p.speed)*.025+p.speed*p.speed*.0005+(throttle===0&&brake===0?1.6:0);
   p.speed=slowTowardsStop(p.speed,resistance*dt);
 }
 export function raceTick(match,dt,now){
@@ -75,7 +75,9 @@ export function raceTick(match,dt,now){
     p.steer+=(i.steer-p.steer)*Math.min(1,dt*9);
     driveSpeed(p,i,live,dt);
     // +Z forward; screen-right steering must decrease the world Y angle.
-    p.yaw-=Math.tan(p.steer*.48)*p.speed/3.4*dt;
+    // Keep tight low-speed corners, but soften tilt sensitivity above 126 km/h.
+    const steeringAngle=.48/(1+Math.max(0,p.speed-35)/110);
+    p.yaw-=Math.tan(p.steer*steeringAngle)*p.speed/3.4*dt;
     p.x+=Math.sin(p.yaw)*p.speed*dt;p.z+=Math.cos(p.yaw)*p.speed*dt;
     let track=nearestTrack(p.x,p.z,circuit);p.offroad=track.distance>circuit.width/2;
     if(p.offroad)p.speed=slowTowardsStop(p.speed,4*dt);

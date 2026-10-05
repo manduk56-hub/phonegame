@@ -69,7 +69,7 @@ export function createRaceController({send,fullscreen}){
         button.append(art,title,info);button.onclick=()=>send({type:'car',car:car.id});$('race-car-list').append(button);
       }
       for(const button of $('race-car-list').children){button.setAttribute('aria-pressed',String(button.dataset.car===p.car));button.style.setProperty('--car-color',p.color);if(button.dataset.color!==p.color){renderCarPreview(button.querySelector('canvas'),button.dataset.car,p.color);button.dataset.color=p.color;}}
-      $('race-garage-status').textContent=`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · 내 색상 ${m.players.findIndex(q=>q.id===p.id)+1}번 · 3바퀴 · 충돌 사용 · PC에서 시작을 기다리는 중`;$('race-garage-status').style.color=p.color;
+      $('race-garage-status').textContent=`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · 내 색상 ${m.players.findIndex(q=>q.id===p.id)+1}번 · ${m.race.laps}바퀴 · 충돌 사용 · PC에서 시작을 기다리는 중`;$('race-garage-status').style.color=p.color;
     }
     if(m.phase==='finished'){
       const results=$('race-finish');results.replaceChildren();const heading=document.createElement('h1');heading.textContent='체커기!';results.append(heading);

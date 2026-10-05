@@ -48,7 +48,7 @@ export function createRaceScene(canvas,{overview=false,viewMode='first'}={}){
   const sun=new THREE.DirectionalLight('#fff1d0',2.4);sun.position.set(-150,300,100);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-260;sun.shadow.camera.right=260;sun.shadow.camera.top=220;sun.shadow.camera.bottom=-220;sun.shadow.camera.far=850;scene.add(sun);
   const camera=overview?new THREE.OrthographicCamera(-300,300,220,-220,.1,1500):new THREE.PerspectiveCamera(78,1,.1,650);
   sun.shadow.bias=-.0005;sun.shadow.normalBias=.08;
-  const world=new THREE.Group();scene.add(world);const cars=new Map();let latest,id,built=false,lastTime=performance.now(),frame,disposed=false;
+  const world=new THREE.Group();scene.add(world);const cars=new Map();let latest,id,built=false,lastTime=performance.now(),frame,disposed=false,speedView=0;
   function build(track){
     for(const prop of circuits.find(t=>t.id===track.id).scenery){const mesh=box(world,...prop.size,...prop.pos,prop.color);mesh.rotation.y=prop.yaw;}
     const points=track.points;
@@ -77,7 +77,7 @@ export function createRaceScene(canvas,{overview=false,viewMode='first'}={}){
   }
   function update(state,playerId){latest=state;id=playerId;if(built!==state.circuit.id){for(const mesh of [...world.children]){mesh.geometry?.dispose();world.remove(mesh);}build(state.circuit);for(const car of cars.values()){const p=state.players.find(p=>p.id===car.userData.target.id);if(p){car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;}}}
     for(const p of state.players){let car=cars.get(p.id);const signature=p.car+p.color;
-      if(car?.userData.signature!==signature){if(car){scene.remove(car);car.traverse(n=>n.geometry?.dispose());}car=makeCar(p.car,p.color);car.userData.signature=signature;car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;cars.set(p.id,car);scene.add(car);}
+      if(car?.userData.signature!==signature){if(car){scene.remove(car);car.traverse(n=>n.geometry?.dispose());}car=makeCar(p.car,p.color);if(overview)car.scale.setScalar(1.3);car.userData.signature=signature;car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;cars.set(p.id,car);scene.add(car);}
       car.userData.target=p;car.visible=overview||viewMode==='third'||p.id!==id;
     }
     for(const [key,car]of cars)if(!state.players.some(p=>p.id===key)){scene.remove(car);car.traverse(n=>n.geometry?.dispose());cars.delete(key);}
@@ -88,11 +88,15 @@ export function createRaceScene(canvas,{overview=false,viewMode='first'}={}){
     for(const car of cars.values()){const p=car.userData.target;car.position.lerp(new THREE.Vector3(p.x,0,p.z),Math.min(1,dt*16));car.rotation.y+=Math.atan2(Math.sin(p.yaw-car.rotation.y),Math.cos(p.yaw-car.rotation.y))*Math.min(1,dt*16);}
     if(overview){const bounds=latest.circuit.bounds,cx=(bounds.minX+bounds.maxX)/2,cz=(bounds.minZ+bounds.maxZ)/2,halfW=Math.max((bounds.maxX-bounds.minX)*.51,(bounds.maxZ-bounds.minZ)*.49*w/h),halfH=halfW*h/w;camera.left=-halfW;camera.right=halfW;camera.top=halfH;camera.bottom=-halfH;camera.position.set(cx,600,cz+170);camera.lookAt(cx,0,cz);}
     else{camera.aspect=w/h;const car=cars.get(id);if(!car)return;const yaw=car.rotation.y,forwardX=Math.sin(yaw),forwardZ=Math.cos(yaw);
+      const speed=latest.phase==='running'?Math.max(0,car.userData.target.speed):0;
+      const targetView=THREE.MathUtils.smoothstep(speed,5,70);
+      speedView+=(targetView-speedView)*(1-Math.exp(-dt*5));
       if(viewMode==='third'){
-        camera.fov=68;camera.position.set(car.position.x-forwardX*6,2.8,car.position.z-forwardZ*6);
+        const distance=6+speedView*1.2;
+        camera.fov=68+speedView*24;camera.position.set(car.position.x-forwardX*distance,2.8-speedView*.45,car.position.z-forwardZ*distance);
         camera.lookAt(car.position.x+forwardX*5,.8,car.position.z+forwardZ*5);
       }else{
-        camera.fov=78;camera.position.set(car.position.x+forwardX*.2,1.35,car.position.z+forwardZ*.2);
+        camera.fov=78+speedView*24;camera.position.set(car.position.x+forwardX*.2,1.35,car.position.z+forwardZ*.2);
         camera.lookAt(camera.position.x+forwardX*20,1.15,camera.position.z+forwardZ*20);
       }
     }

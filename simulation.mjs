@@ -13,7 +13,7 @@ export class Match {
     this.circuit=CIRCUITS[0];
     this.players = new Map(); this.teamCount = 4; this.duration = 180;
     this.phase = 'lobby'; this.remaining = this.duration; this.central = 4000;
-    this.teams = []; this.game = 'excavator'; this.results = null; this.raceLaps=3;this.raceCollisions=true;this.countdown=0;this.raceElapsed=0;this.resetTeams();
+    this.teams = []; this.game = 'excavator'; this.results = null; this.raceLaps=this.circuit.laps;this.raceCollisions=true;this.countdown=0;this.raceElapsed=0;this.resetTeams();
   }
   resetTeams() {
     this.groundPiles = []; this.nextPileId = 0;
@@ -67,7 +67,7 @@ export class Match {
     if(this.game!=='racing'||this.phase!=='lobby')throw Error('트랙은 레이싱 대기실에서 선택하세요.');
     const circuit=CIRCUITS.find(t=>t.id===id);
     if(!circuit)throw Error('올바른 트랙을 선택하세요.');
-    this.circuit=circuit;this.results=null;this.raceElapsed=0;this.countdown=0;
+    this.circuit=circuit;this.raceLaps=circuit.laps;this.results=null;this.raceElapsed=0;this.countdown=0;
     for(const p of this.players.values())this.spawn(p);
   }
   disconnect(id) { const p=this.players.get(id); if(p) {p.connected=false;p.input=this.neutral();dropFlag(this,p);} }

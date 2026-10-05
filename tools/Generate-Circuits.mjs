@@ -41,8 +41,11 @@ function scenery(track){
   // Visible stepped seating surrounds the arena. Roofs are deliberately omitted
   // so the PC overview shows seats and the crowd rather than flat dark boxes.
   const crowd=['#ead6b0','#e88773','#89b6d3','#efc65f','#9baee0','#e9ece0'];
-  function stand(cx,cz,length,yaw,seed){
+  function stand(cx,cz,length,yaw,seed,checkClearance=false){
     const local=(x,y,z)=>[cx+x*Math.cos(yaw)+z*Math.sin(yaw),y,cz-x*Math.sin(yaw)+z*Math.cos(yaw)];
+    if(checkClearance)for(let x=-length/2-1;x<=length/2+1;x+=2)for(let z=-2;z<=12;z+=2){
+      const p=local(x,0,z);if(near(p[0],p[2])<track.width/2+3)return;
+    }
     add([length+2,.5,12],local(0,.25,4),'#c5ccc6',yaw);
     for(let row=0;row<5;row++){
       add([length,1.1,2.2],local(0,.8+row*.9,row*2.2),'#aeb8ba',yaw);
@@ -71,7 +74,7 @@ function scenery(track){
     stand(maxX+21,zp,(maxZ-minZ)/2-7,Math.PI/2,i+1);
   }
   // An infield stand faces the starting grid, without covering the crowd.
-  stand(-10,z+20,95,0,2);
+  stand(25,z+20,60,0,2,true);
   // Flat pit apron and numbered stalls retain racing detail without buildings.
   add([180,.12,7],[-10,.015,z-15],'#525e65');
   add([172,.65,.4],[-10,.4,z-10],'#e8e8de');
@@ -96,7 +99,13 @@ function scenery(track){
   track.bounds={minX:minX-16,maxX:maxX+16,minZ:minZ-16,maxZ:maxZ+16};
   return boxes;
 }
-const tracks=definitions.map(d=>{const s=sample(d);return {...d,...s,width:12,bounds:{minX:-305,maxX:305,minZ:-245,maxZ:245}};});
+// Keep the racing surface and grid spacing full size while packing each layout
+// into a smaller stadium. Five compact laps retain the former race distance.
+const layoutScale=.62;
+const tracks=definitions.map(original=>{
+  const d={...original,anchors:original.anchors.map(p=>p.map(v=>v*layoutScale)),radius:original.radius*layoutScale};
+  const s=sample(d);return {...d,...s,width:12,laps:5};
+});
 for(const track of tracks)track.scenery=scenery(track);
 writeFileSync(new URL('../game/circuits.json',import.meta.url),JSON.stringify(tracks));
 const {scenery:_,...defaultTrack}=tracks[0];

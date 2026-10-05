@@ -241,11 +241,12 @@ func make_car(p: Dictionary, index: int) -> Dictionary:
 	var shape: Dictionary = car_shapes[kind]
 	build_car_geometry(root,shape,paint)
 	merge_parts(root,shape.get("style","") == "brick")
+	root.scale = Vector3.ONE*1.3
 	var marker := Label3D.new()
 	marker.text = str(index+1)
 	marker.font = FONT
-	marker.font_size = 32
-	marker.pixel_size = .04
+	marker.font_size = 56
+	marker.pixel_size = .045
 	marker.modulate = paint
 	marker.position.y = 2.8
 	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -275,7 +276,7 @@ func build_ui() -> void:
 	score_panel.offset_right = -20
 	score_panel.offset_top = 70
 	ui.add_child(score_panel)
-	ranking = text_label("3바퀴 · 차량 충돌 사용",18)
+	ranking = text_label("%d바퀴 · 차량 충돌 사용" % int(circuit.laps),18)
 	score_panel.add_child(ranking)
 	lobby = PanelContainer.new()
 	lobby.position = Vector2(55,150)
@@ -319,7 +320,7 @@ func build_ui() -> void:
 	time_input.value = 300
 	row.add_child(time_input)
 	start_button = Button.new()
-	start_button.text = "▶ 3바퀴 레이스 시작"
+	start_button.text = "▶ %d바퀴 레이스 시작" % int(circuit.laps)
 	start_button.pressed.connect(func():
 		time_input.apply()
 		send_admin({"type":"configure","teams":1,"duration":time_input.value})
@@ -417,12 +418,14 @@ func accept_state(message: Dictionary) -> void:
 	roster.text = "접속 %d / 16명\n" % connected.size()
 	for p in state.players:
 		roster.text += "%s%s  " % [p.name," (오프라인)" if not p.connected else ""]
-	status.text = "POCKET RACING / %s" % ("대기실 · 3바퀴" if state.phase == "lobby" else ("체커기! 경기 종료" if state.phase == "finished" else ("출발 %d" % ceili(state.race.countdown) if state.race.countdown > 0 else "%d초 · 3바퀴" % ceili(state.remaining))))
+	var laps := int(state.race.laps)
+	start_button.text = "▶ %d바퀴 레이스 시작" % laps
+	status.text = "POCKET RACING / %s" % ("대기실 · %d바퀴" % laps if state.phase == "lobby" else ("체커기! 경기 종료" if state.phase == "finished" else ("출발 %d" % ceili(state.race.countdown) if state.race.countdown > 0 else "%d초 · %d바퀴" % [ceili(state.remaining),laps])))
 	var players: Array = state.players.duplicate()
 	players.sort_custom(func(a,b):return a.rank < b.rank)
-	ranking.text = "%s\n%.2f km · 3바퀴\n\n" % [circuit.name,float(circuit.length)/1000.0]
+	ranking.text = "%s\n%.2f km · %d바퀴\n\n" % [circuit.name,float(circuit.length)/1000.0,laps]
 	for p in players:
-		ranking.text += "%02d · %s · %d/3%s\n" % [int(p.rank),p.name,mini(3,int(p.lap)+1)," ✓" if p.finishedAt != null else ""]
+		ranking.text += "%02d · %s · %d/%d%s\n" % [int(p.rank),p.name,mini(laps,int(p.lap)+1),laps," ✓" if p.finishedAt != null else ""]
 	if state.phase == "finished":
 		ranking.text = "최종 순위 / 체커기\n\n"
 		for p in state.results.players:
@@ -474,7 +477,7 @@ func _process(delta: float) -> void:
 	camera.size = maxf((float(bounds.maxZ)-float(bounds.minZ))*.97+12,(float(bounds.maxX)-float(bounds.minX))/available_aspect)
 	camera.position = center+Vector3(0,600,170)
 	camera.look_at(center)
-	camera.h_offset = -55 if in_lobby else 32
+	camera.h_offset = camera.size*(-.14 if in_lobby else .08)
 	if "--race-capture" in OS.get_cmdline_user_args() and elapsed>4 and not captured:
 		captured = true
 		capture.call_deferred()
