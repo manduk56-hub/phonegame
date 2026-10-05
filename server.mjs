@@ -16,7 +16,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   const chatHistory=[],chatSentAt=new Map();
   let chatSequence=0;
   const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/results.js':'results.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js','/water-view.js':'water-view.js','/water-surface.js':'water-surface.js','/bucket-shape.js':'bucket-shape.js'};
-  Object.assign(files,{'/race-scene.js':'race-scene.js','/race-controller.js':'race-controller.js','/race-sensors.js':'race-sensors.js','/race.css':'race.css','/fps-scene.js':'fps-scene.js','/fps-controller.js':'fps-controller.js','/fps.css':'fps.css'});
+  Object.assign(files,{'/race-scene.js':'race-scene.js','/race-controller.js':'race-controller.js','/race-sensors.js':'race-sensors.js','/race.css':'race.css','/fps-scene.js':'fps-scene.js','/fps-controller.js':'fps-controller.js','/fps.css':'fps.css','/fps-controls.js':'fps-controls.js'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{
@@ -32,6 +32,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
       if(/^\/assets\/(racing-models|race-(wedge|classic|tourer|muscle|exotic|gt))\.png$/.test(url.pathname)){
         res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public'+url.pathname,import.meta.url)));return;
       }
+      if(url.pathname==='/assets/fps-reference.png'){res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public/assets/fps-reference.png',import.meta.url)));return;}
       if(url.pathname==='/assets/dirt-rally-card.png') {
         res.setHeader('Content-Type','image/png');
         res.end(await readFile(new URL('./public/assets/dirt-rally-card.png',import.meta.url)));return;

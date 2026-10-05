@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {Match} from '../simulation.mjs';
 import {fpsBlocked} from '../fps.mjs';
 function setup(){const m=new Match();m.selectGame('fps');m.configure(2,30);const a=m.join('A'),b=m.join('B');m.start();Object.assign(a,{x:0,z:5,yaw:Math.PI});Object.assign(b,{x:0,z:-5});return {m,a,b};}
-test('center ray hits nearest enemy, misses off-center, pitch is respected, and fire is rate limited',()=>{
+test('shots follow character facing, ignore aim overrides, stay horizontal, and are rate limited',()=>{
   const {m,a,b}=setup();m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);
-  m.tick(.25);m.fire(a.id,{yaw:Math.PI+.2,pitch:0});assert.equal(b.hp,66);
-  m.tick(.25);m.fire(a.id,{yaw:Math.PI,pitch:.7});assert.equal(b.hp,66);
+  m.tick(.25);a.yaw=Math.PI+.2;m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);
+  m.tick(.25);a.yaw=Math.PI;a.pitch=.7;m.fire(a.id,{yaw:0,pitch:.7});assert.equal(b.hp,32);
+  assert.equal(a.pitch,0);assert(m.fps.shots.every(s=>s.y===s.ey));
   const c=m.players.get(b.id);assert.equal(c.deaths,0);
 });
 test('walls and teammates stop bullets; nearest player shields a player behind them',()=>{

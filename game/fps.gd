@@ -17,6 +17,9 @@ var connection_signature := ""
 var camera: Camera3D
 var status: Label
 var ranking: Label
+var score_strip: HBoxContainer
+var score_panels: Dictionary = {}
+var match_clock: Label
 var roster: VBoxContainer
 var join_label: Label
 var qr: TextureRect
@@ -60,7 +63,7 @@ func _ready() -> void:
 	var env := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color("#adb9bc")
+	environment.background_color = Color("#91cafa")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("#e6f6ff")
 	environment.ambient_light_energy = .4
@@ -79,7 +82,7 @@ func _ready() -> void:
 	add_child(camera)
 	camera.look_at(Vector3.ZERO)
 	prepare_art()
-	var floor_mesh := block(self,Vector3(66,.2,66),Vector3(0,-.1,0),Color("#827e63"))
+	var floor_mesh := block(self,Vector3(66,.2,66),Vector3(0,-.1,0),Color("#efd09a"))
 	var floor_material: StandardMaterial3D = art_materials.ground.duplicate()
 	floor_material.uv1_scale = Vector3(22,22,1)
 	floor_mesh.material_override = floor_material
@@ -113,6 +116,18 @@ func build_ui() -> void:
 	ranking = text_label("중앙 깃발 → 우리 진영 · 사망 2초 뒤 제자리 부활",18)
 	ranking.position = Vector2(24,62)
 	ui.add_child(ranking)
+	score_strip = HBoxContainer.new()
+	score_strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	score_strip.position = Vector2(470,20)
+	score_strip.add_theme_constant_override("separation",8)
+	ui.add_child(score_strip)
+	match_clock = text_label("03:00",32)
+	var clock_style := StyleBoxFlat.new()
+	clock_style.bg_color = Color("#303442")
+	clock_style.border_color = Color("#202635")
+	clock_style.set_border_width_all(3)
+	clock_style.set_content_margin_all(12)
+	match_clock.add_theme_stylebox_override("normal",clock_style)
 	lobby = PanelContainer.new()
 	lobby.position = Vector2(35,145)
 	lobby.custom_minimum_size = Vector2(420,560)
@@ -120,7 +135,7 @@ func build_ui() -> void:
 	var layout := VBoxContainer.new()
 	lobby.add_child(layout)
 	layout.add_child(text_label("깃발 쟁탈전 / 대기실",28))
-	layout.add_child(text_label("왼손 이동 · 오른손 드래그 조준 · 발사",18))
+	layout.add_child(text_label("이동 방향으로 조준 · 발사 버튼으로 사격",18))
 	qr = TextureRect.new()
 	qr.custom_minimum_size = Vector2(130,130)
 	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -186,6 +201,8 @@ func accept_state(message: Dictionary) -> void:
 			node.queue_free()
 		for team in message.teams:
 			block(bases,Vector3(5,.12,5),Vector3(team.x,.06,team.z),Color(team.color))
+			block(bases,Vector3(.12,5,.12),Vector3(team.x-2,2.5,team.z),Color("#79522f"))
+			block(bases,Vector3(1.9,1.1,.1),Vector3(team.x-1,4.2,team.z),Color(team.color))
 			var marker := Label3D.new()
 			marker.pixel_size = .035
 			marker.text = "팀 %d 진영" % (int(team.id)+1)
@@ -208,6 +225,7 @@ func accept_state(message: Dictionary) -> void:
 			rifle.scale = Vector3.ONE*.6
 			rifle.position = Vector3(.03,1.09,.21)
 			root.add_child(rifle)
+			bright_block(root,Vector3(.07,.025,2.6),Vector3(0,.12,1.9),Color(message.teams[p.team].color))
 			var marker := Label3D.new()
 			marker.font = FONT
 			marker.pixel_size = .035
@@ -248,6 +266,34 @@ func accept_state(message: Dictionary) -> void:
 	for team in message.teams:
 		scores.append("팀 %d : %d점" % [int(team.id)+1,team.captures])
 	ranking.text = "  /  ".join(scores)
+	if score_panels.size() != message.teams.size():
+		for child in score_strip.get_children():
+			score_strip.remove_child(child)
+			if child != match_clock:
+				child.queue_free()
+		score_panels.clear()
+		for team in message.teams:
+			var panel := PanelContainer.new()
+			var style := StyleBoxFlat.new()
+			style.bg_color = Color(team.color)
+			style.border_color = Color("#202635")
+			style.set_border_width_all(3)
+			style.set_content_margin_all(12)
+			panel.add_theme_stylebox_override("panel",style)
+			var score := text_label("",26)
+			panel.add_child(score)
+			if int(team.id) == int(ceil(message.teams.size()/2.0)):
+				score_strip.add_child(match_clock)
+			score_strip.add_child(panel)
+			score_panels[team.id] = score
+	for team in message.teams:
+		score_panels[team.id].text = "⚑ %d  %d" % [int(team.id)+1,team.captures]
+	var seconds := int(ceil(message.remaining))
+	match_clock.text = "%02d:%02d" % [seconds/60,seconds%60]
+	score_strip.position.x = (get_viewport().get_visible_rect().size.x-score_strip.size.x)/2
+	score_strip.visible = message.phase == "running"
+	status.visible = message.phase != "running"
+	ranking.visible = message.phase != "running"
 	if message.phase == "finished":
 		var winners := PackedStringArray()
 		for id in message.results.winnerIds:
@@ -360,7 +406,7 @@ func prepare_art() -> void:
 		material.albedo_texture = ImageTexture.create_from_image(image)
 		material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		material.roughness = 1
-		material.albedo_color = Color(.78,.78,.78)
+		material.albedo_color = Color(.9,.9,.9)
 		material.next_pass = outline
 		art_materials[key] = material
 

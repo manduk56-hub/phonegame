@@ -3,8 +3,14 @@ extends Control
 var kind := 0
 var excavator_texture: Texture2D
 var racing_texture: Texture2D
+var fps_texture: Texture2D
 
 func _draw() -> void:
+	if kind == 2 and fps_texture != null:
+		var image_size := fps_texture.get_size()
+		var ratio := maxf(size.x/image_size.x,size.y/image_size.y)
+		draw_texture_rect(fps_texture,Rect2((size-image_size*ratio)/2,image_size*ratio),false)
+		return
 	if kind == 1 and racing_texture != null:
 		var image_size := Vector2(1920,840)
 		var ratio := minf(size.x/image_size.x,size.y/image_size.y)
@@ -72,5 +78,6 @@ func track_style() -> StyleBoxFlat:
 func _ready() -> void:
 	clip_contents = true
 	excavator_texture = load("res://assets/dirt-rally-card.png")
+	fps_texture = load("res://assets/fps-reference.png")
 	racing_texture = load("res://assets/racing-models.png")
 	resized.connect(queue_redraw)
