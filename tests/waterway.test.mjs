@@ -6,7 +6,7 @@ import {createServer} from '../server.mjs';
 import {EXCAVATOR_MAPS,waterHeight} from '../waterway.mjs';
 import {decodeSurface,groundGeometry,waterGeometry} from '../public/water-surface.js';
 
-function match(count=2){const m=new Match();m.configure(count,60);m.selectExcavatorMap('waterfall');const players=Array.from({length:count},(_,i)=>m.join('굴착 '+i));m.start();return {m,a:players[0],b:players[1]};}
+function match(count=2,map='waterfall'){const m=new Match();m.configure(count,60);m.selectExcavatorMap(map);const players=Array.from({length:count},(_,i)=>m.join('굴착 '+i));m.start();return {m,a:players[0],b:players[1]};}
 function aim(m,p,x,z,height=.02,heading=0){
   p.y=0;p.yaw=heading;p.turret=0;p.stick=-1.4;p.curl=-.7;p.x=0;p.z=0;
   let low=-.25,high=1.35;for(let i=0;i<40;i++){p.boom=(low+high)/2;if(m.bucket(p).height<height)low=p.boom;else high=p.boom;}
@@ -109,5 +109,24 @@ test('waterfall lanes run parallel from the same map edge to the opposite edge',
   const {m}=match(count);const w=m.water;assert(w.start<0&&w.start+(w.rows-1)*w.size>0);
   for(const lane of w.lanes){assert.equal(lane.angle,0);assert.equal(lane.z,0);assert.equal(waterHeight(m,{x:lane.x,z:w.start+.4})<0,true);assert(Math.abs(waterHeight(m,{x:lane.x,z:w.start+10}))<.00001);}
   for(let i=1;i<count;i++)assert(Math.abs(w.lanes[i].x-w.lanes[i-1].x-7.8)<.00001);
+ }
+});
+
+test('tracks in every excavator map drive along the chassis heading, independent of upper rotation',()=>{
+ for(const map of EXCAVATOR_MAPS)for(const yaw of [0,Math.PI/2,Math.PI,-Math.PI/2])for(const turret of [0,Math.PI/2,Math.PI])for(const direction of [-1,1]){
+  const {m,a}=match(1,map.id);a.x=0;a.z=0;a.yaw=yaw;a.turret=turret;
+  m.input(a.id,{travelL:direction,travelR:direction},1000);m.tick(.1,1000);
+  const forward=a.x*Math.sin(yaw)+a.z*Math.cos(yaw),side=a.x*Math.cos(yaw)-a.z*Math.sin(yaw);
+  assert(forward*direction>0,'both tracks must travel along the chassis front or rear');
+  assert(Math.abs(side)<1e-8,'upper rotation must not redirect the tracks');assert.equal(a.yaw,yaw);
+ }
+});
+
+test('differential steering follows the moving track in every excavator map',()=>{
+ for(const map of EXCAVATOR_MAPS)for(const yaw of [0,Math.PI/2,Math.PI,-Math.PI/2])for(const [left,right,turn] of [[1,0,-1],[0,1,1],[-1,0,1],[0,-1,-1],[1,-1,-1],[-1,1,1]]){
+  const {m,a}=match(1,map.id);a.x=0;a.z=0;a.yaw=yaw;a.turret=Math.PI/2;
+  m.input(a.id,{travelL:left,travelR:right},1000);m.tick(.1,1000);
+  assert((a.yaw-yaw)*turn>0,`${map.id}: left and right tracks must turn in the correct direction`);
+  if(left+right===0){assert.equal(a.x,0);assert.equal(a.z,0);}
  }
 });

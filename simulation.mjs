@@ -167,7 +167,8 @@ export class Match {
       p.cooldown=Math.max(0,p.cooldown-dt);
       if(!p.connected||now-p.lastInput>350) continue;
       const i=p.input;
-      if(!ceremony)p.yaw+=(i.travelL-i.travelR)*1.3*dt;
+      // Facing +Z, the driver's left track is on +X: its forward motion turns toward -X.
+      if(!ceremony)p.yaw+=(i.travelR-i.travelL)*1.3*dt;
       const speed=ceremony?0:(i.travelL+i.travelR)*1.7;
       if(Math.abs(speed)>.05) {
         const next={x:clamp(p.x+Math.sin(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit),z:clamp(p.z+Math.cos(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit)};

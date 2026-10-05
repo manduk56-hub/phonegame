@@ -105,7 +105,7 @@ test('separate tracks steer and ISO axes articulate; stale input stops the machi
   m.input(p.id,{travelL:1,travelR:1,swing:1,boom:1,stick:1,curl:1},1000);
   m.tick(.1,1000);assert(p.z>8);assert.equal(p.yaw,0);assert(p.turret>0);assert(p.boom>.42);assert(p.stick>-1.4);assert(p.curl>-.7);
   const before=[p.x,p.z,p.yaw,p.boom,p.turret];m.tick(.1,2000);assert.deepEqual([p.x,p.z,p.yaw,p.boom,p.turret],before);
-  m.input(p.id,{travelL:1,travelR:-1},2000);m.tick(.1,2000);assert(p.yaw>0);assert.equal(p.z,before[1]);
+  m.input(p.id,{travelL:1,travelR:-1},2000);m.tick(.1,2000);assert(p.yaw<0);assert.equal(p.z,before[1]);
   m.disconnect(p.id);const yaw=p.yaw;m.tick(.1,2000);assert.equal(p.yaw,yaw);
   m.remaining=.01;m.tick(.1);assert.equal(m.phase,'finished');
 });
