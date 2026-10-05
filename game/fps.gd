@@ -35,6 +35,55 @@ var flag_banner := Node3D.new()
 var flag_pickup := Node3D.new()
 var flag_label: Label3D
 var base_signature := ""
+var shot_serial := 0
+var shot_effects: Array = []
+
+func show_shot(shot: Dictionary) -> void:
+	var origin := Vector3(shot.x,shot.y,shot.z)
+	var target := Vector3(shot.ex,shot.ey,shot.ez)
+	var direction := (target-origin).normalized()
+	if origin.distance_to(target) < .01:
+		return
+	var muzzle := origin+direction*minf(.65,origin.distance_to(target)*.25)
+	muzzle.y -= .22
+	var effect := Node3D.new()
+	add_child(effect)
+	var flash := Node3D.new()
+	effect.add_child(flash)
+	flash.position = muzzle
+	bright_block(flash,Vector3(.65,.16,.16),Vector3.ZERO,Color("#ffb42f"))
+	bright_block(flash,Vector3(.16,.65,.16),Vector3.ZERO,Color("#ffb42f"))
+	bright_block(flash,Vector3(.20,.20,.20),Vector3.ZERO,Color("#fff7cf"))
+	var ray := target-muzzle
+	var beam := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius = .065
+	mesh.bottom_radius = .065
+	mesh.height = ray.length()
+	mesh.radial_segments = 6
+	beam.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color("#ffe978")
+	beam.material_override = material
+	effect.add_child(beam)
+	beam.position = (muzzle+target)*.5
+	beam.quaternion = Quaternion(Vector3.UP,ray.normalized())
+	if origin.distance_to(target) < 99.9:
+		var spark := bright_block(effect,Vector3(.32,.32,.32),target,Color("#fff7cf"))
+		spark.rotation = Vector3(.4,.6,.3)
+	shot_effects.append({"node":effect,"flash":flash,"material":material,"age":0.0})
+
+func update_shot_effects(delta: float) -> void:
+	for index in range(shot_effects.size()-1,-1,-1):
+		var effect: Dictionary = shot_effects[index]
+		effect.age += delta
+		effect.flash.visible = effect.age < .09
+		effect.material.albedo_color.a = maxf(0.0,1.0-effect.age/.22)
+		if effect.age >= .22:
+			effect.node.queue_free()
+			shot_effects.remove_at(index)
 
 func block(parent: Node3D, size: Vector3, pos: Vector3, color: Color) -> MeshInstance3D:
 	var node := MeshInstance3D.new()
@@ -94,6 +143,7 @@ func _ready() -> void:
 	fetch_config()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--fps-fixture="):
+			set_process(false)
 			accept_state(JSON.parse_string(FileAccess.get_file_as_string(arg.trim_prefix("--fps-fixture="))))
 			await get_tree().process_frame
 			await RenderingServer.frame_post_draw
@@ -190,6 +240,15 @@ func accept_state(message: Dictionary) -> void:
 	state = message
 	if message.game != "fps":
 		return
+	if message.fps.sequence < shot_serial:
+		shot_serial = 0
+		for effect in shot_effects:
+			effect.node.queue_free()
+		shot_effects.clear()
+	for shot in message.fps.shots:
+		if shot.id > shot_serial:
+			show_shot(shot)
+			shot_serial = shot.id
 	var signature := JSON.stringify(message.teams)
 	# Only geometry changes rebuild team bases; score changes remain in the HUD.
 	var positions := []
@@ -324,6 +383,7 @@ func accept_state(message: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
+	update_shot_effects(delta)
 	socket.poll()
 	if socket.get_ready_state() == WebSocketPeer.STATE_CLOSED and elapsed-last_connect > 2:
 		last_connect = elapsed

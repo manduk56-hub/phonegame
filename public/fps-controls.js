@@ -13,6 +13,6 @@ export function screenMovement(x,y,yaw){
 export function screenAim(x,y){const world=screenDirection(x,y);return Math.atan2(world.x,world.z);}
 // One pad controls both movement and facing; release preserves the last heading.
 export function screenControl(x,y,yaw){
-  const strength=Math.min(1,Math.hypot(x,y));
+  const strength=x===0&&y===0?0:1;
   return {forward:strength,strafe:0,yaw:strength>0?screenAim(x,y):yaw};
 }

@@ -7,9 +7,9 @@ body.fps-phone{overflow:hidden;background:#202633}body.fps-phone #controller{dis
 .fps-scoreboard{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:3px;max-width:60%;width:max-content;justify-content:center;flex-wrap:wrap;pointer-events:none}
 .fps-team-score,.fps-clock{padding:6px 8px;background:var(--team-color,#303442);border:2px solid #101622;font-size:22px;line-height:1;min-width:36px;text-align:center}.fps-clock{background:#303442;min-width:76px}
 #fps-objective{position:absolute;top:58px;left:50%;transform:translateX(-50%);width:65%;font-size:11px;text-align:center;color:#ffd469;pointer-events:none}
-.fps-pc-guide{position:absolute;top:27%;left:24%;right:24%;text-align:center;pointer-events:none}.fps-pc-guide b{display:block;font-size:clamp(16px,2.8vw,24px)}.fps-pc-guide span{display:block;margin-top:8px;color:#a9bbcd;font-size:11px}
-#fps-notice{position:absolute;top:42%;left:25%;right:25%;padding:8px;border:2px solid #607286;background:#202633e8;text-align:center;font-size:12px;pointer-events:none;z-index:8}#fps-notice:empty{display:none}
-.fps-pad{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));width:clamp(138px,40vmin,190px);height:clamp(138px,40vmin,190px);border:3px solid #92aac3;border-radius:50%;background:#111c2c;box-shadow:5px 5px #10162270;z-index:7}
+
+#fps-notice{position:absolute;top:28%;left:25%;right:25%;padding:8px;border:2px solid #607286;background:#202633e8;text-align:center;font-size:12px;pointer-events:none;z-index:8}#fps-notice:empty{display:none}
+.fps-pad{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));width:clamp(138px,40vmin,190px);height:clamp(138px,40vmin,190px);border:3px solid #92aac3;border-radius:18px;background:#111c2cb8;box-shadow:5px 5px #10162270;z-index:7}
 #fps-move{left:max(22px,env(safe-area-inset-left))}
 .fps-pad span{position:absolute;top:-25px;left:-10px;right:-10px;text-align:center;white-space:nowrap;font-size:12px}.fps-pad .knob{position:absolute;left:50%;top:50%;width:34%;height:34%;border-radius:50%;background:#91adc8;border:3px solid #d7e6f4;transform:translate(-50%,-50%);pointer-events:none}
 .fps-pad i{position:absolute;pointer-events:none;font-style:normal;color:#9fb5ca;font-size:18px}.pad-up{left:50%;top:6px;transform:translateX(-50%)}.pad-down{left:50%;bottom:6px;transform:translateX(-50%)}.pad-left{left:8px;top:50%;transform:translateY(-50%)}.pad-right{right:8px;top:50%;transform:translateY(-50%)}
@@ -18,5 +18,9 @@ body.fps-phone{overflow:hidden;background:#202633}body.fps-phone #controller{dis
 .hub-fps-art{object-fit:cover;object-position:center;width:100%;height:100%}#fps-overview{width:100%;height:500px;display:block;margin:20px 0;border:4px solid #283244;border-radius:0;box-shadow:6px 6px #c7ad81}#fps-overview[hidden]{display:none}
 .fps-many-teams .fps-team-score{font-size:14px;min-width:22px;padding:6px 3px}.fps-many-teams .fps-clock{font-size:16px;min-width:54px;padding:6px 3px}
 @media(max-width:740px){.fps-team-score,.fps-clock{font-size:18px;padding:5px 6px;min-width:28px}.fps-clock{min-width:62px}.fps-scoreboard{max-width:58%;gap:2px}#fps-identity{max-width:82px;font-size:10px}.fps-hud button{font-size:10px}#fps-objective{font-size:10px;top:54px}.fps-many-teams .fps-team-score{font-size:12px;min-width:18px;padding:5px 2px}.fps-many-teams .fps-clock{min-width:46px;font-size:14px}}
-@media(max-height:350px){.fps-pad{width:138px;height:138px;bottom:14px}.fps-pc-guide{top:28%}.fps-pc-guide span{font-size:10px}#fps-notice{top:45%;font-size:10px}#fps-hit{bottom:108px}}
+@media(max-height:350px){.fps-pad{width:138px;height:138px;bottom:14px}#fps-notice{top:28%;font-size:10px}#fps-hit{bottom:108px}}
 @media(orientation:portrait){.fps-portrait{display:grid;position:absolute;inset:0;place-content:center;background:#202633f5;z-index:10;font-size:22px}}
+
+#fps-view{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#fps-crosshair{position:absolute;left:50%;top:50%;width:24px;height:24px;transform:translate(-50%,-50%);pointer-events:none;z-index:5;filter:drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000)}
+#fps-crosshair::before,#fps-crosshair::after{content:"";position:absolute;background:white}#fps-crosshair::before{left:11px;top:0;width:2px;height:24px}#fps-crosshair::after{left:0;top:11px;width:24px;height:2px}

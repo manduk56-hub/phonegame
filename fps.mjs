@@ -1,5 +1,6 @@
 import {readFileSync} from 'node:fs';
 export const FPS_ARENA=JSON.parse(readFileSync(new URL('./game/fps-arena.json',import.meta.url),'utf8'));
+export const FPS_MOVE_SPEED=10;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export function resetFps(m){m.fps={flag:{x:0,z:0,carrier:null,pickupRadius:2.5},shots:[],sequence:0};for(const t of m.teams){t.captures=0;if(m.game==='fps')t.color=['#2866ce','#d84238','#eab642','#65b879','#9b76d3','#ea7b43','#db6da0','#46b5bf'][t.id];}}
@@ -55,7 +56,7 @@ export function fpsTick(m,dt,now){
     p.cooldown=Math.max(0,p.cooldown-dt);
     if(p.hp<=0){p.respawn=Math.max(0,p.respawn-dt);if(p.respawn<=1e-8){p.hp=100;p.respawn=0;p.input=m.neutral();p.lastInput=0;p.message='부활!';}continue;}
     if(!p.connected||now-p.lastInput>350)continue;
-    const i=p.input,len=Math.max(1,Math.hypot(i.forward,i.strafe)),speed=m.fps.flag.carrier===p.id?4:5;
+    const i=p.input,len=Math.max(1,Math.hypot(i.forward,i.strafe)),speed=FPS_MOVE_SPEED*(m.fps.flag.carrier===p.id?.8:1);
     const dx=(Math.sin(p.yaw)*i.forward+Math.cos(p.yaw)*i.strafe)/len*speed*dt,dz=(Math.cos(p.yaw)*i.forward-Math.sin(p.yaw)*i.strafe)/len*speed*dt;
     const x=clamp(p.x+dx,-30.5,30.5),z=clamp(p.z+dz,-30.5,30.5);
     if(!fpsBlocked(x,p.z))p.x=x;if(!fpsBlocked(p.x,z))p.z=z;

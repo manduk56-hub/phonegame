@@ -9,9 +9,10 @@ export function createFpsScene(canvas,{overview=false}={}){
   scene.add(new THREE.HemisphereLight(0xdde7e5,0x64614f,1.4));const sun=new THREE.DirectionalLight(0xffefcc,2.0);sun.position.set(-20,45,22);sun.castShadow=true;sun.shadow.mapSize.set(overview?2048:1024,overview?2048:1024);Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,near:1,far:100});sun.shadow.bias=-.001;sun.shadow.normalBias=.025;scene.add(sun);
   const camera=overview?new THREE.OrthographicCamera(-43,43,33,-33,.1,200):new THREE.PerspectiveCamera(75,1,.05,120);
   if(overview){camera.position.set(...FPS_OVERVIEW_POSITION);camera.lookAt(0,0,0);}
-  let materials={},art,state,playerId,aim,baseSignature='',last=performance.now(),lastShot=0,kick=0;
+  let materials={},art,state,playerId,aim,baseSignature='',last=performance.now(),shotSerial=0,kick=0,flashUntil=0;
   function box(w,h,d,x,y,z,color,parent=scene){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:1}));mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;}
   const ground=box(66,.2,66,0,-.1,0,'#efd09a');
+  const effects=new Map();
   const actors=new Map(),bases=new THREE.Group(),tracers=new THREE.Group();scene.add(bases,tracers);
   const flag=new THREE.Group();scene.add(flag);
   const bright=(w,h,d,x,y,z,color,parent=flag)=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshBasicMaterial({color}));mesh.position.set(x,y,z);parent.add(mesh);return mesh;};
@@ -26,6 +27,31 @@ export function createFpsScene(canvas,{overview=false}={}){
   const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=80;const ctx=labelCanvas.getContext('2d');ctx.fillStyle='#352500';ctx.fillRect(0,0,512,80);ctx.font='bold 34px sans-serif';ctx.textAlign='center';ctx.fillStyle='#ffe83e';ctx.fillText('깃발 · 원 안에서 자동 획득',256,52);
   const labelTexture=new THREE.CanvasTexture(labelCanvas);const marker=new THREE.Sprite(new THREE.SpriteMaterial({map:labelTexture}));marker.position.y=4.2;marker.scale.set(4.3,.67,1);flag.add(marker);
   const gun=new THREE.Group();gun.position.set(.26,-.19,-.5);gun.rotation.y=Math.PI;camera.add(gun);scene.add(camera);gun.visible=!overview;
+  const muzzleFlash=new THREE.Group();muzzleFlash.position.set(0,0,.76);gun.add(muzzleFlash);muzzleFlash.visible=false;
+  for(const [size,color] of [[[.32,.065,.065],'#ffb42f'],[[.065,.32,.065],'#ffb42f'],[[.10,.10,.10],'#fff7cf']])bright(...size,0,0,0,color,muzzleFlash);
+  function clearEffect(effect){tracers.remove(effect.root);effect.root.traverse(n=>{n.geometry?.dispose();n.material?.dispose();});}
+  function animateEffects(now){
+    for(const [id,effect] of effects){const age=(now-effect.born)/1000;if(age>=.22){clearEffect(effect);effects.delete(id);continue;}
+      effect.flash.visible=age<.09;effect.root.traverse(n=>{if(n.material)n.material.opacity=Math.max(0,1-age/.22);});
+    }
+    muzzleFlash.visible=now<flashUntil;
+    canvas.dataset.shots=String(effects.size);
+  }
+  function showShot(s,id){
+    const origin=new THREE.Vector3(s.x,s.y,s.z),target=new THREE.Vector3(s.ex,s.ey,s.ez),distance=origin.distanceTo(target);
+    if(distance<.01)return;
+    const direction=target.clone().sub(origin).normalize(),own=!overview&&s.player===id;
+    const muzzle=origin.clone().addScaledVector(direction,Math.min(own?.85:.65,distance*.25));muzzle.y-=own?.19:.22;
+    if(own)muzzle.add(new THREE.Vector3(direction.z,0,-direction.x).multiplyScalar(.26));
+    const root=new THREE.Group(),flash=new THREE.Group();root.add(flash);flash.position.copy(muzzle);flash.visible=!own;
+    const glow=(geometry,color,parent)=>{const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({color,transparent:true,depthWrite:false}));parent.add(mesh);return mesh;};
+    if(!own){glow(new THREE.OctahedronGeometry(.3), '#ffb42f',flash);glow(new THREE.OctahedronGeometry(.13), '#fff7cf',flash);}
+    const ray=target.clone().sub(muzzle),beam=glow(new THREE.CylinderGeometry(.035,.035,ray.length(),6), '#ffe978',root);
+    beam.position.copy(muzzle).add(target).multiplyScalar(.5);beam.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),ray.normalize());
+    if(distance<99.9){const spark=glow(new THREE.OctahedronGeometry(.16),'#fff7cf',root);spark.position.copy(target);}
+    tracers.add(root);effects.set(s.id,{root,flash,born:performance.now()});
+    if(own){kick=.075;flashUntil=performance.now()+90;canvas.dataset.lastShot=String(s.id);}
+  }
   function combine(list){const geometry=new THREE.BufferGeometry();for(const attr of ['position','normal','uv']){const count=list.reduce((n,g)=>n+g.getAttribute(attr).array.length,0),array=new Float32Array(count);let cursor=0;for(const g of list){array.set(g.getAttribute(attr).array,cursor);cursor+=g.getAttribute(attr).array.length;}geometry.setAttribute(attr,new THREE.BufferAttribute(array,attr==='uv'?2:3));}return geometry;}
   function model(parts,teamColor){const root=new THREE.Group(),byMaterial=new Map(),edges=[];
     for(const p of parts){const transform=new THREE.Matrix4().compose(new THREE.Vector3(...p.pos),new THREE.Quaternion().setFromEuler(new THREE.Euler(...p.rot)),new THREE.Vector3(1,1,1));const source=new THREE.BoxGeometry(...p.size);const edge=new THREE.EdgesGeometry(source);edge.applyMatrix4(transform);edges.push(edge);const geo=source.toNonIndexed();source.dispose();geo.applyMatrix4(transform);if(!byMaterial.has(p.mat))byMaterial.set(p.mat,[]);byMaterial.get(p.mat).push(geo);}
@@ -52,11 +78,12 @@ export function createFpsScene(canvas,{overview=false}={}){
     flag.visible=overview||carrier?.id!==id;pole.scale.y=carrying?.5:1;pole.position.y=carrying?.9:1.8;banner.position.y=carrying?.9:3.05;marker.visible=!carrying;pedestal.visible=!carrying;
     const radius=m.fps.flag.pickupRadius??2.5;pickup.position.set(m.fps.flag.x,0,m.fps.flag.z);disc.scale.set(radius,radius,1);ring.scale.set(radius,radius,1);pickup.visible=!carrying;
     canvas.dataset.flagMode=carrying?'carried':'ground';canvas.dataset.pickupRadius=String(radius);
-    for(const line of [...tracers.children]){tracers.remove(line);line.geometry.dispose();line.material.dispose();}
-    for(const s of m.fps.shots){const geometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(s.x,s.y,s.z),new THREE.Vector3(s.ex,s.ey,s.ez)]);tracers.add(new THREE.Line(geometry,new THREE.LineBasicMaterial({color:'#ffdc82'})));if(s.player===id&&s.id>lastShot){kick=.06;lastShot=s.id;}}
+    if(m.fps.sequence<shotSerial){for(const effect of effects.values())clearEffect(effect);effects.clear();shotSerial=0;kick=0;flashUntil=0;}
+    for(const shot of m.fps.shots)if(shot.id>shotSerial){showShot(shot,id);shotSerial=shot.id;}
+    animateEffects(performance.now());
   }
   function frame(now){requestAnimationFrame(frame);if(!state||!art||!canvas.isConnected||canvas.closest('[hidden]'))return;const width=canvas.clientWidth,height=canvas.clientHeight;if(!width||!height)return;
-    const dt=Math.min(.1,(now-last)/1000);last=now;
+    const dt=Math.min(.1,(now-last)/1000);last=now;animateEffects(now);
     if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);if(overview){camera.left=-33*width/height;camera.right=33*width/height;}else camera.aspect=width/height;camera.updateProjectionMatrix();}
     if(!overview){const p=state.players.find(p=>p.id===playerId);if(p){camera.position.set(p.x,state.fps.arena.eye,p.z);const yaw=aim?.yaw??p.yaw;camera.lookAt(p.x+Math.sin(yaw),camera.position.y,p.z+Math.cos(yaw));gun.visible=p.hp>0;kick=Math.max(0,kick-dt*.5);gun.position.z=-.5+kick;}}
     flag.rotation.y=Math.atan2(camera.position.x-flag.position.x,camera.position.z-flag.position.z);renderer.render(scene,camera);canvas.dataset.draws=String(renderer.info.render.calls);canvas.dataset.frames=String(Number(canvas.dataset.frames||0)+1);
