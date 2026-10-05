@@ -15,6 +15,8 @@ function Get-PlayroomDirectory {
 function Get-LocalManifest {
     param([string]$Requested,[string]$Root)
     if($Requested){return $Requested}
+    # Installed launchers must check online, even if an old offline bundle is nearby.
+    if(Test-Path -LiteralPath (Join-Path $Root 'installation.json')){return ''}
     foreach($candidate in @((Join-Path $Root 'playroom-manifest.json'),(Join-Path (Split-Path -Parent $Root) 'playroom-manifest.json'),(Join-Path $Root '.runtime/releases/playroom-manifest.json'))){if(Test-Path -LiteralPath $candidate){return $candidate}}
     return ''
 }

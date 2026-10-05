@@ -1,8 +1,9 @@
-﻿param([string]$Version='0.3.0',[string]$OutputDirectory='',[string]$GodotExe='',[string]$NodeExe='',[string]$CloudflaredExe='',[string]$GodotVersion='4.6.2')
+﻿param([string]$Version='',[string]$OutputDirectory='',[string]$GodotExe='',[string]$NodeExe='',[string]$CloudflaredExe='',[string]$GodotVersion='4.6.2')
 $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'Official-Downloads.ps1')
 . (Join-Path $PSScriptRoot 'Release-Retention.ps1')
 $projectRoot=Split-Path -Parent $PSScriptRoot
+if(-not $Version){$Version=(Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw|ConvertFrom-Json).version}
 if($Version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$'){throw 'Version must be a semantic version.'}
 if(-not $OutputDirectory){$OutputDirectory=Join-Path $projectRoot '.runtime/releases'}
 $OutputDirectory=[IO.Path]::GetFullPath($OutputDirectory)

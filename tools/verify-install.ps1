@@ -2,6 +2,7 @@
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path -Parent $PSScriptRoot
 . (Join-Path $projectRoot 'launcher/Launcher-Core.ps1')
+. (Join-Path $projectRoot 'launcher/Ui-Common.ps1')
 if(-not $ManifestPath){$ManifestPath=Join-Path $projectRoot '.runtime/releases/playroom-manifest.json'}
 $testRoot=Join-Path $projectRoot ('.runtime/install-test-'+[Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($testRoot)|Out-Null
@@ -15,6 +16,15 @@ try{
     Install-Playroom -Directory $destination -Manifest $manifest -StatusPath $statusPath -SkipShortcut
     $installed=Get-Installation $destination
     Assert ($installed.version -eq $manifest.version) 'Incorrect installed version.'
+    # An old bundle beside an installation must not pin automatic updates.
+    Copy-Item -LiteralPath $ManifestPath -Destination (Join-Path $destination 'playroom-manifest.json')
+    Assert ((Get-LocalManifest '' $destination) -eq '') 'Installed launcher selected a stale offline manifest.'
+    Assert ((Get-LocalManifest $ManifestPath $destination) -eq $ManifestPath) 'Explicit offline manifest was ignored.'
+    Assert ((Get-LocalManifest '' $manifest.sourceDirectory) -eq $ManifestPath) 'Offline installer did not discover its bundle.'
+    $projectVersion=(Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw|ConvertFrom-Json).version
+    $nextOnlineVersion=& (Join-Path $projectRoot 'tools/Get-ReleaseVersion.ps1') -RunNumber 1
+    Assert ((Compare-PlayroomVersion $nextOnlineVersion $projectVersion) -gt 0) 'Online release cannot update the default local build.'
+    Assert ((Compare-PlayroomVersion $projectVersion '0.4.1') -gt 0) 'Default build cannot update the previous local installation.'
     Assert (Test-Path -LiteralPath (Join-Path $destination 'launcher/Start-Launcher.ps1')) 'Stable launcher missing.'
     Install-Playroom -Directory $destination -Manifest $manifest -StatusPath $statusPath -SkipShortcut
     Assert ((Compare-PlayroomVersion '0.2.1' '0.2.0') -gt 0) 'Version comparison failed.'

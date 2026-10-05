@@ -18,11 +18,13 @@ if(-not $created){
 [IO.File]::WriteAllText($ownerPath,(@{pid=$PID}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
 $script:job=$null;$script:session=$null;$script:closing=$false;$script:installation=Get-Installation $InstallDirectory
 $stateDirectory=Join-Path $InstallDirectory 'state';$sessionStatus=Join-Path $stateDirectory 'session.json';$stopPath=Join-Path $stateDirectory 'stop'
-$form=New-PlayroomForm '플레이룸 시작' 520 175
+$form=New-PlayroomForm '플레이룸 시작' 520 245
 $null=Add-PlayroomLabel $form '플레이룸을 준비하고 있습니다.' 22 18 475 34 17
-$status=Add-PlayroomLabel $form '최신 버전을 확인합니다.' 24 64 470 45
-$progress=New-Object Windows.Forms.ProgressBar;$progress.Style='Marquee';$progress.Location=[Drawing.Point]::new(24,125);$progress.Size=[Drawing.Size]::new(340,10);$form.Controls.Add($progress)
-$cancel=Add-PlayroomButton $form '취소' 390 116 105 36
+$status=Add-PlayroomLabel $form '최신 버전을 확인합니다.' 24 64 470 110
+$progress=New-Object Windows.Forms.ProgressBar;$progress.Style='Marquee';$progress.Location=[Drawing.Point]::new(24,195);$progress.Size=[Drawing.Size]::new(340,10);$form.Controls.Add($progress)
+$cancel=Add-PlayroomButton $form '취소' 390 186 105 36
+$continue=Add-PlayroomButton $form '기존 버전 실행' 210 182 165 40;$continue.Visible=$false
+$continue.Add_Click({$continue.Visible=$false;$progress.Visible=$true;Start-GameSession})
 function Start-GameSession {
     $script:installation=Get-Installation $InstallDirectory
     if(-not $script:installation){$status.Text='게임이 설치되지 않았습니다. 설치 프로그램을 실행하세요.';$progress.Style='Blocks';$cancel.Text='닫기';return}
@@ -51,6 +53,15 @@ $timer.Add_Tick({
         if($script:job.process.HasExited){
             $action=$script:job.action;Close-PlayroomJob $script:job;$script:job=$null
             if($script:closing){$form.Close();return}
+            if(-not $result -or $result.stage -eq 'error'){
+                $detail=if($result){$result.message}else{'업데이트 작업이 결과를 반환하지 않았습니다.'}
+                [IO.Directory]::CreateDirectory($stateDirectory)|Out-Null
+                Write-JobStatus (Join-Path $stateDirectory 'update.json') 'error' $detail @{action=$action;version=$script:installation.version;updatedAt=[DateTime]::UtcNow.ToString('o')}
+                if($action -eq 'check'){Start-GameSession;return}
+                $status.Text='업데이트를 적용하지 못했습니다. '+$detail
+                $progress.Visible=$false;$continue.Visible=$true;$cancel.Text='닫기'
+                return
+            }
             if($action -eq 'check' -and $result.stage -eq 'checked' -and $script:installation -and (Compare-PlayroomVersion $result.manifest.version $script:installation.version) -gt 0){$script:job=Start-PlayroomJob 'install' $InstallDirectory $SourceManifest}
             else{Start-GameSession}
         }
