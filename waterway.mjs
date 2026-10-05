@@ -1,4 +1,5 @@
 // A sampled continuous surface: samples are interpolation points, never removable tiles.
+import {bucketCutHeight} from './public/bucket-shape.js';
 export const EXCAVATOR_MAPS = [
   {id:'sand',name:'모래 쟁탈전',mode:'sand',description:'우리 팀 구역에 가장 많은 모래를 모으세요.'},
   {id:'waterfall',name:'폭포 물길 경주',mode:'water',description:'버킷이 닿은 부분을 파서 폭포와 목표선을 연결하세요. 물이 흐를 만큼 깊고 이어진 물길을 만들어야 합니다.'}
@@ -43,16 +44,15 @@ export function waterAction(m,p,action,tip){
     if(tip.height>surface+.16){p.message='버킷 이빨을 파낼 땅에 닿도록 내리세요';return;}
     // The cutting lip sits at tip; the bowl extends back toward the machine.
     // Its curved bottom follows exact world position, yaw and tooth height.
-    const angle=p.yaw+p.turret-hit.lane.angle,s=Math.sin(angle),c=Math.cos(angle);
-    const centerX=hit.x-s*.28,centerZ=hit.z-c*.28,bottom=Math.max(-w.maxDepth,tip.height-.18);
+    const angle=p.yaw+p.turret-hit.lane.angle;
+    const bottom=Math.max(-w.maxDepth,tip.height-.30);
     const edits=[];let volume=0;
-    for(let row=Math.max(0,Math.floor((centerZ-.8)/w.size));row<=Math.min(w.rows-1,Math.ceil((centerZ+.8)/w.size));row++){
+    for(let row=Math.max(0,Math.floor((hit.z-1.1)/w.size));row<=Math.min(w.rows-1,Math.ceil((hit.z+1.1)/w.size));row++){
       for(let col=0;col<w.cols;col++){
-        const dx=(col-(w.cols-1)/2)*w.size-centerX,dz=row*w.size-centerZ;
-        const across=dx*c-dz*s,along=dx*s+dz*c;
-        const q=(across/.48)**2+(along/.64)**2;if(q>=1)continue;
+        const dx=(col-(w.cols-1)/2)*w.size-hit.x,dz=row*w.size-hit.z;
+        const cut=bucketCutHeight(dx,dz,angle,bottom);if(!Number.isFinite(cut))continue;
         const index=row*w.cols+col,old=hit.lane.depth[index];
-        const target=clamp(-(bottom+.28*q),0,w.maxDepth),delta=Math.max(0,target-old);
+        const target=clamp(-cut,0,w.maxDepth),delta=Math.max(0,target-old);
         if(delta>0){edits.push([index,delta]);volume+=delta*w.size*w.size;}
       }
     }

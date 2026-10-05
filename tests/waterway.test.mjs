@@ -27,7 +27,7 @@ test('only sand and waterfall remain, maps are lobby-only, identities persist an
 test('a scoop removes a curved bucket footprint, preserves surrounding soil, and tracks exact excavated volume',()=>{
  const {m,a}=match();const lane=m.water.lanes[0],before=volume(m.water,lane),diff=footprint(m,a);
  const changed=[...diff].filter(d=>d>0);assert(changed.length>5&&changed.length<40);assert(new Set(changed.map(d=>d.toFixed(4))).size>5,'bowl must have different depths, not one disappearing block');
- assert(Math.max(...changed)<.2);assert.equal(lane.depth[30*m.water.cols],0);assert(a.cargo>0&&a.cargo<40);
+ assert(Math.max(...changed)>.2&&Math.max(...changed)<=.3);assert.equal(lane.depth[30*m.water.cols],0);assert(a.cargo>0&&a.cargo<=40);
  assert(Math.abs((volume(m.water,lane)-before)*230-a.cargo)<1e-8);assert.equal(a.cargo,a.delivered);
  const shape=groundGeometry(m.water,lane.depth);assert.equal(shape.positions.length,lane.depth.length*3);assert(shape.normals.some(n=>n!==0&&n!==1),'mesh must have continuous slope normals');
 });
@@ -36,12 +36,12 @@ test('subsample bucket movements change the excavation shape and rotating the bu
  const first=match(),second=match(),turned=match();const d1=footprint(first.m,first.a,.03),d2=footprint(second.m,second.a,.10),d3=footprint(turned.m,turned.a,.03,4,Math.PI/2);
  assert.notDeepEqual([...d1],[...d2],'a seven-centimeter movement cannot snap to the same tile');
  const a=moments(first.m.water,d1),b=moments(second.m.water,d2),c=moments(turned.m.water,d3);
- assert(b.x-a.x>.04&&b.x-a.x<.1);assert(a.zz>a.xx);assert(c.xx>c.zz);
+ assert(b.x-a.x>.04&&b.x-a.x<.1);assert(a.z<4,'bowl extends behind its cutting lip');assert(c.x<2+.03,'rotated bowl extends toward the machine');
 });
 
 test('same pose cannot repeatedly mine empty space; lowering the cutting lip deepens the same hollow',()=>{
  const {m,a}=match();footprint(m,a);const lane=m.water.lanes[0],first=lane.depth.slice(),cargo=a.cargo;a.cooldown=0;m.action(a.id,'scoop');assert.equal(a.cargo,cargo);assert.deepEqual(lane.depth,first);
- const tip=m.bucket(a),ground=waterHeight(m,tip);aim(m,a,tip.x,tip.z,ground+.02);m.action(a.id,'scoop');assert(a.cargo>cargo);assert(lane.depth.some((d,i)=>d>first[i]));
+ const tip=m.bucket(a),ground=waterHeight(m,tip);discard(m,a);aim(m,a,tip.x,tip.z,ground+.02);m.action(a.id,'scoop');assert(a.cargo>0);assert(lane.depth.some((d,i)=>d>first[i]));
  discard(m,a);assert(m.groundPiles[0].dirt>0);
 });
 
@@ -100,6 +100,7 @@ test('real host selects a map and phone reconnect receives terrain without chang
     host.ws.send(JSON.stringify({type:'excavator-map',map:'waterfall'}));const state=await phone.wait(m=>m.water);assert.equal(state.excavatorMap.id,'waterfall');
     const returned=await connect();returned.ws.send(JSON.stringify({type:'join',room:app.room,token:joined.token}));assert.equal((await returned.wait(m=>m.type==='joined')).id,joined.id);assert.equal((await returned.wait(m=>m.water)).connection.room,app.room);
     assert.equal((await fetch(`http://127.0.0.1:${app.port}/water-view.js`)).status,200);
+    assert.equal((await fetch(`http://127.0.0.1:${app.port}/bucket-shape.js`)).status,200);
   }finally{for(const ws of peers)ws.terminate();await app.close();}
 });
 

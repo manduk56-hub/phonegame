@@ -14,7 +14,7 @@ export function groundGeometry(w,depth){
     positions.set([(col-(w.cols-1)/2)*w.size,-d,w.start+row*w.size],k);
     const nx=(at(row,col+1)-at(row,col-1))/(2*w.size),nz=(at(row+1,col)-at(row-1,col))/(2*w.size),length=Math.hypot(nx,1,nz);
     normals.set([nx/length,1/length,nz/length],k);
-    const shade=1-Math.min(.35,d*.35);colors.set([.78*shade,.64*shade,.43*shade],k);
+    const shade=1-Math.min(.48,Math.max(0,d)*1.1);colors.set([.82*shade,.66*shade,.40*shade],k);
     if(row<w.rows-1&&col<w.cols-1){const b=i+w.cols;indices.push(i,b,i+1,i+1,b,b+1);}
   }
   return {positions,normals,colors,indices:new Uint16Array(indices)};

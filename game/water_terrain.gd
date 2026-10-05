@@ -93,8 +93,8 @@ func ground_mesh(w: Dictionary, depth: PackedFloat32Array) -> ArrayMesh:
 			var nx := (depth_at(depth,w,row,col+1)-depth_at(depth,w,row,col-1))/(2*size)
 			var nz := (depth_at(depth,w,row+1,col)-depth_at(depth,w,row-1,col))/(2*size)
 			normals.append(Vector3(nx,1,nz).normalized())
-			var shade := 1.0-minf(0.35,d*0.35)
-			colors.append(Color(0.78*shade,0.64*shade,0.43*shade))
+			var shade := 1.0-minf(0.48,maxf(0.0,d)*1.1)
+			colors.append(Color(0.82*shade,0.66*shade,0.40*shade))
 			if row < rows-1 and col < cols-1:
 				var b := i+cols
 				indices.append_array(PackedInt32Array([i,b,i+1,i+1,b,b+1]))
