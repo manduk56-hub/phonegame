@@ -23,7 +23,7 @@ fi
 stage=$(mktemp -d /var/lib/dirt-rally/deploy-stage.XXXXXX)
 trap 'rm -rf -- "$stage"' EXIT
 git -C "$repo" archive "$commit" | tar -x -C "$stage"
-runtime_files=(server.mjs simulation.mjs collision.mjs waterway.mjs racing.mjs race-director.mjs fps.mjs package.json package-lock.json game/arena.json game/fps-arena.json game/fps-art.json game/circuit.json game/circuits.json game/car-shapes.json)
+runtime_files=(server.mjs simulation.mjs collision.mjs waterway.mjs racing.mjs race-director.mjs fps.mjs bull.mjs package.json package-lock.json game/arena.json game/bull-models.json game/fps-arena.json game/fps-art.json game/circuit.json game/circuits.json game/car-shapes.json)
 for file in "${runtime_files[@]}"; do
   test -f "$stage/$file"
 done

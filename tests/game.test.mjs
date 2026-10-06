@@ -223,7 +223,7 @@ test('remote server publishes only its public URL and never exposes host credent
     const display=peer(app.port);await display.open;display.send({type:'display'});await display.wait(m=>m.type==='error');
     const QRCode=(await import('qrcode')).default;
     const qr=await fetch(base+'/qr?address=http://untrusted.example').then(r=>r.text());
-    assert.equal(qr,await QRCode.toString(`${publicUrl}/controller?room=${cfg.room}`,{type:'svg',margin:2}));
+    assert.equal(qr,await QRCode.toString(`${publicUrl}/controller?room=${cfg.room}`,{type:'svg',width:1024,margin:4}));
   } finally {await app.close();}
 });
 

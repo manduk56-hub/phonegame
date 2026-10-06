@@ -36,13 +36,14 @@ if(-not $CloudflaredExe){$CloudflaredExe=Join-Path $cache 'cloudflared.exe';Get-
 $bundle=Join-Path $OutputDirectory ('build-'+[Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($bundle)|Out-Null
 try{
-    foreach($name in @('server.mjs','simulation.mjs','collision.mjs','waterway.mjs','racing.mjs','race-director.mjs','fps.mjs','package.json','package-lock.json','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle}
+    foreach($name in @('server.mjs','simulation.mjs','collision.mjs','waterway.mjs','racing.mjs','race-director.mjs','fps.mjs','bull.mjs','package.json','package-lock.json','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle}
     foreach($name in @('launcher','public')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle -Recurse}
     foreach($name in @('runtime','game','licenses')){[IO.Directory]::CreateDirectory((Join-Path $bundle $name))|Out-Null}
     [IO.File]::WriteAllText((Join-Path $bundle 'release.json'),(@{app='playroom';version=$Version}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))
     Copy-Item -LiteralPath $NodeExe -Destination (Join-Path $bundle 'runtime/node.exe')
     Copy-Item -LiteralPath $CloudflaredExe -Destination (Join-Path $bundle 'runtime/cloudflared.exe')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/arena.json') -Destination (Join-Path $bundle 'game/arena.json')
+    Copy-Item -LiteralPath (Join-Path $projectRoot 'game/bull-models.json') -Destination (Join-Path $bundle 'game/bull-models.json')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/fps-art.json') -Destination (Join-Path $bundle 'game/fps-art.json')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/fps-arena.json') -Destination (Join-Path $bundle 'game/fps-arena.json')
     Copy-Item -LiteralPath (Join-Path $projectRoot 'game/circuit.json') -Destination (Join-Path $bundle 'game/circuit.json')

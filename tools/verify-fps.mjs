@@ -15,6 +15,6 @@ try{
   const timeout=setTimeout(()=>renderer.kill(),30000);
   const code=await new Promise((resolve,reject)=>{renderer.once('error',reject);renderer.once('exit',resolve);});clearTimeout(timeout);
   process.stdout.write(stdout);process.stderr.write(stderr);
-  assert.equal(code,0);assert(!/SCRIPT ERROR|^ERROR:/m.test(stderr));assert(stdout.includes('all three playable games'));
+  assert.equal(code,0);assert(!/SCRIPT ERROR|^ERROR:/m.test(stderr));assert(stdout.includes('all four playable games'));
   assert.equal(app.match.game,'fps');assert.equal(app.match.players.size,1);
 }finally{if(renderer&&renderer.exitCode===null)renderer.kill();await app.close();}

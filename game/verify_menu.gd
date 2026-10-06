@@ -23,11 +23,31 @@ func run() -> void:
 			return
 		await process_frame
 	assert(hub.join_label.text.contains("/controller?room="))
+	var fixed_qr_position: Vector2 = hub.qr.global_position
+	var shared_qr_texture: Texture2D = hub.qr.texture
+	assert(shared_qr_texture.get_width() == 1024)
+	for index in range(4):
+		hub.select_game(index)
+		for frame in range(3):
+			await process_frame
+		assert(hub.qr.global_position == fixed_qr_position)
+		assert(hub.qr.texture == shared_qr_texture and hub.qr.is_visible_in_tree())
+		assert(hub.qr.get_global_rect().end.y < hub.detail_art.global_position.y)
+		assert(hub.play_button.get_global_rect().end.y < hub.size.y, "Play button %s outside menu %s, viewport %s" % [hub.play_button.get_global_rect(),hub.size,root.size])
 	for index in range(3,4):
 		hub.cards[index].pressed.emit()
-		assert(hub.selected == index and hub.play_button.disabled)
+		assert(hub.selected == index and not hub.play_button.disabled)
 		hub.launch_game()
-		assert(not is_instance_valid(hub.active_game))
+		assert(is_instance_valid(hub.active_game))
+		qr_deadline = Time.get_ticks_msec()+6000
+		while hub.active_game.state.get("game") != "bull" or hub.active_game.qr.texture == null:
+			if Time.get_ticks_msec()>qr_deadline:
+				push_error("Bull menu did not connect")
+				quit(1)
+				return
+			await process_frame
+		hub.return_to_menu()
+		await process_frame
 	hub.cards[0].pressed.emit()
 	hub.play_button.pressed.emit()
 	await process_frame
@@ -103,5 +123,5 @@ func run() -> void:
 		await process_frame
 	hub.return_to_menu()
 	await process_frame
-	print("PASS: selection QR and roster, all three playable games, coming-soon lock, host connection, running lock and return")
+	print("PASS: selection QR and roster, all four playable games, bull selection, host connection, running lock and return")
 	quit()

@@ -17,11 +17,13 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   let chatSequence=0;
   const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/results.js':'results.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js','/water-view.js':'water-view.js','/water-surface.js':'water-surface.js','/bucket-shape.js':'bucket-shape.js'};
   Object.assign(files,{'/race-scene.js':'race-scene.js','/race-controller.js':'race-controller.js','/race-sensors.js':'race-sensors.js','/race.css':'race.css','/race-minimap.js':'race-minimap.js','/race-broadcast.js':'race-broadcast.js','/fps-scene.js':'fps-scene.js','/fps-controller.js':'fps-controller.js','/fps.css':'fps.css','/fps-controls.js':'fps-controls.js'});
+  Object.assign(files,{'/bull-scene.js':'bull-scene.js','/bull-controller.js':'bull-controller.js','/bull.css':'bull.css'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{
     try {
       const url=new URL(req.url,'http://localhost');
+      if(url.pathname==='/bull-models.json'){res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/bull-models.json',import.meta.url)));return;}
       if(url.pathname==='/fps-art.json'){res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/fps-art.json',import.meta.url)));return;}
       if(url.pathname==='/car-shapes.json'){
         res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/car-shapes.json',import.meta.url)));return;
@@ -32,7 +34,8 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
       if(/^\/assets\/(racing-models|race-(wedge|classic|tourer|muscle|exotic|gt))\.png$/.test(url.pathname)){
         res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public'+url.pathname,import.meta.url)));return;
       }
-      if(url.pathname==='/assets/fps-reference.png'){res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public/assets/fps-reference.png',import.meta.url)));return;}
+      if(['/assets/bull.png','/assets/runner.png','/assets/bull-card.png'].includes(url.pathname)){res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public'+url.pathname,import.meta.url)));return;}
+      if(['/assets/fps-reference.png','/assets/fps-model-card.png'].includes(url.pathname)){res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public'+url.pathname,import.meta.url)));return;}
       if(url.pathname==='/assets/dirt-rally-card.png') {
         res.setHeader('Content-Type','image/png');
         res.end(await readFile(new URL('./public/assets/dirt-rally-card.png',import.meta.url)));return;
@@ -52,7 +55,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
       }
       if(url.pathname==='/qr') {
         const target=addresses.find(a=>a===url.searchParams.get('address'))||joinAddress;
-        res.setHeader('Content-Type','image/svg+xml');res.end(await QRCode.toString(`${target}/controller?room=${room}`,{type:'svg',margin:2}));return;
+        res.setHeader('Content-Type','image/svg+xml');res.end(await QRCode.toString(`${target}/controller?room=${room}`,{type:'svg',width:1024,margin:4}));return;
       }
       const file=files[url.pathname];if(!file) {res.writeHead(404);res.end();return;}
       res.setHeader('Content-Type',file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.js')?'text/javascript; charset=utf-8':'text/css; charset=utf-8');
@@ -104,6 +107,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
             joinAddress=m.address;
           }
           if(m.type==='configure') match.configure(m.teams,m.duration);
+          if(m.type==='bull-choice')match.chooseBull(m.id);
           if(m.type==='track') match.selectTrack(m.track);
           if(m.type==='excavator-map') match.selectExcavatorMap(m.map);
           if(m.type==='assign') match.assign(m.id,m.team);

@@ -6,6 +6,12 @@ var racing_texture: Texture2D
 var fps_texture: Texture2D
 
 func _draw() -> void:
+	if kind == 3:
+		var bull_texture = load("res://bull-card.png")
+		var image_size: Vector2 = bull_texture.get_size()
+		var ratio := minf(size.x/image_size.x,size.y/image_size.y)
+		draw_texture_rect(bull_texture,Rect2((size-image_size*ratio)/2,image_size*ratio),false)
+		return
 	if kind == 2 and fps_texture != null:
 		var image_size := fps_texture.get_size()
 		var ratio := maxf(size.x/image_size.x,size.y/image_size.y)
@@ -78,6 +84,6 @@ func track_style() -> StyleBoxFlat:
 func _ready() -> void:
 	clip_contents = true
 	excavator_texture = load("res://assets/dirt-rally-card.png")
-	fps_texture = load("res://assets/fps-reference.png")
+	fps_texture = load("res://assets/fps-model-card.png")
 	racing_texture = load("res://assets/racing-models.png")
 	resized.connect(queue_redraw)

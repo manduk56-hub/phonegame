@@ -31,7 +31,7 @@ test('publishing and replacing a tunnel preserves players, room and host authori
       assert.equal(cfg.joinAddress,url);assert.equal(cfg.room,app.room);
       assert.equal(cfg.internetStatus,'online');assert.equal(cfg.adminKey,null);
       assert(!JSON.stringify(cfg).includes(key));assert(cfg.addresses.length>=2);
-      assert.equal(await (await fetch(localUrl+'/qr')).text(),await QRCode.toString(`${url}/controller?room=${app.room}`,{type:'svg',margin:2}));
+      assert.equal(await (await fetch(localUrl+'/qr')).text(),await QRCode.toString(`${url}/controller?room=${app.room}`,{type:'svg',width:1024,margin:4}));
     }
     app.setPublicUrl('','reconnecting');
     const cfg=await (await fetch(localUrl+'/config')).json();

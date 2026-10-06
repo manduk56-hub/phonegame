@@ -1,4 +1,6 @@
 import {createRaceBroadcast} from './race-broadcast.js';
+import {createBullScene} from './bull-scene.js';
+const bullStyle=document.createElement('link');bullStyle.rel='stylesheet';bullStyle.href='/bull.css';document.head.append(bullStyle);
 import {createFpsScene} from './fps-scene.js';
 const fpsStyle=document.createElement('link');fpsStyle.rel='stylesheet';fpsStyle.href='/fps.css';document.head.append(fpsStyle);
 import {createWaterOverview} from './water-view.js';
@@ -14,7 +16,7 @@ const catalog=[
   {title:'플레이룸',subtitle:'모래 쟁탈전 · 폭포 물길 경주',type:'팀 대결',description:'휴대폰을 운전석으로! 포크레인을 조작해 우리 팀 구역에 가장 많은 모래를 모으세요.',meta:'2–16명 · 1–10분 · 휴대폰 컨트롤러',ready:true},
   {title:'POCKET RACING',subtitle:'작은 차, 커다란 승부',type:'레이싱',description:'가로로 든 폰을 기울여 핸들을 돌리고 실제 페달 모양의 버튼을 밟으세요. 여섯 스포츠카로 5바퀴를 먼저 완주하세요.',meta:'1–16명 · 5바퀴 · 차량 충돌 · 동일 성능',ready:true},
   {title:'FLAG STRIKE',subtitle:'조준하고, 탈환하고, 귀환하라',type:'FPS',description:'PC 화면 기준 방향키로 이동하고, 폰의 1인칭 십자가에 상대를 맞추세요. 벽 뒤의 상대는 맞지 않습니다. 중앙 깃발을 우리 진영으로 가져오면 1점, 사망하면 2초 후 그 자리에서 부활합니다.',meta:'2–16명 · 2–8팀 · 깃발 쟁탈전',ready:true},
-  {title:'PARTY MIX',subtitle:'다 같이 즐기는 미니게임',type:'파티',description:'짧고 신나는 미니게임으로 한판 더! 새로운 파티 게임을 준비하고 있어요.'}
+  {title:'BULL RUN',subtitle:'뿔을 피하라, 끝까지 살아남아라',type:'투우',description:'한 명은 황소, 나머지는 도망자! 가속하는 황소의 뿔을 피해 원형 경기장에서 살아남으세요. 황소는 좌우 회전만 조작하며 자동으로 전진합니다.',meta:'2–16명 · 30–900초 · 랜덤/지정 황소',ready:true}
 ];
 const illustrations=[
   '<path fill="#7d805b" d="M0 135h400v25H0z"/><path fill="#e4c18c" d="m265 135 53-56 46 56z"/><rect x="83" y="113" width="147" height="28" rx="12" fill="#252b30"/><path stroke="#555c58" stroke-width="16" stroke-dasharray="1 24" d="M99 127h120"/><path fill="#f1b94a" d="M95 84h133v30H95z"/><path fill="#252b30" d="M105 40h62v48h-62z"/><path fill="#c9e4e2" d="M114 49h43v30h-43z"/><path fill="none" stroke="#252b30" stroke-width="19" d="m194 88 45-61 53 59"/><path fill="none" stroke="#f1b94a" stroke-width="12" d="m194 88 45-61 53 59"/><path fill="#252b30" d="m277 82 36 6-11 27-23-7z"/>',
@@ -23,10 +25,15 @@ const illustrations=[
   '<g fill="#252b30"><path d="M82 109h48v35H82zm63-32h48v35h-48zm64 32h48v35h-48zm63-32h48v35h-48z"/></g><circle cx="106" cy="87" r="22" fill="#f0c667"/><circle cx="169" cy="55" r="22" fill="#d77a88"/><circle cx="233" cy="87" r="22" fill="#80bab1"/><circle cx="296" cy="55" r="22" fill="#eee4d4"/><path stroke="#252b30" stroke-width="5" stroke-dasharray="5 10" d="M96 87h25m38-32h25m39 32h25m38-32h25"/>'
 ];
 illustrations[2]='<path fill="#657d75" d="M0 110h400v50H0z"/><path fill="#b4ad92" d="M50 60h75v65H50zm220 20h80v65h-80z"/><path stroke="#eee9d4" stroke-width="6" d="M195 140V22"/><path fill="#ffe45c" d="M198 24h65l-16 25h-49z"/><path fill="#f07866" d="M130 112h35v40h-35z"/><circle cx="147" cy="101" r="12" fill="#ead5ae"/><path stroke="white" stroke-width="3" d="M200 66v28m-14-14h28"/>';
-const art=i=>i===2?'<img class="hub-art hub-fps-art" src="/assets/fps-reference.png" alt="모래빛 경기장에서 빨강과 파랑 팀이 깃발을 탈환하는 픽셀 FPS" width="1672" height="941">':i===1?'<img class="hub-art" src="/assets/racing-models.png" alt="선택 가능한 여섯 스포츠카">':i===0?'<img class="hub-art hub-game-render" src="/assets/dirt-rally-card.png" alt="실제 게임 속 노란 포크레인이 모래를 담은 버킷을 들어 올린 모습" width="1024" height="1024">':`<svg class="hub-art art-${i}" viewBox="0 0 400 160" aria-hidden="true"><defs><pattern id="grid-${i}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="white" stroke-opacity=".13"/></pattern></defs><path fill="url(#grid-${i})" d="M0 0h400v160H0z"/>${illustrations[i]}</svg>`;
+const art=i=>i===3?'<img class="hub-art" src="/assets/bull-card.png" alt="황소와 도망자 3D 모델 · 투우 게임">':i===2?'<img class="hub-art hub-fps-art" src="/assets/fps-model-card.png" alt="실제 FPS 병사와 소총 모델로 렌더링한 빨강·파랑 팀 깃발 쟁탈전" width="1920" height="1080">':i===1?'<img class="hub-art" src="/assets/racing-models.png" alt="선택 가능한 여섯 스포츠카">':i===0?'<img class="hub-art hub-game-render" src="/assets/dirt-rally-card.png" alt="실제 게임 속 노란 포크레인이 모래를 담은 버킷을 들어 올린 모습" width="1024" height="1024">':`<svg class="hub-art art-${i}" viewBox="0 0 400 160" aria-hidden="true"><defs><pattern id="grid-${i}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="white" stroke-opacity=".13"/></pattern></defs><path fill="url(#grid-${i})" d="M0 0h400v160H0z"/>${illustrations[i]}</svg>`;
 hub.innerHTML=`<header class="hub-header"><a class="hub-brand" href="#games">▦ 플레이룸 <span>함께 노는 시간</span></a><span class="hub-device">하나의 화면 · 각자의 휴대폰</span></header><section class="hub-intro"><p class="hub-kicker">PICK A GAME. MAKE A MEMORY.</p><h1>오늘은 어떤 게임을 할까요<span>?</span></h1><p>친구들을 모으고, 게임을 고르고, 함께 시작하세요.</p></section><div class="hub-layout"><section aria-label="게임 목록" class="hub-catalog">${catalog.map((g,i)=>`<button class="hub-card" data-game="${i}" aria-pressed="false">${art(i)}<span class="hub-card-heading"><strong>${g.title}</strong><span class="hub-tag">${g.type}</span></span><span class="hub-card-subtitle">${g.subtitle}</span><span class="hub-card-status ${g.ready?'is-ready':''}">${g.ready?'● 플레이 가능 <span>2–16명</span>':'준비 중 <span>COMING SOON</span>'}</span></button>`).join('')}</section><aside class="hub-detail" aria-label="선택한 게임 정보"><p class="hub-detail-kicker">선택한 게임 <span>GAME INFO ↗</span></p><div id="hub-preview"></div><h2 id="hub-title"></h2><p id="hub-subtitle"></p><p id="hub-description" aria-live="polite"></p><p id="hub-meta"></p><button id="hub-play">대기실 입장 <span>→</span></button><p class="hub-footnote" id="hub-footnote"></p></aside></div><footer class="hub-footer"><span><b>01</b> 게임 선택 <i>→</i> <b>02</b> QR로 참가 <i>→</i> <b>03</b> 함께 플레이</span><span>PLAY TOGETHER.</span></footer>`;
 document.body.prepend(hub);
-hub.querySelector('.hub-detail').insertAdjacentHTML('beforeend',`<section class="hub-join" aria-label="휴대폰 참가"><img id="hub-qr" alt="모든 게임에 사용하는 참가 QR코드"><div><strong>QR 한 번으로 참가</strong><p>게임을 바꿔도 이 폰으로 계속 플레이!</p><p id="hub-room">서버 연결 중…</p><p id="hub-players" aria-live="polite"></p><p id="hub-url"></p></div></section>`);
+const sidebar=document.createElement('div');sidebar.className='hub-sidebar';
+const detail=hub.querySelector('.hub-detail');detail.before(sidebar);sidebar.append(detail);
+sidebar.insertAdjacentHTML('afterbegin',`<section class="hub-join" aria-label="휴대폰 참가"><img id="hub-qr" width="200" height="200" alt="모든 게임에 사용하는 참가 QR코드"><div><strong>QR 한 번으로 참가</strong><p>게임을 바꿔도 이 폰으로 계속 플레이!</p><p id="hub-room">서버 연결 중…</p><p id="hub-players" aria-live="polite"></p><p id="hub-url"></p></div></section>`);
+const welcome=document.createElement('div');welcome.className='hub-welcome';
+const intro=hub.querySelector('.hub-intro');intro.before(welcome);
+welcome.append(intro,hub.querySelector('.hub-join'));
 document.title='플레이룸 · 게임 선택';
 let selectedGame=0,currentPhase='lobby';
 function chooseGame(index){
@@ -38,7 +45,7 @@ function chooseGame(index){
   $('hub-title').textContent=game.title;$('hub-subtitle').textContent=game.subtitle;
   $('hub-description').textContent=game.description;$('hub-meta').textContent=game.meta||`${game.type} · 새로운 게임 준비 중`;
   $('hub-play').disabled=!game.ready;$('hub-play').innerHTML=game.ready?'대기실 입장 <span>→</span>':'곧 만나요!';
-  $('hub-footnote').textContent=game.ready?'아래 QR로 먼저 참가하세요. 연결한 폰은 모든 게임에서 계속 사용합니다.':'아직 플레이할 수 없어요. 다음 업데이트를 기다려주세요.';
+  $('hub-footnote').textContent=game.ready?'공통 참가 QR로 먼저 참가하세요. 연결한 폰은 모든 게임에서 계속 사용합니다.':'아직 플레이할 수 없어요. 다음 업데이트를 기다려주세요.';
 }
 for(const card of hub.querySelectorAll('.hub-card'))card.onclick=()=>chooseGame(Number(card.dataset.game));
 const backToGames=document.createElement('button');
@@ -51,12 +58,20 @@ function showScreen(screen){
   if(inLobby)backToGames.focus();else hub.querySelector(`[data-game="${selectedGame}"]`).focus();
   window.scrollTo(0,0);
 }
-$('hub-play').onclick=()=>{if(catalog[selectedGame].ready){send({type:'game',game:['excavator','racing','fps'][selectedGame]});location.hash='dirt-rally';showScreen('dirt-rally');}};
+$('hub-play').onclick=()=>{if(catalog[selectedGame].ready){send({type:'game',game:['excavator','racing','fps','bull'][selectedGame]});location.hash='dirt-rally';showScreen('dirt-rally');}};
 backToGames.onclick=()=>{if(currentPhase!=='running'){if(currentPhase==='finished')send({type:'lobby'});location.hash='games';showScreen('games');}};
 window.addEventListener('hashchange',()=>{if(currentPhase==='running'&&location.hash!=='#dirt-rally'){location.hash='dirt-rally';return;}showScreen(location.hash.slice(1));});
 chooseGame(0);showScreen(location.hash.slice(1));
 const fpsCanvas=document.createElement('canvas');fpsCanvas.id='fps-overview';fpsCanvas.hidden=true;lobby.insertBefore(fpsCanvas,lobby.querySelector('.grid'));let fpsScene;
 let config,ws,latest,retry,authenticated=false,hostKey='';
+const bullCanvas=document.createElement('canvas');bullCanvas.id='bull-overview';bullCanvas.hidden=true;lobby.insertBefore(bullCanvas,lobby.querySelector('.grid'));let bullScene;
+const bullPicker=document.createElement('section');bullPicker.id='bull-picker';bullPicker.hidden=true;bullPicker.innerHTML='<h2>황소 선택</h2><select aria-label="황소 참가자 선택"></select><p>황소: 자동 전진 · 가속할수록 회전이 어려워짐 · 벽 충돌 시 밀림과 스턴<br>사람: 앞뒤 이동과 좌우 회전 · 뿔에 닿으면 경기장 밖으로 아웃</p>';lobby.insertBefore(bullPicker,bullCanvas);
+const bullSummary=document.createElement('p');bullSummary.id='bull-summary';bullSummary.hidden=true;lobby.insertBefore(bullSummary,bullCanvas);
+let bullPickerKey='';
+function renderBull(m){const playing=m.game==='bull';bullCanvas.hidden=!playing;bullPicker.hidden=!playing;bullSummary.hidden=!playing;if(!playing)return;if(!bullScene)bullScene=createBullScene(bullCanvas,{overview:true});bullScene.update(m);
+const picker=bullPicker.querySelector('select'),key=JSON.stringify([m.bull.choice,m.phase,m.players.map(p=>[p.id,p.name,p.connected])]);if(key!==bullPickerKey){bullPickerKey=key;picker.replaceChildren(new Option('매 라운드 무작위','random'),...m.players.filter(p=>p.connected).map(p=>new Option(p.name,p.id)));picker.value=m.bull.choice;picker.disabled=m.phase!=='lobby'||!authenticated;picker.onchange=()=>send({type:'bull-choice',id:picker.value});}
+bullSummary.textContent=m.phase==='lobby'?'2명 이상 참가한 뒤 시작하세요 · PC는 경기장 전체, 휴대폰은 내 1인칭 시야':m.phase==='finished'?`${m.results.winner==='bull'?'황소 승리!':'사람 승리!'} · `+m.results.players.map(p=>`${p.name}: ${p.role==='bull'?'황소':p.survival.toFixed(2)+'초'}`).join(' / '):`${Math.ceil(m.remaining)}초 · 황소 ${m.players.find(p=>p.role==='bull')?.name} · 생존 ${m.players.filter(p=>p.participating&&p.role==='human'&&p.alive).length}명`;
+lobby.querySelector('.worksite-hero h1').firstChild.textContent='BULL RUN';lobby.querySelector('.title-caption').textContent='뿔을 피해 살아남아라!';lobby.querySelector('.worksite-hero .eyebrow').textContent='2–16명 · 원형 투우 경기장';lobby.querySelector('.pixel-scene').hidden=true;lobby.querySelector('.worksite-hero p').textContent='황소는 모두를 아웃시키면 승리 · 제한 시간까지 사람이 남으면 사람 승리';}
 const raceCanvas=document.createElement('canvas');raceCanvas.id='race-overview';raceCanvas.hidden=true;lobby.insertBefore(raceCanvas,lobby.querySelector('.grid'));let raceScene;const raceBroadcast=createRaceBroadcast(lobby);
 const raceSummary=document.createElement('p');raceSummary.hidden=true;lobby.append(raceSummary);
 const trackPicker=document.createElement('section');trackPicker.id='race-track-picker';trackPicker.hidden=true;
@@ -116,9 +131,13 @@ function updateConnection(next){
   qr();
 }
 function render(m){
+  renderBull(m);const bull=m.game==='bull';
   const shooting=m.game==='fps';fpsCanvas.hidden=!shooting;
   if(shooting){if(!fpsScene)fpsScene=createFpsScene(fpsCanvas,{overview:true});fpsScene.update(m);lobby.querySelector('.title-caption').textContent='깃발을 탈환하라!';lobby.querySelector('.worksite-hero h1').firstChild.textContent='FLAG STRIKE';lobby.querySelector('.worksite-hero .eyebrow').textContent='최대 16명 · FPS 깃발 쟁탈전';lobby.querySelector('.pixel-scene').hidden=true;lobby.querySelector('.worksite-hero p').textContent='PC 화면을 보며 이동 방향으로 조준 · 발사 버튼으로 사격 · 깃발 운반';}
-  lobby.querySelector('.field-guide').hidden=shooting;
+  lobby.querySelector('.field-guide').hidden=shooting||bull;
+  const settings=$('configure').closest('section');if(settings){const heading=settings.querySelector('h2');if(heading)heading.textContent=bull?'경기 시간과 참가자':'팀과 경기 설정';const hint=settings.querySelector(':scope > p.muted');if(hint)hint.textContent=bull?'황소 선택 후 경기를 시작하세요.':'참가자의 팀을 직접 바꿀 수 있습니다. 준비가 끝나면 경기를 시작하세요.';}
+  $('configure').textContent=bull?'시간 적용':'균등 배정';
+  $('teams').parentElement.hidden=bull;
   for(const option of $('teams').options)option.disabled=shooting&&Number(option.value)<2;
   renderMapPicker(m);
   renderTrackPicker(m);
@@ -127,22 +146,24 @@ function render(m){
   if(racing){raceBroadcast.update(m);if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · ${m.race.laps}바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
     $('results').hidden=true;
   }
+  if(bull||racing)$('results').hidden=true;
   currentPhase=m.phase;
   $('hub-players').textContent=`접속 ${m.players.filter(p=>p.connected).length} / 16명`;
   backToGames.disabled=m.phase==='running';
   backToGames.title=backToGames.disabled?'대기실로 돌아온 뒤 게임을 변경하세요.':'';
   if(m.phase==='running'&&!hub.hidden){location.hash='dirt-rally';showScreen('dirt-rally');}
-  if(!racing)renderResults($('results'),m);
+  if(!racing&&!bull)renderResults($('results'),m);
   if(m.connection&&m.connection.address!==$('address').value){$('address').value=m.connection.address;qr();}
-  const signature=JSON.stringify([m.game,m.circuit?.id,m.phase,m.teamCount,m.duration,m.players.map(p=>[p.id,p.name,p.team,p.connected,p.car,p.color])]);
+  const signature=JSON.stringify([m.game,m.circuit?.id,m.phase,m.teamCount,m.duration,m.bull?.choice,m.players.map(p=>[p.id,p.name,p.team,p.connected,p.car,p.color])]);
   $('status').textContent=`${m.players.filter(p=>p.connected).length}/16 접속 · ${m.phase==='lobby'?'대기':m.phase==='running'?`${Math.ceil(m.remaining)}초`:'종료'}`;
   $('scores').replaceChildren(...(racing?[...m.players].sort((a,b)=>a.rank-b.rank).map(p=>{const d=document.createElement('div');d.className='score';d.style.color=p.color;d.textContent=`${p.rank}위 · ${p.name} · ${Math.min(3,p.lap+1)}/3 LAP`;return d;}):m.teams.map(t=>{const d=document.createElement('div');d.className='score';d.style.color=t.color;d.textContent=m.water?`팀 ${t.id+1} · 물길 ${Math.floor(m.water.lanes[t.id].progress)}%`:shooting?`팀 ${t.id+1} · 깃발 ${t.captures}점`:`팀 ${t.id+1} · ${t.dirt} 모래`;return d;})));
+  if(bull){$('scores').replaceChildren(...m.players.filter(p=>p.participating||m.phase==='lobby').map(p=>{const d=document.createElement('div');d.className='score';d.textContent=p.role==='bull'?`${p.name} · 황소`:`${p.name} · ${p.survival.toFixed(1)}초 · ${p.alive?'생존':'아웃'}`;return d;}));}
   if(signature===latest)return;
   latest=signature;
   $('teams').value=m.teamCount;$('duration').value=m.duration;
   const locked=m.phase!=='lobby';
-  for(const id of ['teams','duration','configure'])$(id).disabled=locked;
-  $('start').disabled=locked||!m.players.some(p=>p.connected);$('lobby').disabled=false;
+  for(const id of ['teams','duration','configure'])$(id).disabled=locked||(bull&&id==='teams');
+  $('start').disabled=locked||m.players.filter(p=>p.connected).length<(bull?2:1);$('lobby').disabled=false;
   $('players').replaceChildren(...m.players.map((p,i)=>{
     const card=document.createElement('div');card.className='player';card.style.setProperty('--team',racing?p.color:m.teams[p.team].color);
     const name=document.createElement('strong');name.textContent=`${i+1}. ${p.name} ${p.connected?'●':'(연결 끊김)'}`;
@@ -151,7 +172,7 @@ function render(m){
     for(const t of m.teams)select.add(new Option(`팀 ${t.id+1}`,t.id));
     select.value=p.team;select.disabled=locked;select.onchange=()=>send({type:'assign',id:p.id,team:Number(select.value)});
     const remove=document.createElement('button');remove.textContent='제외';remove.disabled=locked;remove.onclick=()=>send({type:'remove',id:p.id});
-    if(racing){const car=document.createElement('span');car.textContent=m.race.cars.find(c=>c.id===p.car)?.name;row.append(car,remove);}else row.append(select,remove);card.append(name,row);return card;
+    if(bull){const role=document.createElement('span');role.textContent=m.phase==='lobby'?(m.bull.choice===p.id?'지정 황소':m.bull.choice==='random'?'무작위 추첨 대상':'사람'):p.role==='bull'?'황소':'사람';row.append(role,remove);}else if(racing){const car=document.createElement('span');car.textContent=m.race.cars.find(c=>c.id===p.car)?.name;row.append(car,remove);}else row.append(select,remove);card.append(name,row);return card;
   }));
 }
 async function connect(){

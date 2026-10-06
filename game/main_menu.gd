@@ -6,7 +6,7 @@ const GAMES = [
 	["플레이룸", "모래 쟁탈전 · 폭포 물길 경주", "팀 대결", "2–16명", "휴대폰을 운전석으로! 포크레인을 조작해\n모래를 모으거나 폭포에서 목표선까지 물길을 파세요."],
 	["POCKET RACING", "작은 차, 커다란 승부", "레이싱", "1–16명", "폰을 기울여 핸들을 돌리고 페달을 밟으세요.\n여섯 스포츠카 · 5바퀴 · 차량 충돌 사용"],
 	["FLAG STRIKE", "조준 · 탈환 · 귀환", "FPS", "2–16명", "폰 전체 화면에서 1인칭으로 조준하고 발사!\n중앙 깃발을 우리 진영으로 가져오세요."],
-	["PARTY MIX", "다 같이 즐기는 미니게임", "파티", "준비 중", "짧고 신나는 미니게임으로 한판 더!\n새로운 파티 게임을 준비하고 있어요."]
+	["BULL RUN", "뿔을 피하라, 끝까지 살아남아라", "투우", "2–16명", "한 명은 황소, 나머지는 도망자!\n가속하는 황소를 피해 제한 시간까지 살아남으세요."]
 ]
 var menu: MarginContainer
 var background: ColorRect
@@ -74,14 +74,21 @@ func _ready() -> void:
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation",24)
 	menu.add_child(stack)
+	var welcome := HBoxContainer.new()
+	welcome.add_theme_constant_override("separation",28)
+	stack.add_child(welcome)
+	var intro := VBoxContainer.new()
+	intro.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	intro.add_theme_constant_override("separation",24)
+	welcome.add_child(intro)
 	var header := HBoxContainer.new()
-	stack.add_child(header)
+	intro.add_child(header)
 	var brand := label("플레이룸 / 함께 노는 시간",24,"#f17c64")
 	brand.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(brand)
 	header.add_child(label("하나의 화면 · 각자의 휴대폰",18,"#9ba6a5"))
-	stack.add_child(label("오늘은 어떤 게임을 할까요?",48))
-	stack.add_child(label("친구들을 모으고, 게임을 고르고, 함께 시작하세요.",20,"#a8b1ac"))
+	intro.add_child(label("오늘은 어떤 게임을 할까요?",48))
+	intro.add_child(label("친구들을 모으고, 게임을 고르고, 함께 시작하세요.",20,"#a8b1ac"))
 	var body := HBoxContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation",28)
@@ -124,14 +131,23 @@ func _ready() -> void:
 		contents.add_child(art)
 		contents.add_child(label(GAMES[i][0],22))
 		contents.add_child(label(GAMES[i][1],16,"#a8b1ac"))
-		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 3 else "준비 중   /   " + GAMES[i][2],14,"#f1bd75" if i < 3 else "#a8b1ac"))
+		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 4 else "준비 중   /   " + GAMES[i][2],14,"#f1bd75" if i < 4 else "#a8b1ac"))
 		for child in contents.get_children():
 			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.pressed.connect(select_game.bind(i))
+	var sidebar := VBoxContainer.new()
+	sidebar.custom_minimum_size.x = 430
+	sidebar.add_theme_constant_override("separation",16)
+	body.add_child(sidebar)
+	var join_panel := PanelContainer.new()
+	join_panel.custom_minimum_size.x = 430
+	join_panel.add_theme_stylebox_override("panel",panel("#eee9da","#f17c64"))
+	welcome.add_child(join_panel)
 	var details := PanelContainer.new()
+	details.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	details.custom_minimum_size.x = 430
 	details.add_theme_stylebox_override("panel",panel("#eee9da","#eee9da"))
-	body.add_child(details)
+	sidebar.add_child(details)
 	var info := VBoxContainer.new()
 	info.add_theme_constant_override("separation",14)
 	details.add_child(info)
@@ -144,7 +160,7 @@ func _ready() -> void:
 	info.add_child(detail_title)
 	detail_subtitle = label("",20,"#59615b")
 	info.add_child(detail_subtitle)
-	detail_description = label("",20,"#59615b")
+	detail_description = label("",18,"#59615b")
 	detail_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_description.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	info.add_child(detail_description)
@@ -161,9 +177,10 @@ func _ready() -> void:
 	info.add_child(play_button)
 	var join_row := HBoxContainer.new()
 	join_row.add_theme_constant_override("separation",14)
-	info.add_child(join_row)
+	join_panel.add_child(join_row)
 	qr = TextureRect.new()
-	qr.custom_minimum_size = Vector2(150,150)
+	qr.custom_minimum_size = Vector2(200,200)
+	qr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	qr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	join_row.add_child(qr)
@@ -177,7 +194,7 @@ func _ready() -> void:
 	join_info.add_child(roster_label)
 	join_label = label("참가 주소를 불러오는 중…",12,"#59615b")
 	join_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
-	join_label.custom_minimum_size.x = 200
+	join_label.custom_minimum_size.x = 160
 	join_info.add_child(join_label)
 	stack.add_child(label("01  QR로 한 번 참가    →    02  게임 선택    →    03  계속 함께 플레이                           PLAY TOGETHER.",18,"#9ba6a5"))
 	select_game(0)
@@ -205,14 +222,14 @@ func select_game(index: int) -> void:
 	detail_title.text = GAMES[index][0]
 	detail_subtitle.text = GAMES[index][1]
 	detail_description.text = GAMES[index][4]
-	detail_meta.text = "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else GAMES[index][2] + "   ·   새로운 게임 준비 중"))
-	play_button.text = "대기실 입장   →" if index < 3 else "곧 만나요!"
-	play_button.disabled = index > 2
+	detail_meta.text = "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else "투우 · 랜덤/지정 황소 · 생존시간 기록"))
+	play_button.text = "대기실 입장   →" if index < 4 else "곧 만나요!"
+	play_button.disabled = index > 3
 
 func launch_game() -> void:
-	if selected > 2 or is_instance_valid(active_game):
+	if selected > 3 or is_instance_valid(active_game):
 		return
-	active_game = load(["res://main.tscn","res://racing.tscn","res://fps.tscn"][selected]).instantiate()
+	active_game = load(["res://main.tscn","res://racing.tscn","res://fps.tscn","res://bull.tscn"][selected]).instantiate()
 	add_child(active_game)
 	menu.hide()
 	background.hide()
