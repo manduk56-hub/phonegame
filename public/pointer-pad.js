@@ -1,5 +1,5 @@
 // Each control owns one pointer; other controls remain independently usable.
-export function bindPad(el, callback, {vertical=false, eightWay=false, radius=.36, knobTravel=.36, enabled=()=>true}={}) {
+export function bindPad(el, callback, {vertical=false, eightWay=false, deadZone=null, radius=.36, knobTravel=.36, enabled=()=>true}={}) {
   let pointer=null;
   const knob=el.querySelector('.knob');
   function reset() {
@@ -27,8 +27,14 @@ export function bindPad(el, callback, {vertical=false, eightWay=false, radius=.3
     }else{
       const length=Math.hypot(x,y);
       if(length>1){x/=length;y/=length;}
-      if(Math.abs(x)<.06)x=0;
-      if(Math.abs(y)<.06)y=0;
+      if(deadZone!==null){
+        const magnitude=Math.hypot(x,y);
+        if(magnitude<=deadZone){x=0;y=0;}
+        else{const strength=(magnitude-deadZone)/(1-deadZone);x=x/magnitude*strength;y=y/magnitude*strength;}
+      }else{
+        if(Math.abs(x)<.06)x=0;
+        if(Math.abs(y)<.06)y=0;
+      }
     }
     knob.style.transform=`translate(calc(-50% + ${x*b.width*knobTravel}px), calc(-50% + ${y*b.height*(vertical?fraction:knobTravel)}px))`;
     callback(x,y);

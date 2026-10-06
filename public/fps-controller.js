@@ -4,13 +4,13 @@ import {createFpsScene} from './fps-scene.js';
 export function createFpsController({send,fullscreen}){
   const style=document.createElement('link');style.rel='stylesheet';style.href='/fps.css';document.head.append(style);
   const root=document.createElement('section');root.id='fps-controller';root.hidden=true;
-  root.innerHTML='<canvas id="fps-view" aria-label="캐릭터 1인칭 조준 화면"></canvas><div id="fps-crosshair" aria-hidden="true"></div><header class="fps-hud"><span id="fps-identity"></span><span id="fps-health"></span><button id="fps-fullscreen">전체화면</button></header><div id="fps-score" class="fps-scoreboard"></div><div id="fps-objective"></div><div id="fps-notice" role="status"></div><div id="fps-move" class="fps-pad" aria-label="PC 화면 기준 방향키"><span>이동 · PC 화면 방향</span><i class="pad-up">▲</i><i class="pad-right">▶</i><i class="pad-down">▼</i><i class="pad-left">◀</i><div class="knob"></div></div><button id="fps-fire" aria-label="발사">발사</button><div id="fps-hit" hidden>명중!</div><div class="fps-portrait">폰을 가로로 돌려주세요</div>';
+  root.innerHTML='<canvas id="fps-view" aria-label="캐릭터 1인칭 조준 화면"></canvas><div id="fps-crosshair" aria-hidden="true"></div><header class="fps-hud"><span id="fps-identity"></span><span id="fps-health"></span><button id="fps-fullscreen">전체화면</button></header><div id="fps-score" class="fps-scoreboard"></div><div id="fps-objective"></div><div id="fps-notice" role="status"></div><div id="fps-move" class="fps-pad" aria-label="PC 화면 기준 360도 이동 스틱"><span>이동 · 360° 아날로그</span><i class="pad-up">▲</i><i class="pad-right">▶</i><i class="pad-down">▼</i><i class="pad-left">◀</i><div class="knob"></div></div><button id="fps-fire" aria-label="발사">발사</button><div id="fps-hit" hidden>명중!</div><div class="fps-portrait">폰을 가로로 돌려주세요</div>';
   document.body.append(root);const $=id=>root.querySelector('#'+id),input={forward:0,strafe:0},aim={yaw:0,pitch:0},move={x:0,y:0};
   const scene=createFpsScene($('fps-view'));
   let state,enabled=false,firePointer=null,hitSerial=0,hitUntil=0,lastSpawn=null,offline=false;
   const allowed=()=>enabled&&!root.hidden&&!matchMedia('(orientation: portrait)').matches&&document.visibilityState==='visible'&&!offline;
   const updateMovement=()=>{const control=screenControl(move.x,move.y,aim.yaw);aim.yaw=control.yaw;Object.assign(input,{forward:control.forward,strafe:control.strafe});if(allowed())send({type:'input',...input,...aim});};
-  const resetPad=bindPad($('fps-move'),(x,y)=>{move.x=x;move.y=y;updateMovement();},{enabled:allowed,eightWay:true,radius:.40,knobTravel:.30});
+  const resetPad=bindPad($('fps-move'),(x,y)=>{move.x=x;move.y=y;updateMovement();},{enabled:allowed,deadZone:.08,radius:.40,knobTravel:.30});
   function stop(){resetPad();firePointer=null;$('fps-fire').classList.remove('pressed');if(state?.game==='fps'&&!root.hidden)send({type:'input',...input,...aim});}
   function fire(){if(allowed()){send({type:'input',...input,...aim});send({type:'fire'});}}
   const button=$('fps-fire');button.addEventListener('pointerdown',e=>{if(!allowed()||firePointer!==null)return;e.preventDefault();firePointer=e.pointerId;button.setPointerCapture(e.pointerId);button.classList.add('pressed');fire();});
@@ -33,7 +33,7 @@ export function createFpsController({send,fullscreen}){
     const carrier=m.players.find(q=>q.id===m.fps.flag.carrier);
     $('fps-objective').textContent=carrier?.id===p.id?'깃발 운반 중 · 이동속도 20% 감소 · 우리 진영으로 돌아가세요':carrier?`팀 ${carrier.team+1} · ${carrier.name} 깃발 운반 중`:Math.hypot(m.fps.flag.x,m.fps.flag.z)>.1?'떨어진 노란 깃발을 회수해 우리 진영으로 가져오세요':'노란 깃발을 가져와 우리 진영에 놓으세요';
     const results=m.results;
-    $('fps-notice').textContent=m.phase==='lobby'?'PC에서 경기 시작 대기 · PC 방향키 이동 / 폰 십자가로 조준':m.phase==='finished'?`${results.winnerIds.length?results.winnerIds.map(id=>'팀 '+(id+1)).join(' · ')+' 우승!':'무승부'} · ${m.teams.map(t=>'팀 '+(t.id+1)+' '+t.captures+'점').join(' / ')} · PC에서 다음 경기를 준비하세요`:p.hp<=0?`사망 · ${Math.max(0,p.respawn).toFixed(1)}초 후 이 자리에서 부활`:'';
+    $('fps-notice').textContent=m.phase==='lobby'?'PC에서 경기 시작 대기 · 스틱으로 이동·조준 / 미는 만큼 속도 조절':m.phase==='finished'?`${results.winnerIds.length?results.winnerIds.map(id=>'팀 '+(id+1)).join(' · ')+' 우승!':'무승부'} · ${m.teams.map(t=>'팀 '+(t.id+1)+' '+t.captures+'점').join(' / ')} · PC에서 다음 경기를 준비하세요`:p.hp<=0?`사망 · ${Math.max(0,p.respawn).toFixed(1)}초 후 이 자리에서 부활`:'';
     root.classList.toggle('fps-dead',p.hp<=0);button.disabled=!enabled;
     if(p.hitSerial!==hitSerial){if(!entering&&p.hitSerial>hitSerial)hitUntil=performance.now()+180;hitSerial=p.hitSerial;}
   }};

@@ -18,7 +18,7 @@ test('one movement control faces the travel direction; stop preserves heading an
   const m=new Match();m.selectGame('fps');const p=m.join('one pad');m.start();Object.assign(p,{x:0,z:0,yaw:1});
   const input=screenControl(x,y,p.yaw);m.input(p.id,{...input,pitch:1},1000);m.tick(.1,1000);
   const direction=screenDirection(x,y),length=Math.hypot(direction.x,direction.z),world={x:direction.x/length,z:direction.z/length},heading=p.yaw;
-  assert(Math.abs(p.x-world.x*FPS_MOVE_SPEED*.1)<1e-8);assert(Math.abs(p.z-world.z*FPS_MOVE_SPEED*.1)<1e-8);
+  assert(Math.abs(p.x-world.x*Math.min(1,length)*FPS_MOVE_SPEED*.1)<1e-8);assert(Math.abs(p.z-world.z*Math.min(1,length)*FPS_MOVE_SPEED*.1)<1e-8);
   assert(Math.abs(Math.atan2(Math.sin(heading-input.yaw),Math.cos(heading-input.yaw)))<1e-8);
   assert.equal(p.pitch,0);
   const position=[p.x,p.z];m.input(p.id,{...screenControl(0,0,heading),yaw:heading+1,pitch:-1},1000);m.tick(.1,1000);

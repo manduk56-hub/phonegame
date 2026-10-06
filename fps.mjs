@@ -1,6 +1,6 @@
 import {readFileSync} from 'node:fs';
 export const FPS_ARENA=JSON.parse(readFileSync(new URL('./game/fps-arena.json',import.meta.url),'utf8'));
-export const FPS_MOVE_SPEED=10;
+export const FPS_MOVE_SPEED=7;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export function resetFps(m){m.fps={flag:{x:0,z:0,carrier:null,pickupRadius:2.5},shots:[],sequence:0};for(const t of m.teams){t.captures=0;if(m.game==='fps')t.color=['#2866ce','#d84238','#eab642','#65b879','#9b76d3','#ea7b43','#db6da0','#46b5bf'][t.id];}}

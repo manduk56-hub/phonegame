@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Match} from '../simulation.mjs';
-import {fpsBlocked} from '../fps.mjs';
+import {FPS_ARENA,FPS_MOVE_SPEED,fpsBlocked} from '../fps.mjs';
 function setup(){const m=new Match();m.selectGame('fps');m.configure(2,30);const a=m.join('A'),b=m.join('B');m.start();Object.assign(a,{x:0,z:5,yaw:Math.PI});Object.assign(b,{x:0,z:-5});return {m,a,b};}
 test('shots follow character facing, ignore aim overrides, stay horizontal, and are rate limited',()=>{
   const {m,a,b}=setup();m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);
@@ -56,4 +56,11 @@ test('the visible pickup radius is authoritative, includes its boundary, and can
   m.fps.flag.carrier=null;Object.assign(m.fps.flag,{x:7.5,z:-4});Object.assign(a,{x:9,z:-2.5});
   m.tick(.05);assert.equal(m.fps.flag.carrier,null);
   Object.assign(a,{x:7.5,z:-2});m.tick(.05);assert.equal(m.fps.flag.carrier,a.id);
+});
+
+test('expanded FPS boundary and sixteen-player team spawns agree with rendered arena',()=>{
+  for(const count of [2,4,8]){const m=new Match();m.selectGame('fps');m.configure(count);for(let i=0;i<16;i++)m.join('spawn '+i);m.start();for(const p of m.players.values()){assert(!fpsBlocked(p.x,p.z));assert(Math.abs(p.x)<FPS_ARENA.limit&&Math.abs(p.z)<FPS_ARENA.limit);}}
+  const {m,a}=setup();Object.assign(a,{x:40,z:0,yaw:Math.PI/2});
+  for(let i=0;i<30;i++){m.input(a.id,{forward:1},1000+i*50);m.tick(.05,1000+i*50);assert(!fpsBlocked(a.x,a.z));}
+  assert(a.x>40);assert(a.x<=FPS_ARENA.limit-.4);assert(FPS_MOVE_SPEED<10);
 });

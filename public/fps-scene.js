@@ -86,7 +86,11 @@ export function createFpsScene(canvas,{overview=false}={}){
   function frame(now){requestAnimationFrame(frame);if(!state||!art||!canvas.isConnected||canvas.closest('[hidden]'))return;const width=canvas.clientWidth,height=canvas.clientHeight;if(!width||!height)return;
     const dt=Math.min(.1,(now-last)/1000);last=now;animateEffects(now);
     if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);if(overview){camera.top=overviewHalf;camera.bottom=-overviewHalf;camera.left=-overviewHalf*width/height;camera.right=overviewHalf*width/height;}else camera.aspect=width/height;camera.updateProjectionMatrix();}
-    if(!overview){const p=state.players.find(p=>p.id===playerId);if(p){camera.position.set(p.x,state.fps.arena.eye,p.z);const yaw=aim?.yaw??p.yaw;camera.lookAt(p.x+Math.sin(yaw),camera.position.y,p.z+Math.cos(yaw));gun.visible=p.hp>0;kick=Math.max(0,kick-dt*.5);gun.position.z=-.5+kick;}}
+    if(!overview){const p=state.players.find(p=>p.id===playerId);if(p){const blend=1-Math.exp(-18*dt);
+      if(camera.userData.playerId!==p.id){camera.position.set(p.x,state.fps.arena.eye,p.z);camera.userData.yaw=aim?.yaw??p.yaw;camera.userData.playerId=p.id;}
+      camera.position.x+=(p.x-camera.position.x)*blend;camera.position.z+=(p.z-camera.position.z)*blend;
+      const targetYaw=aim?.yaw??p.yaw;camera.userData.yaw+=Math.atan2(Math.sin(targetYaw-camera.userData.yaw),Math.cos(targetYaw-camera.userData.yaw))*blend;
+      const yaw=camera.userData.yaw;camera.lookAt(camera.position.x+Math.sin(yaw),camera.position.y,camera.position.z+Math.cos(yaw));gun.visible=p.hp>0;kick=Math.max(0,kick-dt*.5);gun.position.z=-.5+kick;}}
     flag.rotation.y=Math.atan2(camera.position.x-flag.position.x,camera.position.z-flag.position.z);renderer.render(scene,camera);canvas.dataset.draws=String(renderer.info.render.calls);canvas.dataset.frames=String(Number(canvas.dataset.frames||0)+1);
   }requestAnimationFrame(frame);return {update};
 }

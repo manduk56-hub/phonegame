@@ -193,7 +193,7 @@ func build_ui() -> void:
 	var layout := VBoxContainer.new()
 	lobby.add_child(layout)
 	layout.add_child(text_label("깃발 쟁탈전 / 대기실",28))
-	layout.add_child(text_label("이동 방향으로 조준 · 발사 버튼으로 사격",18))
+	layout.add_child(text_label("360도 스틱 이동·조준 · 발사 버튼으로 사격",18))
 	qr = TextureRect.new()
 	qr.custom_minimum_size = Vector2(130,130)
 	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
