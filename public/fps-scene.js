@@ -5,13 +5,13 @@ const loadArt=()=>artPromise??=fetch('/fps-art.json').then(r=>{if(!r.ok)throw Er
 export function createFpsScene(canvas,{overview=false}={}){
   const renderer=new THREE.WebGLRenderer({canvas,antialias:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1)*.8);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   canvas.style.imageRendering='pixelated';
-  const scene=new THREE.Scene();scene.background=new THREE.Color('#91cafa');scene.fog=overview?null:new THREE.Fog('#91cafa',40,100);
-  scene.add(new THREE.HemisphereLight(0xdde7e5,0x64614f,1.4));const sun=new THREE.DirectionalLight(0xffefcc,2.0);sun.position.set(-20,45,22);sun.castShadow=true;sun.shadow.mapSize.set(overview?2048:1024,overview?2048:1024);Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,near:1,far:100});sun.shadow.bias=-.001;sun.shadow.normalBias=.025;scene.add(sun);
+  const scene=new THREE.Scene();scene.background=new THREE.Color('#8b9aa6');scene.fog=overview?null:new THREE.Fog('#8b9aa6',40,100);
+  scene.add(new THREE.HemisphereLight(0xe2eaf0,0x424a52,1.4));const sun=new THREE.DirectionalLight(0xf1f5fa,2.0);sun.position.set(-20,45,22);sun.castShadow=true;sun.shadow.mapSize.set(overview?2048:1024,overview?2048:1024);Object.assign(sun.shadow.camera,{left:-60,right:60,top:60,bottom:-60,near:1,far:130});sun.shadow.bias=-.001;sun.shadow.normalBias=.025;scene.add(sun);
   const camera=overview?new THREE.OrthographicCamera(-43,43,33,-33,.1,200):new THREE.PerspectiveCamera(75,1,.05,120);
   if(overview){camera.position.set(...FPS_OVERVIEW_POSITION);camera.lookAt(0,0,0);}
-  let materials={},art,state,playerId,aim,baseSignature='',last=performance.now(),shotSerial=0,kick=0,flashUntil=0;
+  let overviewHalf=45,materials={},art,state,playerId,aim,baseSignature='',last=performance.now(),shotSerial=0,kick=0,flashUntil=0;
   function box(w,h,d,x,y,z,color,parent=scene){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:1}));mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;}
-  const ground=box(66,.2,66,0,-.1,0,'#efd09a');
+  const ground=box(1,.2,1,0,-.1,0,'#41484f');
   const effects=new Map();
   const actors=new Map(),bases=new THREE.Group(),tracers=new THREE.Group();scene.add(bases,tracers);
   const flag=new THREE.Group();scene.add(flag);
@@ -59,7 +59,7 @@ export function createFpsScene(canvas,{overview=false}={}){
     const edgeArray=new Float32Array(edges.reduce((n,g)=>n+g.attributes.position.array.length,0));let offset=0;for(const g of edges){edgeArray.set(g.attributes.position.array,offset);offset+=g.attributes.position.array.length;g.dispose();}const edgeGeometry=new THREE.BufferGeometry();edgeGeometry.setAttribute('position',new THREE.BufferAttribute(edgeArray,3));root.add(new THREE.LineSegments(edgeGeometry,new THREE.LineBasicMaterial({color:'#252b28',transparent:true,opacity:.55})));return root;
   }
   loadArt().then(value=>{art=value;for(const [name,t]of Object.entries(art.textures)){const map=new THREE.DataTexture(new Uint8Array(t.pixels),t.size,t.size);map.colorSpace=THREE.SRGBColorSpace;map.magFilter=map.minFilter=THREE.NearestFilter;map.generateMipmaps=false;map.wrapS=map.wrapT=THREE.RepeatWrapping;map.needsUpdate=true;materials[name]=new THREE.MeshStandardMaterial({map,roughness:1});}
-    ground.material=materials.ground.clone();ground.material.map=materials.ground.map.clone();ground.material.map.repeat.set(22,22);ground.material.map.needsUpdate=true;
+    ground.material=materials.ground.clone();ground.material.map=materials.ground.map.clone();ground.material.map.repeat.set(30,30);ground.material.map.needsUpdate=true;
     scene.add(model(art.world));gun.add(model(art.rifle));
     // Bare hands and blue sleeves echo the reference; sleeves follow the player's team.
     const hands=[{size:[.14,.14,.22],pos:[.07,-.12,.32],mat:'glove',rot:[0,0,.2]},{size:[.18,.19,.5],pos:[.20,-.18,.10],mat:'olive',rot:[-.1,.45,-.2]},{size:[.11,.14,.14],pos:[-.07,-.14,-.13],mat:'glove',rot:[0,0,0]},{size:[.16,.18,.35],pos:[-.19,-.20,-.18],mat:'olive',rot:[-.3,-.15,.2]}];const sleeves=model(hands.map(p=>({...p,mat:p.mat==='olive'?'team':p.mat})), '#2866ce');gun.add(sleeves);gun.userData.sleeves=sleeves;
@@ -68,9 +68,10 @@ export function createFpsScene(canvas,{overview=false}={}){
   }).catch(e=>{canvas.dataset.error=e.message;});
   function disposeRoot(root){root.traverse(c=>{c.geometry?.dispose();if(c.isLineSegments)c.material.dispose();});root.userData.teamMaterial?.dispose();}
   function update(m,id,viewAim){state=m;playerId=id;aim=viewAim;if(!art)return;
+    const arena=m.fps.arena;ground.scale.set(arena.size,1,arena.size);overviewHalf=arena.size/2;
     const me=m.players.find(p=>p.id===id);if(me)gun.userData.sleeves?.userData.teamMaterial?.color.set(m.teams[me.team].color);
     const sig=JSON.stringify(m.teams.map(t=>[t.id,t.color,t.x,t.z]));
-    if(sig!==baseSignature){for(const c of [...bases.children]){bases.remove(c);c.geometry.dispose();c.material.dispose();}for(const t of m.teams){box(5,.12,5,t.x,.06,t.z,t.color,bases);box(.12,5,.12,t.x-2,2.5,t.z,'#79522f',bases);box(1.9,1.1,.1,t.x-1,4.2,t.z,t.color,bases);box(.4,.65,.12,t.x-1.6,4.2,t.z,'#fff3d8',bases);for(const side of [-1,1]){box(5,.025,.10,t.x,.135,t.z+side*2.3,'#e8dcc0',bases);box(.10,.025,5,t.x+side*2.3,.135,t.z,'#e8dcc0',bases);}}baseSignature=sig;}
+    if(sig!==baseSignature){for(const c of [...bases.children]){bases.remove(c);c.geometry.dispose();c.material.dispose();}for(const t of m.teams){box(5,.12,5,t.x,.06,t.z,t.color,bases);box(.12,5,.12,t.x-2,2.5,t.z,'#343d45',bases);box(1.9,1.1,.1,t.x-1,4.2,t.z,t.color,bases);box(.4,.65,.12,t.x-1.6,4.2,t.z,'#e9eef0',bases);for(const side of [-1,1]){box(5,.025,.10,t.x,.135,t.z+side*2.3,'#cbd3d9',bases);box(.10,.025,5,t.x+side*2.3,.135,t.z,'#cbd3d9',bases);}}baseSignature=sig;}
     const present=new Set();for(const p of m.players){present.add(p.id);let root=actors.get(p.id);if(!root){root=model(art.actor,m.teams[p.team].color);const rifle=model(art.rifle);rifle.scale.setScalar(.6);rifle.position.set(.03,1.09,.21);root.add(rifle);const heading=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,.12,.6),new THREE.Vector3(0,.12,3.2)]),new THREE.LineBasicMaterial({color:m.teams[p.team].color,depthTest:false}));heading.renderOrder=2;root.add(heading);actors.set(p.id,root);scene.add(root);}root.userData.teamMaterial.color.set(m.teams[p.team].color);root.position.set(p.x,0,p.z);root.rotation.y=p.yaw;root.visible=p.hp>0&&p.connected&&(overview||p.id!==id);}
     for(const [id,root]of actors)if(!present.has(id)){scene.remove(root);disposeRoot(root);actors.delete(id);}
     const carrier=m.players.find(p=>p.id===m.fps.flag.carrier),carrying=Boolean(carrier);
@@ -84,7 +85,7 @@ export function createFpsScene(canvas,{overview=false}={}){
   }
   function frame(now){requestAnimationFrame(frame);if(!state||!art||!canvas.isConnected||canvas.closest('[hidden]'))return;const width=canvas.clientWidth,height=canvas.clientHeight;if(!width||!height)return;
     const dt=Math.min(.1,(now-last)/1000);last=now;animateEffects(now);
-    if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);if(overview){camera.left=-33*width/height;camera.right=33*width/height;}else camera.aspect=width/height;camera.updateProjectionMatrix();}
+    if(canvas.width!==Math.floor(width*renderer.getPixelRatio())||canvas.height!==Math.floor(height*renderer.getPixelRatio())){renderer.setSize(width,height,false);if(overview){camera.top=overviewHalf;camera.bottom=-overviewHalf;camera.left=-overviewHalf*width/height;camera.right=overviewHalf*width/height;}else camera.aspect=width/height;camera.updateProjectionMatrix();}
     if(!overview){const p=state.players.find(p=>p.id===playerId);if(p){camera.position.set(p.x,state.fps.arena.eye,p.z);const yaw=aim?.yaw??p.yaw;camera.lookAt(p.x+Math.sin(yaw),camera.position.y,p.z+Math.cos(yaw));gun.visible=p.hp>0;kick=Math.max(0,kick-dt*.5);gun.position.z=-.5+kick;}}
     flag.rotation.y=Math.atan2(camera.position.x-flag.position.x,camera.position.z-flag.position.z);renderer.render(scene,camera);canvas.dataset.draws=String(renderer.info.render.calls);canvas.dataset.frames=String(Number(canvas.dataset.frames||0)+1);
   }requestAnimationFrame(frame);return {update};

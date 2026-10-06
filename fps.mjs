@@ -58,7 +58,8 @@ export function fpsTick(m,dt,now){
     if(!p.connected||now-p.lastInput>350)continue;
     const i=p.input,len=Math.max(1,Math.hypot(i.forward,i.strafe)),speed=FPS_MOVE_SPEED*(m.fps.flag.carrier===p.id?.8:1);
     const dx=(Math.sin(p.yaw)*i.forward+Math.cos(p.yaw)*i.strafe)/len*speed*dt,dz=(Math.cos(p.yaw)*i.forward-Math.sin(p.yaw)*i.strafe)/len*speed*dt;
-    const x=clamp(p.x+dx,-30.5,30.5),z=clamp(p.z+dz,-30.5,30.5);
+    const limit=FPS_ARENA.limit-.4;
+    const x=clamp(p.x+dx,-limit,limit),z=clamp(p.z+dz,-limit,limit);
     if(!fpsBlocked(x,p.z))p.x=x;if(!fpsBlocked(p.x,z))p.z=z;
   }
   const flag=m.fps.flag;

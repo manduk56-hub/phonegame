@@ -53,15 +53,15 @@ func render_card() -> void:
 	var world := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color("#6f9fae")
+	environment.background_color = Color("#8b9aa6")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("#e6f6ff")
+	environment.ambient_light_color = Color("#e2eaf0")
 	environment.ambient_light_energy = .4
 	world.environment = environment
 	stage.add_child(world)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-32,-38,0)
-	sun.light_color = Color("#ffefcc")
+	sun.light_color = Color("#f1f5fa")
 	sun.light_energy = .7
 	sun.shadow_enabled = true
 	stage.add_child(sun)
@@ -76,7 +76,7 @@ func render_card() -> void:
 	var floor_mesh: MeshInstance3D = factory.block(stage,Vector3(300,.2,300),Vector3(0,-.1,0),Color.WHITE)
 	var floor_material: StandardMaterial3D = factory.art_materials.ground.duplicate()
 	floor_material.uv1_scale = Vector3(32,32,1)
-	floor_material.albedo_color = Color("#c9af86")
+	floor_material.albedo_color = Color("#dce5eb")
 	floor_mesh.material_override = floor_material
 	# Keep the existing arena behind the foreground action for clear card cropping.
 	var backdrop: Array = factory.art.world.filter(func(part): return part.pos[2] < -8)

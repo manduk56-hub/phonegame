@@ -22,7 +22,7 @@ export class Match {
     this.groundPiles = []; this.nextPileId = 0;
     this.teams = Array.from({length:this.teamCount}, (_,id) => {
       const angle = id / this.teamCount * Math.PI*2;
-      return { id, color:COLORS[id], x:Math.sin(angle)*ARENA.teamRadius, z:Math.cos(angle)*ARENA.teamRadius, dirt:0 };
+      return { id, color:COLORS[id], x:Math.sin(angle)*(this.game==='fps'?FPS_ARENA.teamRadius:ARENA.teamRadius), z:Math.cos(angle)*(this.game==='fps'?FPS_ARENA.teamRadius:ARENA.teamRadius), dirt:0 };
     });
     resetWater(this);
     resetFps(this);

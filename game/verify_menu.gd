@@ -109,7 +109,8 @@ func run() -> void:
 			return
 		await process_frame
 	assert(hub.active_game.camera.position == Vector3(34,40,42))
-	assert(hub.active_game.state.fps.arena.walls.size() == 12)
+	assert(hub.active_game.state.fps.arena.walls.size() == hub.active_game.arena.walls.size())
+	assert(hub.active_game.camera.size == hub.active_game.arena.overviewSize)
 	hub.active_game.send_admin({"type":"start"})
 	deadline = Time.get_ticks_msec()+6000
 	while hub.active_game.state.get("phase") != "running":

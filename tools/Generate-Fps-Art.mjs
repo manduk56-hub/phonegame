@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-const materials={concrete:['#d8cbb3',9],footing:['#b5aa99',8],cap:['#ede0c6',6],ground:['#efd09a',10],olive:['#2764bd',9],armor:['#343b50',8],metal:['#30313e',7],steel:['#66697b',7],wood:['#b78346',13],woodDark:['#79522f',9],glove:['#ffc37b',6],visor:['#ffffff',2],black:['#191c29',3],cloth:['#ffc37b',5],team:['#ffffff',0],blue:['#2866ce',5],red:['#d84238',5],white:['#fff3d8',3],hair:['#49302a',4]};
+const materials={concrete:['#747d86',9],footing:['#454d55',8],cap:['#aeb6bd',6],ground:['#41484f',7],olive:['#2764bd',9],armor:['#343b50',8],metal:['#30313e',7],steel:['#66697b',7],wood:['#66717a',10],woodDark:['#343d45',7],glove:['#ffc37b',6],visor:['#ffffff',2],black:['#191c29',3],cloth:['#ffc37b',5],team:['#ffffff',0],blue:['#2866ce',5],red:['#d84238',5],white:['#e9eef0',3],hair:['#49302a',4]};
 const textures={};let seed=417;
 const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
 for(const [name,[hex,noise]] of Object.entries(materials)){const c=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)),pixels=[];for(let y=0;y<32;y++)for(let x=0;x<32;x++){let n=Math.floor((rand()-.5)*noise*2);if(rand()<.055)n-=noise*2;if(name==='wood'||name==='woodDark'){n+=(x%8===0?-24:0)+(y%5===0?5:0);}if(name==='concrete'&&y<8&&rand()<.12)n-=28;if(name==='olive'&&Math.floor(x/5)%2===Math.floor(y/6)%2)n-=9;pixels.push(...c.map(v=>Math.max(0,Math.min(255,v+n))),255);}textures[name]={size:32,pixels};}
@@ -33,12 +33,14 @@ for(const [idx,wall] of arena.walls.entries()){
 for(const side of [-1,1])for(let row=0;row<2;row++)for(let col=0;col<3;col++){const x=side*20,z=(col-1)*2.65,y=.75+row*1.5;
  w([2.02,1.45,2.6],[x,y,z],'wood');for(const sx of [-1.01,1.01])w([.12,1.5,2.65],[x+sx,y,z],'woodDark');for(const sy of [-.66,.66])w([2.06,.12,2.66],[x,y+sy,z],'woodDark');for(const sz of [-1.32,1.32])w([1.8,.13,.035],[x,y,z+sz],'woodDark',[0,0,.58]);}
 // Background towers sit behind the perimeter's solid collision boundary.
-// Sandstone silhouettes and opposing flag towers stay outside playable cover.
-for(const [x,z,h] of [[-28,-39,8],[-17,-41,10],[0,-40,7],[17,-41,10],[28,-39,8]]){
+const sceneryScale=arena.size/66;
+// Industrial silhouettes and opposing flag towers stay outside playable cover.
+for(let [x,z,h] of [[-28,-39,8],[-17,-41,10],[0,-40,7],[17,-41,10],[28,-39,8]]){
+ x*=sceneryScale;z*=sceneryScale;
  w([8,h,6],[x,h/2,z],'concrete');w([8.1,.6,6.1],[x,h-1,z],x<0?'red':'blue');w([8.3,.25,6.3],[x,h,z],'cap');
  for(const dx of [-3,0,3])w([1.5,.9,6],[x+dx,h+.45,z],'cap');
- if(Math.abs(x)===17){const team=x<0?'red':'blue';w([3,3,.13],[x,h-2,z+3.1],team);w([.25,1.5,.15],[x-.5,h-2,z+3.2],'white');w([1,.65,.15],[x-.1,h-1.7,z+3.2],'white');w([.15,4,.15],[x,h+2,z],'woodDark');w([2.7,1.4,.15],[x+1.4,h+3,z],team);w([.35,1.4,.17],[x+.25,h+3,z],'white');}
+ if(Math.abs(x/sceneryScale)===17){const team=x<0?'red':'blue';w([3,3,.13],[x,h-2,z+3.1],team);w([.25,1.5,.15],[x-.5,h-2,z+3.2],'white');w([1,.65,.15],[x-.1,h-1.7,z+3.2],'white');w([.15,4,.15],[x,h+2,z],'woodDark');w([2.7,1.4,.15],[x+1.4,h+3,z],team);w([.35,1.4,.17],[x+.25,h+3,z],'white');}
 }
-for(const [x,z]of [[-32,-26],[32,26]]){for(const dx of [-1.1,1.1])for(const dz of [-1.1,1.1])w([.2,6,.2],[x+dx,3,z+dz],'olive');w([3,.25,3],[x,4.2,z],'woodDark');w([3.5,.22,3.5],[x,6.3,z],'olive');for(const side of [-1,1]){w([3,.7,.13],[x,4.6,z+side*1.4],'olive');w([.13,.7,3],[x+side*1.4,4.6,z],'olive');w([.15,2.1,.15],[x+side*1.35,5.25,z-1.35],'olive');w([.15,2.1,.15],[x+side*1.35,5.25,z+1.35],'olive');}}
+for(let [x,z]of [[-32,-26],[32,26]]){x*=sceneryScale;z*=sceneryScale;for(const dx of [-1.1,1.1])for(const dz of [-1.1,1.1])w([.2,6,.2],[x+dx,3,z+dz],'olive');w([3,.25,3],[x,4.2,z],'woodDark');w([3.5,.22,3.5],[x,6.3,z],'olive');for(const side of [-1,1]){w([3,.7,.13],[x,4.6,z+side*1.4],'olive');w([.13,.7,3],[x+side*1.4,4.6,z],'olive');w([.15,2.1,.15],[x+side*1.35,5.25,z-1.35],'olive');w([.15,2.1,.15],[x+side*1.35,5.25,z+1.35],'olive');}}
 fs.writeFileSync(new URL('../game/fps-art.json',import.meta.url),JSON.stringify({textures,actor,rifle,world}));
 console.log('FPS art:',actor.length,'soldier parts,',rifle.length,'rifle parts,',world.length,'scenery parts');

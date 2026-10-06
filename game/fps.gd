@@ -112,28 +112,28 @@ func _ready() -> void:
 	var env := WorldEnvironment.new()
 	var environment := Environment.new()
 	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color("#91cafa")
+	environment.background_color = Color("#8b9aa6")
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("#e6f6ff")
+	environment.ambient_light_color = Color("#e2eaf0")
 	environment.ambient_light_energy = .4
 	env.environment = environment
 	add_child(env)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-55,-30,0)
 	sun.shadow_enabled = true
-	sun.light_color = Color("#ffefcc")
+	sun.light_color = Color("#f1f5fa")
 	sun.light_energy = .7
 	add_child(sun)
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 60
+	camera.size = float(arena.overviewSize)
 	camera.position = Vector3(34,40,42)
 	add_child(camera)
 	camera.look_at(Vector3.ZERO)
 	prepare_art()
-	var floor_mesh := block(self,Vector3(66,.2,66),Vector3(0,-.1,0),Color("#efd09a"))
+	var floor_mesh := block(self,Vector3(arena.size,.2,arena.size),Vector3(0,-.1,0),Color("#41484f"))
 	var floor_material: StandardMaterial3D = art_materials.ground.duplicate()
-	floor_material.uv1_scale = Vector3(22,22,1)
+	floor_material.uv1_scale = Vector3(arena.size/3.0,arena.size/3.0,1)
 	floor_mesh.material_override = floor_material
 	add_child(art_model(art.world))
 	add_child(bases)
@@ -158,6 +158,14 @@ func build_ui() -> void:
 	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var theme_resource := Theme.new()
 	theme_resource.default_font = FONT
+	preload("res://pixel_ui.gd").apply(theme_resource)
+	for type in ["Button","OptionButton","LineEdit"]:
+		theme_resource.set_stylebox("normal",type,preload("res://pixel_ui.gd").tile("#343e47","#a4b0ba"))
+		theme_resource.set_stylebox("hover",type,preload("res://pixel_ui.gd").tile("#46535e","#dce5eb"))
+		theme_resource.set_stylebox("disabled",type,preload("res://pixel_ui.gd").tile("#293139","#56616a"))
+		theme_resource.set_stylebox("pressed",type,preload("res://pixel_ui.gd").tile("#28323b","#a4b0ba",true))
+	theme_resource.set_stylebox("panel","PanelContainer",preload("res://pixel_ui.gd").tile("#252e36","#a4b0ba"))
+	ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ui.theme = theme_resource
 	layer.add_child(ui)
 	status = text_label("FLAG STRIKE · 서버 연결 중",28)
@@ -173,8 +181,8 @@ func build_ui() -> void:
 	ui.add_child(score_strip)
 	match_clock = text_label("03:00",32)
 	var clock_style := StyleBoxFlat.new()
-	clock_style.bg_color = Color("#303442")
-	clock_style.border_color = Color("#202635")
+	clock_style.bg_color = Color("#343e47")
+	clock_style.border_color = Color("#141a20")
 	clock_style.set_border_width_all(3)
 	clock_style.set_content_margin_all(12)
 	match_clock.add_theme_stylebox_override("normal",clock_style)
@@ -221,6 +229,7 @@ func build_ui() -> void:
 	roster = VBoxContainer.new()
 	scroll.add_child(roster)
 	start_button = Button.new()
+	start_button.add_theme_stylebox_override("normal",preload("res://pixel_ui.gd").tile("#667681","#dce5eb"))
 	start_button.text = "▶ 깃발 쟁탈전 시작"
 	start_button.pressed.connect(func():send_admin({"type":"start"}))
 	layout.add_child(start_button)
@@ -260,7 +269,7 @@ func accept_state(message: Dictionary) -> void:
 			node.queue_free()
 		for team in message.teams:
 			block(bases,Vector3(5,.12,5),Vector3(team.x,.06,team.z),Color(team.color))
-			block(bases,Vector3(.12,5,.12),Vector3(team.x-2,2.5,team.z),Color("#79522f"))
+			block(bases,Vector3(.12,5,.12),Vector3(team.x-2,2.5,team.z),Color("#343d45"))
 			block(bases,Vector3(1.9,1.1,.1),Vector3(team.x-1,4.2,team.z),Color(team.color))
 			var marker := Label3D.new()
 			marker.pixel_size = .035
@@ -335,7 +344,7 @@ func accept_state(message: Dictionary) -> void:
 			var panel := PanelContainer.new()
 			var style := StyleBoxFlat.new()
 			style.bg_color = Color(team.color)
-			style.border_color = Color("#202635")
+			style.border_color = Color("#141a20")
 			style.set_border_width_all(3)
 			style.set_content_margin_all(12)
 			panel.add_theme_stylebox_override("panel",style)
