@@ -2,6 +2,7 @@ import {FPS_ARENA,resetFps,fpsSpawn,fpsAim,fpsFire,fpsTick,fpsResults,dropFlag} 
 import {EXCAVATOR_MAPS,resetWater,waterAction,waterTick,waterResults,waterHeight,waterSnapshot} from './waterway.mjs';
 import { randomUUID } from 'node:crypto';
 import {readFileSync} from 'node:fs';
+import {excavatorOverlap} from './collision.mjs';
 import {raceSpawn,raceTick,chooseCar,CIRCUITS,TRACKS,CARS} from './racing.mjs';
 export const ARENA=JSON.parse(readFileSync(new URL('./game/arena.json',import.meta.url),'utf8'));
 export const COLORS = ['#faad28','#52c8fa','#f078a6','#77d99b','#a99aff','#fb775b','#e0d16c','#69d3cb'];
@@ -30,14 +31,14 @@ export class Match {
     const members = [...this.players.values()].filter(q=>q.team===p.team);
     const slot = members.findIndex(q=>q.id===p.id);
     const sector = Math.PI*2/this.teamCount;
-    const columns = Math.min(members.length, Math.max(1,Math.floor(sector*ARENA.spawnRadius/2)));
+    const columns = Math.min(members.length, Math.max(1,Math.floor(sector*ARENA.spawnRadius/2.6)));
     const row = Math.floor(slot/columns), col = slot%columns;
     const rowSize = Math.min(columns,members.length-row*columns);
-    const angle = p.team*sector+(col-(rowSize-1)/2)*Math.min(.24,sector*.8/columns);
-    const radius = ARENA.spawnRadius+row*2.2;
+    const angle = p.team*sector+(col-(rowSize-1)/2)*Math.min(.28,sector*.8/columns);
+    const radius = ARENA.spawnRadius+row*2.8;
     p.x = Math.sin(angle)*radius; p.z = Math.cos(angle)*radius;
     p.y=0; p.yaw = angle + Math.PI; p.turret = 0; p.boom=.50; p.stick=-1.4; p.curl=-.7; p.cargo=0;
-    if(this.water){const lane=this.water.lanes[p.team],side=(slot%2===0?-1:1)*3.1;p.x=lane.x+side;p.z=this.water.start+2.2+Math.floor(slot/2)*1.6;p.yaw=side<0?Math.PI/2:-Math.PI/2;}
+    if(this.water){const lane=this.water.lanes[p.team],side=(slot%2===0?-1:1)*2.6;p.x=lane.x+side;p.z=this.water.start+2.2+Math.floor(slot/2)*2.6;p.yaw=side<0?Math.PI/2:-Math.PI/2;}
     p.input=this.neutral(); p.lastInput=0; p.cooldown=0; p.message=''; p.delivered=0; p.disrupted=0;
   }
   join(name, token) {
@@ -168,14 +169,16 @@ export class Match {
       if(!p.connected||now-p.lastInput>350) continue;
       const i=p.input;
       // Facing +Z, the driver's left track is on +X: its forward motion turns toward -X.
-      if(!ceremony)p.yaw+=(i.travelR-i.travelL)*1.3*dt;
+      const canMove=next=>![...this.players.values()].some(q=>q!==p&&excavatorOverlap(next,q)>Math.max(1e-8,excavatorOverlap(p,q)+1e-8));
+      if(!ceremony){const next={...p,yaw:p.yaw+(i.travelR-i.travelL)*1.3*dt};if(canMove(next))p.yaw=next.yaw;}
       const speed=ceremony?0:(i.travelL+i.travelR)*1.7;
       if(Math.abs(speed)>.05) {
         const next={x:clamp(p.x+Math.sin(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit),z:clamp(p.z+Math.cos(p.yaw)*speed*dt,-ARENA.driveLimit,ARENA.driveLimit)};
-        if(![...this.players.values()].some(q=>q!==p&&distance(next,q)<1.5)) {p.x=next.x;p.z=next.z;}
+        if(canMove({...p,...next})) {p.x=next.x;p.z=next.z;}
       }
       if(this.water&&!ceremony)p.y=waterHeight(this,p);
-      p.turret+=i.swing*1.4*dt;
+      const turned={...p,turret:p.turret+i.swing*1.4*dt};
+      if(ceremony||canMove(turned))p.turret=turned.turret;
       const old={boom:p.boom,stick:p.stick,curl:p.curl};
       const target={boom:clamp(p.boom+i.boom*.7*dt,-.25,1.35),stick:clamp(p.stick+i.stick*.9*dt,-2.4,-.25),curl:clamp(p.curl+i.curl*1.8*dt,-1.2,1.2)};
       Object.assign(p,target);

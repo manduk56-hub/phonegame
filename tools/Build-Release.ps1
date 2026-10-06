@@ -36,7 +36,7 @@ if(-not $CloudflaredExe){$CloudflaredExe=Join-Path $cache 'cloudflared.exe';Get-
 $bundle=Join-Path $OutputDirectory ('build-'+[Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($bundle)|Out-Null
 try{
-    foreach($name in @('server.mjs','simulation.mjs','waterway.mjs','racing.mjs','fps.mjs','package.json','package-lock.json','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle}
+    foreach($name in @('server.mjs','simulation.mjs','collision.mjs','waterway.mjs','racing.mjs','fps.mjs','package.json','package-lock.json','Start-Launcher.cmd','Install-Playroom.cmd','Start-Game.cmd')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle}
     foreach($name in @('launcher','public')){Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $bundle -Recurse}
     foreach($name in @('runtime','game','licenses')){[IO.Directory]::CreateDirectory((Join-Path $bundle $name))|Out-Null}
     [IO.File]::WriteAllText((Join-Path $bundle 'release.json'),(@{app='playroom';version=$Version}|ConvertTo-Json),[Text.UTF8Encoding]::new($false))

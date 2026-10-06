@@ -1,3 +1,4 @@
+import {raceBody,bodyContact} from './collision.mjs';
 import {readFileSync} from 'node:fs';
 export const CIRCUIT=JSON.parse(readFileSync(new URL('./game/circuit.json',import.meta.url),'utf8'));
 export const CIRCUITS=JSON.parse(readFileSync(new URL('./game/circuits.json',import.meta.url),'utf8')).map(({scenery,...track})=>track);
@@ -105,10 +106,9 @@ export function raceTick(match,dt,now){
   const players=[...match.players.values()];
   if(match.raceCollisions)for(let a=0;a<players.length;a++)for(let b=a+1;b<players.length;b++){
     const p=players[a],q=players[b];if(p.finishedAt!==null||q.finishedAt!==null)continue;
-    let dx=p.x-q.x,dz=p.z-q.z,d=Math.hypot(dx,dz);if(d>=2.1)continue;
-    const shift=(2.1-d)/2;
-    if(d<.001){dx=1;dz=0;d=1;}
-    p.x+=dx/d*shift;p.z+=dz/d*shift;q.x-=dx/d*shift;q.z-=dz/d*shift;
+    const contact=bodyContact(raceBody(p),raceBody(q));if(!contact)continue;
+    const shift=(contact.depth+1e-6)/2;
+    p.x+=contact.x*shift;p.z+=contact.z*shift;q.x-=contact.x*shift;q.z-=contact.z*shift;
     p.speed*=.88;q.speed*=.88;
   }
   const ranks=raceResults(match);for(const r of ranks.players)match.players.get(r.id).rank=r.rank;
