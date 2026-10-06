@@ -70,7 +70,7 @@ cat /var/lib/dirt-rally/deployed-commit
 systemctl status dirt-rally
 ```
 
-이 서버의 최초 설정과 GitHub production 설정은 완료되어 있습니다. 이후 main push 시 전용 키로 자동 배포하며 SSH 비밀번호를 요구하지 않습니다.
+현재 배포 방식은 인스톨러이며 웹 서버 자동 배포 워크플로는 제거되었습니다. 이 문서는 과거 웹 서버 배포 설정 참고용이며 main push로 서버에 배포하지 않습니다.
 
 PC에서 수동으로 같은 배포를 요청하려면 `./deploy/Deploy-Git.ps1 -SshTarget user@your-server`를 실행합니다. 기본 배포 서버는 없습니다. 자기 PC의 `%LOCALAPPDATA%/DirtRally/deployment.json`에 `sshTarget`을 저장하면 다음에는 주소 인수를 생략할 수 있습니다. 기존 `Update-Controller.ps1`도 이 경로를 사용합니다. 두 스크립트 모두 비밀번호 인증을 금지하며, 로컬 파일을 커밋하거나 업로드하지 않습니다. GitHub main과 같은 커밋만 배포합니다.
 
