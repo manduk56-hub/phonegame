@@ -1,0 +1,24 @@
+#fishing-controller[hidden],#fishing-overview[hidden],#fishing-pc-panel[hidden]{display:none!important}
+.fishing-phone #controller,.fishing-phone .rotate-screen{display:none!important}
+#fishing-controller{position:fixed;inset:0;z-index:15;background:radial-gradient(ellipse at 50% 60%,#206d78,#102f43);color:#fff1d5;font-family:inherit;overflow:hidden;touch-action:none;user-select:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#fishing-controller header{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));display:flex;gap:10px;align-items:center;z-index:2}
+.fishing-identity{color:var(--angler);margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:35%;font-size:16px}
+#fishing-controller header button{background:#173c4e;border:1px solid #6a9198;font-size:13px;color:#f7e7c8;min-height:36px;padding:5px 10px}
+.fishing-cast{position:absolute;left:max(4%,env(safe-area-inset-left));top:50%;transform:translateY(-50%);width:clamp(100px,19vw,170px);height:clamp(100px,19vw,170px);border-radius:50%;background:#e8ba70;color:#263b42;border:5px solid #f5d6a0;font-size:23px;box-shadow:0 7px 0 #9c703f}
+.fishing-cast:disabled{opacity:.45}.fishing-cast span{display:block;font-size:12px;margin-top:12px;letter-spacing:3px}
+#fishing-controller .fishing-cast{border-radius:50%!important;background:#e8ba70!important;color:#263b42!important;border:5px solid #f5d6a0!important;box-shadow:0 7px 0 #9c703f!important}
+.fishing-float-view{position:absolute;inset:18% 28% 14%;pointer-events:none}
+.fishing-float{position:absolute;left:50%;top:50%;width:30px;height:62px;border-radius:45% 45% 35% 35%;background:linear-gradient(#ed6149 0 48%,#fff1c8 48% 85%,#3c494b 85%);box-shadow:3px 4px 0 #112d38}
+.fishing-float:before{content:'';position:absolute;width:5px;height:37px;background:#f8da96;top:-34px;left:12px}.fishing-float i{position:absolute;width:4px;height:29px;background:#293a40;bottom:-26px;left:13px}
+.fishing-ripple{position:absolute;top:50%;left:50%;width:145px;height:60px;border:2px solid #70b8b48c;transform:translate(-50%,-25%);border-radius:50%;box-shadow:0 0 0 14px #70b8b419,0 0 0 35px #70b8b410}
+[data-stage=bite] .fishing-ripple{animation:fishing-ripple .3s infinite alternate}
+@keyframes fishing-ripple{to{transform:translate(-50%,-25%) scale(1.25);opacity:.4}}
+.fishing-reel{position:absolute;right:max(4%,env(safe-area-inset-right));top:50%;transform:translateY(-50%);width:clamp(115px,23vw,200px);height:clamp(115px,23vw,200px);border-radius:50%;border:13px solid #79959b;background:repeating-conic-gradient(#183f50 0 20deg,#204c5d 20deg 25deg);box-shadow:0 6px 0 #0c2534;display:flex;align-items:center;justify-content:center;flex-direction:column;touch-action:none;opacity:.45}
+.fishing-reel.active{opacity:1;border-color:#e9c482}.fishing-reel span{font-size:55px;line-height:1}.fishing-reel b{font-size:17px}.fishing-reel i{position:absolute;inset:0;pointer-events:none}.fishing-reel i:before{content:'';position:absolute;width:23px;height:23px;left:calc(50% - 12px);top:-10px;border-radius:50%;background:#f9e1aa;border:4px solid #725631}
+.fishing-status{position:absolute;left:6%;right:6%;bottom:max(8px,env(safe-area-inset-bottom));text-align:center;color:#bad8d6;font-size:13px;margin:0;pointer-events:none}.fishing-rotate{display:none}
+@media(orientation:portrait){.fishing-rotate{display:flex;position:absolute;inset:0;z-index:10;background:#102f43;align-items:center;justify-content:center;font-size:22px}.fishing-cast,.fishing-reel{visibility:hidden}}
+@media(max-height:340px){#fishing-controller header{top:5px}.fishing-status{font-size:11px;bottom:4px}.fishing-reel{width:145px;height:145px}.fishing-cast{width:115px;height:115px}}
+#fishing-overview{display:block;width:100%;height:min(70vh,760px);background:#126477;border:3px solid #8daea9;margin:20px 0}
+#fishing-pc-panel{background:#183e4b;border:2px solid #769d9b;color:#f4e3c2;padding:20px;margin:20px 0}
+#fishing-pc-panel h2{color:#f4cf86}#fishing-pc-panel .fishing-standings{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+#fishing-pc-panel .fishing-standing{background:#102d39;padding:12px;border-left:4px solid var(--angler);line-height:1.7}

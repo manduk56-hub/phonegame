@@ -6,7 +6,9 @@ const GAMES = [
 	["플레이룸", "모래 쟁탈전 · 폭포 물길 경주", "팀 대결", "2–16명", "휴대폰을 운전석으로! 포크레인을 조작해\n모래를 모으거나 폭포에서 목표선까지 물길을 파세요."],
 	["POCKET RACING", "작은 차, 커다란 승부", "레이싱", "1–16명", "폰을 기울여 핸들을 돌리고 페달을 밟으세요.\n여섯 스포츠카 · 5바퀴 · 차량 충돌 사용"],
 	["FLAG STRIKE", "조준 · 탈환 · 귀환", "FPS", "2–16명", "폰 전체 화면에서 1인칭으로 조준하고 발사!\n중앙 깃발을 우리 진영으로 가져오세요."],
-	["BULL RUN", "뿔을 피하라, 끝까지 살아남아라", "투우", "2–16명", "한 명은 황소, 나머지는 도망자!\n가속하는 황소를 피해 제한 시간까지 살아남으세요."]
+	["BULL RUN", "뿔을 피하라, 끝까지 살아남아라", "투우", "2–16명", "한 명은 황소, 나머지는 도망자!\n가속하는 황소를 피해 제한 시간까지 살아남으세요."],
+	["TIDELINE", "한 배에서 펼치는 바다 낚시 대결", "낚시", "1–16명", "큰 입질에 폰을 당겨 챔질! 물고기 방향으로 기울여\n힘을 빼고 시계 방향으로 릴을 감으세요."],
+	["KRILL ESCAPE", "작은 크릴, 거대한 고래", "생존", "1–16명", "다가오는 장애물과 고래의 흡입 구역을 피하세요.\n꼬리치기로 살짝 밀치기 · 마지막 크릴은 고래를 조종!"]
 ]
 var menu: MarginContainer
 var background: ColorRect
@@ -96,12 +98,12 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation",28)
 	stack.add_child(body)
 	var square_area := AspectRatioContainer.new()
-	square_area.ratio = 1.0
+	square_area.ratio = 1.5
 	square_area.stretch_mode = AspectRatioContainer.STRETCH_FIT
 	square_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(square_area)
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = 3
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation",18)
 	grid.add_theme_constant_override("v_separation",18)
@@ -109,12 +111,11 @@ func _ready() -> void:
 	for i in range(GAMES.size()):
 		var card := Button.new()
 		card.name = "GameCard%d" % i
-		card.custom_minimum_size = Vector2(250,250)
+		card.custom_minimum_size = Vector2(260,260)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		card.add_theme_stylebox_override("normal",panel("#252d2e"))
-		card.add_theme_stylebox_override("hover",panel("#303a39","#f17c64"))
-		card.add_theme_stylebox_override("focus",panel("#303a39","#eee9da"))
+		card.add_theme_stylebox_override("normal",preload("res://pixel_ui.gd").tile())
+		card.add_theme_stylebox_override("hover",preload("res://pixel_ui.gd").tile("#556453","#e8ca8a"))
 		grid.add_child(card)
 		cards.append(card)
 		var contents := VBoxContainer.new()
@@ -133,7 +134,7 @@ func _ready() -> void:
 		contents.add_child(art)
 		contents.add_child(label(GAMES[i][0],22))
 		contents.add_child(label(GAMES[i][1],16,"#a8b1ac"))
-		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 4 else "준비 중   /   " + GAMES[i][2],14,"#f1bd75" if i < 4 else "#a8b1ac"))
+		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 6 else "준비 중   /   " + GAMES[i][2],14,"#f1bd75" if i < 6 else "#a8b1ac"))
 		for child in contents.get_children():
 			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.pressed.connect(select_game.bind(i))
@@ -215,20 +216,20 @@ func _ready() -> void:
 func select_game(index: int) -> void:
 	selected = index
 	for i in range(cards.size()):
-		cards[i].add_theme_stylebox_override("normal",panel("#303a39" if i == index else "#252d2e","#f17c64" if i == index else "#3b4243"))
+		cards[i].add_theme_stylebox_override("normal",preload("res://pixel_ui.gd").tile("#556453" if i == index else "#414d43","#efb96d" if i == index else "#9eac88"))
 	detail_art.kind = index
 	detail_art.queue_redraw()
 	detail_title.text = GAMES[index][0]
 	detail_subtitle.text = GAMES[index][1]
 	detail_description.text = GAMES[index][4]
-	detail_meta.text = "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else "투우 · 랜덤/지정 황소 · 생존시간 기록"))
-	play_button.text = "대기실 입장   →" if index < 4 else "곧 만나요!"
-	play_button.disabled = index > 3
+	detail_meta.text = "크릴 생존 · 1–16명 · 모바일 이동 · 꼬리치기" if index == 5 else "개인 낚시 · 1–16명 · 모션 챔질 · 시계 방향 릴" if index == 4 else "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else "투우 · 랜덤/지정 황소 · 생존시간 기록"))
+	play_button.text = "대기실 입장   →" if index < 6 else "곧 만나요!"
+	play_button.disabled = index > 5
 
 func launch_game() -> void:
-	if selected > 3 or is_instance_valid(active_game):
+	if selected > 5 or is_instance_valid(active_game):
 		return
-	active_game = load(["res://main.tscn","res://racing.tscn","res://fps.tscn","res://bull.tscn"][selected]).instantiate()
+	active_game = load(["res://main.tscn","res://racing.tscn","res://fps.tscn","res://bull.tscn","res://fishing.tscn","res://krill.tscn"][selected]).instantiate()
 	add_child(active_game)
 	menu.hide()
 	background.hide()
@@ -238,7 +239,8 @@ func launch_game() -> void:
 	back_button = Button.new()
 	back_button.text = "← 게임 선택"
 	back_button.position = Vector2(20,90)
-	back_button.add_theme_stylebox_override("normal",panel("#252d2e"))
+	back_button.theme = theme
+	back_button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	back_button.pressed.connect(return_to_menu)
 	back_layer.add_child(back_button)
 

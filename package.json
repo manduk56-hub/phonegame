@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test",
+    "verify:fishing": "node tools/verify-fishing.mjs",
     "verify:fps": "node tools/verify-fps.mjs",
     "verify:geometry": "node tools/verify-geometry.mjs",
     "verify:render": "node tools/verify-geometry.mjs --render",
@@ -13,7 +14,9 @@
     "verify:lobby": "node tools/verify-lobby.mjs",
     "verify:racing": "node tools/verify-racing.mjs",
     "verify:circuits": "node tools/verify-circuits.mjs",
-    "verify:remote": "node tools/verify-live.mjs --endpoint=https://dirt-rally.115.68.208.145.sslip.io"
+    "verify:remote": "node tools/verify-live.mjs --endpoint=https://dirt-rally.115.68.208.145.sslip.io",
+    "verify:krill": "node tools/verify-krill.mjs",
+    "preview:krill": "node tools/Start-Krill-Preview.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.4",
