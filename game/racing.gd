@@ -507,5 +507,11 @@ func capture() -> void:
 		directory = "res://../.runtime"
 	get_viewport().get_texture().get_image().save_png(directory.path_join("racing-pc.png"))
 	var file := FileAccess.open(directory.path_join("racing-render.json"),FileAccess.WRITE)
-	file.store_string(JSON.stringify({"game":state.get("game"),"players":cars.size(),"updates":network_updates,"qr":qr.texture != null,"track":circuit.id,"fps":Performance.get_monitor(Performance.TIME_FPS)}))
+	var isometric_cameras := 0
+	if broadcast.main_view.camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+		isometric_cameras += 1
+	for tile in broadcast.tiles.values():
+		if tile.camera.projection == Camera3D.PROJECTION_ORTHOGONAL:
+			isometric_cameras += 1
+	file.store_string(JSON.stringify({"game":state.get("game"),"players":cars.size(),"updates":network_updates,"qr":qr.texture != null,"track":circuit.id,"fps":Performance.get_monitor(Performance.TIME_FPS),"isometricCameras":isometric_cameras}))
 	get_tree().quit()

@@ -46,7 +46,8 @@ export function createRaceScene(canvas,{overview=false,viewMode='third',autoRend
   const scene=new THREE.Scene();scene.fog=overview?null:new THREE.Fog('#b4cccd',180,650);
   scene.add(new THREE.HemisphereLight('#e1f2ff','#677a43',2.2));
   const sun=new THREE.DirectionalLight('#fff1d0',2.4);sun.position.set(-150,300,100);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-260;sun.shadow.camera.right=260;sun.shadow.camera.top=220;sun.shadow.camera.bottom=-220;sun.shadow.camera.far=850;scene.add(sun);
-  let camera=overview?new THREE.OrthographicCamera(-300,300,220,-220,.1,1500):(viewMode==='third'?new THREE.OrthographicCamera(-24,24,14,-14,.1,650):new THREE.PerspectiveCamera(78,1,.1,650));
+  const makeCamera=mode=>overview?new THREE.OrthographicCamera(-300,300,220,-220,.1,1500):(mode==='isometric'?new THREE.OrthographicCamera(-24,24,14,-14,.1,650):new THREE.PerspectiveCamera(mode==='third'?68:78,1,.1,650));
+  let camera=makeCamera(viewMode);
   sun.shadow.bias=-.0005;sun.shadow.normalBias=.08;
   const world=new THREE.Group();scene.add(world);const cars=new Map();let latest,id,built=false,lastTime=performance.now(),frame,disposed=false,speedView=0;
   function build(track){
@@ -78,7 +79,7 @@ export function createRaceScene(canvas,{overview=false,viewMode='third',autoRend
   function update(state,playerId){latest=state;id=playerId;if(built!==state.circuit.id){for(const mesh of [...world.children]){mesh.geometry?.dispose();world.remove(mesh);}build(state.circuit);for(const car of cars.values()){const p=state.players.find(p=>p.id===car.userData.target.id);if(p){car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;}}}
     for(const p of state.players){let car=cars.get(p.id);const signature=p.car+p.color;
       if(car?.userData.signature!==signature){if(car){scene.remove(car);car.traverse(n=>n.geometry?.dispose());}car=makeCar(p.car,p.color);if(overview)car.scale.setScalar(1.3);car.userData.signature=signature;car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;cars.set(p.id,car);scene.add(car);}
-      car.userData.target=p;car.visible=overview||viewMode==='third'||p.id!==id;
+      car.userData.target=p;car.visible=overview||viewMode!=='first'||p.id!==id;
     }
     for(const [key,car]of cars)if(!state.players.some(p=>p.id===key)){scene.remove(car);car.traverse(n=>n.geometry?.dispose());cars.delete(key);}
   }
@@ -91,9 +92,14 @@ export function createRaceScene(canvas,{overview=false,viewMode='third',autoRend
       const speed=latest.phase==='running'?Math.max(0,car.userData.target.speed):0;
       const targetView=THREE.MathUtils.smoothstep(speed,5,70);
       speedView=autoRender?speedView+(targetView-speedView)*(1-Math.exp(-dt*5)):targetView;
-      if(viewMode==='third'){
+      if(viewMode==='isometric'){
         const halfH=24+speedView*3;camera.left=-halfH*w/h;camera.right=halfH*w/h;camera.top=halfH;camera.bottom=-halfH;
         camera.position.set(car.position.x+6,32,car.position.z+12);camera.lookAt(car.position.x,0,car.position.z);
+      }else if(viewMode==='third'){
+        const distance=6+speedView*1.8;
+        camera.fov=68+speedView*24;
+        camera.position.set(car.position.x-forwardX*distance,2.8-speedView*.35,car.position.z-forwardZ*distance);
+        camera.lookAt(car.position.x+forwardX*12,1,car.position.z+forwardZ*12);
       }else{
         camera.fov=78+speedView*24;camera.position.set(car.position.x+forwardX*.2,1.35,car.position.z+forwardZ*.2);
         camera.lookAt(camera.position.x+forwardX*20,1.15,camera.position.z+forwardZ*20);
@@ -101,5 +107,5 @@ export function createRaceScene(canvas,{overview=false,viewMode='third',autoRend
     }
     camera.updateProjectionMatrix();renderer.render(scene,camera);
   }if(autoRender)frame=requestAnimationFrame(render);
-  return {update,renderNow:render,setViewMode(mode){if(mode===viewMode)return;camera=mode==='third'?new THREE.OrthographicCamera(-24,24,14,-14,.1,650):new THREE.PerspectiveCamera(78,1,.1,650);viewMode=mode==='third'?'third':'first';for(const [key,car]of cars)car.visible=overview||viewMode==='third'||key!==id;},dispose(){disposed=true;cancelAnimationFrame(frame);renderer.dispose();scene.traverse(n=>n.geometry?.dispose());}};
+  return {update,renderNow:render,setViewMode(mode){mode=['first','third','isometric'].includes(mode)?mode:'first';if(mode===viewMode)return;viewMode=mode;camera=makeCamera(mode);for(const [key,car]of cars)car.visible=overview||viewMode!=='first'||key!==id;},dispose(){disposed=true;cancelAnimationFrame(frame);renderer.dispose();scene.traverse(n=>n.geometry?.dispose());}};
 }

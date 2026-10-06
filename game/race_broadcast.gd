@@ -61,19 +61,11 @@ func update_state(value: Dictionary) -> void:
 func aim(view: Dictionary, p: Dictionary, feature := false) -> void:
 	var target: Vector3 = source.cars[p.id].root.position
 	view.camera.cull_mask = 1048575
-	if p.get("viewMode","third") == "first":
-		view.camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-		view.camera.fov = 78+24*smoothstep(5,70,maxf(0,float(p.speed)))
-		var forward := Vector3(sin(float(p.yaw)),0,cos(float(p.yaw)))
-		view.camera.position = target+forward*.2+Vector3(0,1.35,0)
-		view.camera.look_at(view.camera.position+forward*20-Vector3(0,.2,0))
-		var index: int = current_state.players.find(p)
-		view.camera.cull_mask = 1048575 & ~(1 << (index+1))
-	else:
-		view.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-		view.camera.size = (48+6*smoothstep(5,70,maxf(0,float(p.speed))))*view.holder.size.x/view.holder.size.y
-		view.camera.position = target+Vector3(6,32,12)
-		view.camera.look_at(target)
+	# PC broadcasts always use an isometric camera, independent of phone preferences.
+	view.camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	view.camera.size = (48+6*smoothstep(5,70,maxf(0,float(p.speed))))*view.holder.size.x/view.holder.size.y
+	view.camera.position = target+Vector3(6,32,12)
+	view.camera.look_at(target)
 	view.label.text = "%d위 · %s · %d km/h%s" % [int(p.rank),p.name,roundi(absf(float(p.speed))*3.6),"" if p.connected else " · 오프라인"]
 	view.label.modulate = Color(p.color)
 	view.label.size.x = view.holder.size.x-16

@@ -17,7 +17,7 @@ async function connect(hello){
 try{
   const config=await fetch(base+'/config').then(r=>r.json());const host=await connect({type:'host',key:config.adminKey});await host.wait(m=>m.type==='host-ready');host.send({type:'game',game:'racing'});await host.wait(m=>m.game==='racing');
   const phones=await Promise.all(Array.from({length:16},(_,i)=>connect({type:'join',room:app.room,name:`드라이버 ${i+1}`})));
-  const ids=await Promise.all(phones.map(p=>p.wait(m=>m.type==='joined')));phones.forEach(p=>p.send({type:'car',car:chosenCar}));await delay(150);
+  const ids=await Promise.all(phones.map(p=>p.wait(m=>m.type==='joined')));phones.forEach((p,i)=>{p.send({type:'car',car:chosenCar});p.send({type:'race-view',viewMode:i%2?'third':'first'});});await delay(150);
   assert.equal(app.match.players.size,16);assert.equal(new Set([...app.match.players.values()].map(p=>p.color)).size,16);assert([...app.match.players.values()].every(p=>p.car===chosenCar));
   host.send({type:'start'});await host.wait(m=>m.phase==='running');const before=app.match.snapshot();
   phones[0].send({type:'input',id:ids[1].id,steer:.5,throttle:1});await delay(50);assert.equal(app.match.players.get(ids[0].id).input.steer,.5);assert.equal(app.match.players.get(ids[1].id).input.steer,0);
@@ -28,6 +28,7 @@ try{
   const pump=setInterval(()=>phones.forEach((phone,i)=>{const p=app.match.players.get(ids[i].id),track=nearestTrack(p.x,p.z),target=CIRCUIT.points[(track.index+8)%CIRCUIT.points.length],yaw=Math.atan2(target.x-p.x,target.z-p.z),error=Math.atan2(Math.sin(yaw-p.yaw),Math.cos(yaw-p.yaw));phone.send({type:'input',throttle:p.speed<18?1:0,brake:p.speed>21?1:0,steer:Math.max(-1,Math.min(1,-error*1.7))});}),50);
   const timeout=setTimeout(()=>renderer.kill(),20000);const exitCode=await completed;clearTimeout(timeout);clearInterval(pump);assert.equal(exitCode,0,output);assert(!/SCRIPT ERROR|^ERROR:/m.test(output),output);
   const metrics=JSON.parse(await readFile('.runtime/racing-render.json','utf8'));assert.equal(metrics.game,'racing');assert.equal(metrics.players,16);assert(metrics.updates>20);assert(metrics.qr);assert(metrics.fps>15);
+  assert.equal(metrics.isometricCameras,17,'main broadcast and all 16 tiles must stay 2.5D with mixed phone views');
   for(const [i,p]of [...app.match.players.values()].entries())assert(Math.hypot(p.x-before.players[i].x,p.z-before.players[i].z)>1,'driver did not move');
   for(const file of ['/race-controller.js','/race-scene.js','/race-sensors.js','/race.css','/car-shapes.json','/assets/racing-models.png'])assert.equal((await fetch(base+file)).status,200,file);
   console.log('PASS: 16 racing clients, shared vehicle selection with unique colors, authenticated input ownership, actual movement, QR and live PC renderer.',metrics);
