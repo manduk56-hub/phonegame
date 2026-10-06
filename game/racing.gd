@@ -267,6 +267,8 @@ func build_ui() -> void:
 	var theme := Theme.new()
 	theme.default_font = FONT
 	theme.default_font_size = 22
+	preload("res://pixel_ui.gd").apply(theme)
+	ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ui.theme = theme
 	layer.add_child(ui)
 	broadcast = Control.new()
@@ -332,6 +334,7 @@ func build_ui() -> void:
 	time_input.value = 300
 	row.add_child(time_input)
 	start_button = Button.new()
+	preload("res://pixel_ui.gd").primary(start_button)
 	start_button.text = "▶ %d바퀴 레이스 시작" % int(circuit.laps)
 	start_button.pressed.connect(func():
 		time_input.apply()

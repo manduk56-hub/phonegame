@@ -982,10 +982,7 @@ func make_lobby(ui: Control) -> void:
 	layout.add_child(actions)
 	start_button = lobby_button("경기 시작",actions,func():send_admin({"type":"start"}))
 	start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	start_button.add_theme_stylebox_override("normal",worksite_style(Color("#e8b645"),Color("#ffe1a0")))
-	start_button.add_theme_stylebox_override("hover",worksite_style(Color("#f5ca65"),Color("#fff0c2")))
-	start_button.add_theme_color_override("font_color",Color("#27281f"))
-	start_button.add_theme_color_override("font_hover_color",Color("#27281f"))
+	preload("res://pixel_ui.gd").primary(start_button)
 	return_button = lobby_button("대기실로 돌아가기",actions,func():
 		if state.get("phase") == "running":
 			reset_dialog.popup_centered()
@@ -1120,19 +1117,7 @@ func worksite_style(fill: Color, border: Color) -> StyleBoxFlat:
 	return style
 
 func apply_worksite_theme(theme: Theme) -> void:
-	for type in ["Button","OptionButton","LineEdit","SpinBox"]:
-		theme.set_stylebox("normal",type,worksite_style(Color("#3a4035"),Color("#758064")))
-		theme.set_stylebox("hover",type,worksite_style(Color("#4b5340"),Color("#e8b645")))
-		theme.set_stylebox("pressed",type,worksite_style(Color("#252a22"),Color("#e8b645")))
-		theme.set_stylebox("focus",type,worksite_style(Color(0,0,0,0),Color("#ffe1a0")))
-		theme.set_stylebox("disabled",type,worksite_style(Color("#2c3128"),Color("#484e3f")))
-		theme.set_color("font_color",type,Color("#f7edd3"))
-		theme.set_color("font_hover_color",type,Color("#ffe1a0"))
-		theme.set_color("font_disabled_color",type,Color("#858975"))
-	theme.set_stylebox("panel","PopupMenu",worksite_style(Color("#292d26"),Color("#758064")))
-	theme.set_stylebox("hover","PopupMenu",worksite_style(Color("#4b5340"),Color("#e8b645")))
-	theme.set_color("font_color","PopupMenu",Color("#f7edd3"))
-	theme.set_stylebox("panel","AcceptDialog",worksite_style(Color("#292d26"),Color("#e8b645")))
+	preload("res://pixel_ui.gd").apply(theme)
 	theme.set_color("font_color","Label",Color("#f7edd3"))
 
 func hud_style() -> StyleBoxFlat:
@@ -1141,16 +1126,7 @@ func hud_style() -> StyleBoxFlat:
 	return style
 
 func style_hud_button(button: Button) -> void:
-	button.add_theme_stylebox_override("normal",hud_style())
-	button.add_theme_stylebox_override("focus",hud_style())
-	var hover := hud_style()
-	hover.bg_color = Color(1.0,1.0,1.0,0.08)
-	button.add_theme_stylebox_override("hover",hover)
-	button.add_theme_stylebox_override("pressed",hover)
 	button.add_theme_font_size_override("font_size",18)
-	button.add_theme_color_override("font_color",Color("#dce2dd"))
-	button.add_theme_color_override("font_outline_color",Color("#080d12"))
-	button.add_theme_constant_override("outline_size",4)
 
 func hud_panel() -> Panel:
 	var panel := Panel.new()

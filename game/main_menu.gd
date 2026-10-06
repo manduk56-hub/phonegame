@@ -59,6 +59,8 @@ func _ready() -> void:
 	var theme_resource := Theme.new()
 	theme_resource.default_font = FONT
 	theme_resource.default_font_size = 20
+	preload("res://pixel_ui.gd").apply(theme_resource)
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	theme = theme_resource
 	background = ColorRect.new()
 	background.color = Color("#181e20")
@@ -168,10 +170,7 @@ func _ready() -> void:
 	info.add_child(detail_meta)
 	play_button = Button.new()
 	play_button.custom_minimum_size.y = 64
-	play_button.add_theme_stylebox_override("normal",panel("#f17c64","#f17c64"))
-	play_button.add_theme_stylebox_override("hover",panel("#ff947c","#ff947c"))
-	play_button.add_theme_stylebox_override("disabled",panel("#d3d2c7","#d3d2c7"))
-	play_button.add_theme_color_override("font_color",Color("#232b2b"))
+	preload("res://pixel_ui.gd").primary(play_button)
 	play_button.add_theme_font_size_override("font_size",24)
 	play_button.pressed.connect(launch_game)
 	info.add_child(play_button)

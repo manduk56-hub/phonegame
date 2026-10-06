@@ -365,3 +365,27 @@ button:disabled{opacity:.45}p{color:#c8c8ac}h1,h2,strong,b{font-weight:400}h2{co
 @media(max-width:720px){.game-hub{padding:20px 16px}.hub-header{padding-bottom:18px}.hub-brand{font-size:21px}.hub-device{font-size:10px}.hub-intro{padding:28px 0}.hub-layout{grid-template-columns:1fr}.hub-catalog{gap:12px}.hub-card{padding:10px!important;gap:6px}.hub-card-heading{flex-direction:row;margin-top:0}.hub-card-heading strong{font-size:clamp(11px,3vw,16px)}.hub-tag{display:none}.hub-card-subtitle{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hub-card-status{font-size:10px;padding-top:6px}.hub-card-status span{display:none}.hub-card>.hub-game-render{object-fit:contain}.hub-detail{gap:14px}.hub-detail .hub-art{max-height:260px}.hub-footer{font-size:11px}.hub-footer i{margin:0 5px}.hub-footer>span:last-child{display:none}}
 
 #excavator-map-picker{margin:24px 0}#excavator-map-picker .track-card{min-height:104px;padding:20px}#water-overview{display:block;width:100%;height:420px;border-radius:16px;margin:16px 0}#water-overview[hidden]{display:none}
+
+/* Shared control skin: menu, lobby and all phone games. Loaded after base UI. */
+:root{--ui-face:#414d43;--ui-light:#9eac88;--ui-dark:#28352e;--ui-ink:#fff0cf;--ui-gold:#efb96d}
+body :is(button,select,input,.browser-options a){font-family:'NeoDunggeunmo Pro',monospace!important;font-weight:400!important;border-radius:2px!important;border:2px solid #202b28!important;background-color:var(--ui-face)!important;color:var(--ui-ink)!important;box-shadow:inset 2px 2px var(--ui-light),inset -2px -3px var(--ui-dark),0 3px #17231e!important;text-shadow:none!important;transition:background-color .1s,box-shadow .1s,translate .1s;min-height:44px}
+body button,body .browser-options a{touch-action:manipulation}
+body :is(button,.browser-options a):hover:not(:disabled){background-color:#556453!important;box-shadow:inset 2px 2px #e8ca8a,inset -2px -3px #354239,0 3px #17231e!important}
+body :is(button,.browser-options a):is(:active,.pressed):not(:disabled){translate:0 2px;background-color:#354239!important;box-shadow:inset 2px 3px #26352e,inset -2px -2px #9eac88,0 1px #17231e!important}
+body :is(button,select,input,.browser-options a):focus-visible{outline:2px dashed #ffe0a0!important;outline-offset:4px}
+body :is(button,select,input):disabled{background-color:#343d38!important;color:#919b8a!important;box-shadow:inset 2px 2px #677268,inset -2px -3px #28352e,0 2px #17231e!important;opacity:.65;cursor:default}
+body :is(button.primary,#hub-play,.browser-options a.primary,#fps-fire){background-color:var(--ui-gold)!important;color:#28352e!important;box-shadow:inset 2px 2px #ffe3a6,inset -2px -3px #b17c49,0 3px #17231e!important}
+body :is(button.primary,#hub-play,.browser-options a.primary,#fps-fire):hover:not(:disabled){background-color:#ffcb85!important}
+body :is(button.primary,#hub-play,.browser-options a.primary,#fps-fire):is(:active,.pressed):not(:disabled){background-color:#d6a15e!important;box-shadow:inset 2px 3px #b17c49,inset -2px -2px #ffe3a6,0 1px #17231e!important}
+body select{appearance:none;padding-right:36px!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23ffe0a0' d='M0 0h12v2H2V0zm2 2h8v2H4V2zm2 2h4v2H4zm2 2h2v2H6z'/%3E%3C/svg%3E");background-position:right 13px center;background-repeat:no-repeat}
+body select option{background:#303d35;color:#fff0cf;font-family:inherit}
+body input{background-color:#303d35!important;box-shadow:inset 2px 3px #202b28,inset -2px -2px #677268!important;user-select:text}
+body input::placeholder{color:#a7b198;opacity:1}
+body .hub-card{border:2px solid #202b28!important;background:#414d43!important;box-shadow:inset 3px 3px #9eac88,inset -3px -4px #28352e,0 4px #17231e!important;transform:none}
+body .hub-card[aria-pressed=true],body .track-card.selected,body button[aria-pressed=true]{background-color:#556453!important;border-color:#efb96d!important;box-shadow:inset 2px 2px #ffe3a6,inset -2px -3px #354239,0 3px #17231e!important}
+body .hub-card:hover{transform:none;background:#556453!important}
+body :is(.hub-tag,.badge){border-radius:2px;border:1px solid #9eac88}
+body :is(#bull-controller,#fps-controller,#race-controller){font-family:'NeoDunggeunmo Pro',monospace}
+body :is(.bull-keys button,#fps-fire){border-radius:4px!important}
+@media(prefers-reduced-motion:reduce){body :is(button,select,input,.browser-options a){transition:none}}
+body :is(button.primary,#hub-play,#fps-fire):disabled{background-color:#343d38!important;color:#919b8a!important;box-shadow:inset 2px 2px #677268,inset -2px -3px #28352e,0 2px #17231e!important}
