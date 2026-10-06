@@ -11,6 +11,7 @@ var car_shapes: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("re
 var socket := WebSocketPeer.new()
 var state: Dictionary = {}
 var cars: Dictionary = {}
+var broadcast: Control
 var camera: Camera3D
 var status: Label
 var ranking: Label
@@ -241,7 +242,7 @@ func make_car(p: Dictionary, index: int) -> Dictionary:
 	var shape: Dictionary = car_shapes[kind]
 	build_car_geometry(root,shape,paint)
 	merge_parts(root,shape.get("style","") == "brick")
-	root.scale = Vector3.ONE*1.3
+	root.scale = Vector3.ONE
 	var marker := Label3D.new()
 	marker.text = str(index+1)
 	marker.font = FONT
@@ -251,6 +252,7 @@ func make_car(p: Dictionary, index: int) -> Dictionary:
 	marker.position.y = 2.8
 	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	marker.no_depth_test = true
+	marker.visible = false
 	root.add_child(marker)
 	root.position = Vector3(p.x,0,p.z)
 	root.rotation.y = p.yaw
@@ -267,6 +269,16 @@ func build_ui() -> void:
 	theme.default_font_size = 22
 	ui.theme = theme
 	layer.add_child(ui)
+	broadcast = Control.new()
+	broadcast.set_script(preload("res://race_broadcast.gd"))
+	broadcast.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	broadcast.offset_top = 65
+	broadcast.offset_bottom = -85
+	broadcast.offset_left = 16
+	broadcast.offset_right = -16
+	ui.add_child(broadcast)
+	broadcast.setup(self)
+	broadcast.hide()
 	status = text_label("POCKET RACING · 연결 중",28)
 	status.position = Vector2(24,22)
 	ui.add_child(status)
@@ -406,12 +418,15 @@ func accept_state(message: Dictionary) -> void:
 			cars.erase(p.id)
 		if not cars.has(p.id):
 			cars[p.id] = make_car(p,index)
+		for mesh in cars[p.id].root.get_children():
+			if mesh is MeshInstance3D: mesh.layers = 1 << (index+1)
 	for id in cars.keys():
 		if not present.has(id):
 			cars[id].root.queue_free()
 			cars.erase(id)
+	broadcast.update_state(state)
 	lobby.visible = state.phase == "lobby"
-	score_panel.visible = state.phase != "lobby"
+	score_panel.visible = state.phase == "finished"
 	var connected: Array = state.players.filter(func(p):return p.connected)
 	start_button.disabled = not authenticated or connected.is_empty() or state.phase != "lobby"
 	return_button.disabled = not authenticated or state.phase == "lobby"
@@ -475,7 +490,7 @@ func _process(delta: float) -> void:
 	var reserved_width := 720.0 if in_lobby else 290.0
 	var available_aspect := maxf(.7,(viewport_size.x-reserved_width)/viewport_size.y)
 	camera.size = maxf((float(bounds.maxZ)-float(bounds.minZ))*.97+12,(float(bounds.maxX)-float(bounds.minX))/available_aspect)
-	camera.position = center+Vector3(0,600,170)
+	camera.position = center+Vector3(60,600,225)
 	camera.look_at(center)
 	camera.h_offset = camera.size*(-.14 if in_lobby else .08)
 	if "--race-capture" in OS.get_cmdline_user_args() and elapsed>4 and not captured:

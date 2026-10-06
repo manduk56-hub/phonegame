@@ -1,5 +1,6 @@
-import {raceBody,bodyContact} from './collision.mjs';
+import {updateRaceDirector} from './race-director.mjs';
 import {readFileSync} from 'node:fs';
+import {raceBody,bodyContact} from './collision.mjs';
 export const CIRCUIT=JSON.parse(readFileSync(new URL('./game/circuit.json',import.meta.url),'utf8'));
 export const CIRCUITS=JSON.parse(readFileSync(new URL('./game/circuits.json',import.meta.url),'utf8')).map(({scenery,...track})=>track);
 export const TRACKS=CIRCUITS.map(({points,bounds,width,radius,...info})=>info);
@@ -112,6 +113,7 @@ export function raceTick(match,dt,now){
     p.speed*=.88;q.speed*=.88;
   }
   const ranks=raceResults(match);for(const r of ranks.players)match.players.get(r.id).rank=r.rank;
+  updateRaceDirector(match,dt);
   if(match.remaining===0||players.every(p=>p.finishedAt!==null)){
     match.phase='finished';match.results=ranks;
   }

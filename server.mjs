@@ -16,7 +16,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   const chatHistory=[],chatSentAt=new Map();
   let chatSequence=0;
   const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/results.js':'results.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js','/water-view.js':'water-view.js','/water-surface.js':'water-surface.js','/bucket-shape.js':'bucket-shape.js'};
-  Object.assign(files,{'/race-scene.js':'race-scene.js','/race-controller.js':'race-controller.js','/race-sensors.js':'race-sensors.js','/race.css':'race.css','/fps-scene.js':'fps-scene.js','/fps-controller.js':'fps-controller.js','/fps.css':'fps.css','/fps-controls.js':'fps-controls.js'});
+  Object.assign(files,{'/race-scene.js':'race-scene.js','/race-controller.js':'race-controller.js','/race-sensors.js':'race-sensors.js','/race.css':'race.css','/race-minimap.js':'race-minimap.js','/race-broadcast.js':'race-broadcast.js','/fps-scene.js':'fps-scene.js','/fps-controller.js':'fps-controller.js','/fps.css':'fps.css','/fps-controls.js':'fps-controls.js'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{
@@ -95,6 +95,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
           if(m.type==='input') match.input(id,m);
           if(m.type==='fire')match.fire(id,m);
           if(m.type==='car')match.chooseCar(id,m.car);
+          if(m.type==='race-view'&&match.game==='racing'&&['first','third'].includes(m.viewMode)){const p=match.players.get(id);if(p)p.viewMode=m.viewMode;}
           if(m.type==='action'&&['scoop','drop'].includes(m.action)) match.action(id,m.action);
         } else if(role==='host') {
           if(m.type==='game')match.selectGame(m.game);

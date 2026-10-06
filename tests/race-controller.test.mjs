@@ -10,7 +10,7 @@ function setup({permission='granted',secure=true}={}){
   const get=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
   const body={append(e){root=e;},classList:{add(){},remove(){}}};
   const document={body,visibilityState:'visible',createElement(){const e=element();e.querySelector=selector=>get(selector);e.querySelectorAll=()=>[get('#race-brake'),get('#race-throttle')];return e;}};
-  const context=vm.createContext({document,window:{isSecureContext:secure,DeviceOrientationEvent:{},addEventListener(type,fn){events.set(type,fn);}},DeviceOrientationEvent:{requestPermission:async()=>permission},screen:{orientation:{angle:90,addEventListener(){}}},performance:{now:()=>clock},matchMedia:()=>({matches:false}),setInterval(fn){tick=fn;},setTimeout(){return 1;},clearTimeout(){},screenTilt,createRaceScene:()=>({update(){}}),renderCarPreview(){}});
+  const context=vm.createContext({document,window:{isSecureContext:secure,DeviceOrientationEvent:{},addEventListener(type,fn){events.set(type,fn);}},DeviceOrientationEvent:{requestPermission:async()=>permission},screen:{orientation:{angle:90,addEventListener(){}}},performance:{now:()=>clock},matchMedia:()=>({matches:false}),setInterval(fn){tick=fn;},setTimeout(){return 1;},clearTimeout(){},screenTilt,createRaceScene:()=>({update(){}}),renderCarPreview(){},drawRaceMinimap(){}});
   vm.runInContext(source+';globalThis.create=createRaceController;',context);
   const controller=context.create({send:value=>sent.push(JSON.parse(JSON.stringify(value))),fullscreen(){}});
   const player={id:'one',name:'driver',color:'#ffaa22',rank:1,lap:0,speed:0,finishedAt:null,offroad:false};

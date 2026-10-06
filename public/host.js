@@ -1,3 +1,4 @@
+import {createRaceBroadcast} from './race-broadcast.js';
 import {createFpsScene} from './fps-scene.js';
 const fpsStyle=document.createElement('link');fpsStyle.rel='stylesheet';fpsStyle.href='/fps.css';document.head.append(fpsStyle);
 import {createWaterOverview} from './water-view.js';
@@ -56,7 +57,7 @@ window.addEventListener('hashchange',()=>{if(currentPhase==='running'&&location.
 chooseGame(0);showScreen(location.hash.slice(1));
 const fpsCanvas=document.createElement('canvas');fpsCanvas.id='fps-overview';fpsCanvas.hidden=true;lobby.insertBefore(fpsCanvas,lobby.querySelector('.grid'));let fpsScene;
 let config,ws,latest,retry,authenticated=false,hostKey='';
-const raceCanvas=document.createElement('canvas');raceCanvas.id='race-overview';raceCanvas.hidden=true;lobby.insertBefore(raceCanvas,lobby.querySelector('.grid'));let raceScene;
+const raceCanvas=document.createElement('canvas');raceCanvas.id='race-overview';raceCanvas.hidden=true;lobby.insertBefore(raceCanvas,lobby.querySelector('.grid'));let raceScene;const raceBroadcast=createRaceBroadcast(lobby);
 const raceSummary=document.createElement('p');raceSummary.hidden=true;lobby.append(raceSummary);
 const trackPicker=document.createElement('section');trackPicker.id='race-track-picker';trackPicker.hidden=true;
 trackPicker.innerHTML='<h2>서킷 선택</h2><p>코스를 고른 뒤 QR로 참가하세요. 모든 드라이버가 같은 서킷에서 경주합니다.</p><div class="track-grid"></div><p id="race-track-detail" aria-live="polite"></p>';
@@ -121,9 +122,9 @@ function render(m){
   for(const option of $('teams').options)option.disabled=shooting&&Number(option.value)<2;
   renderMapPicker(m);
   renderTrackPicker(m);
-  const racing=m.game==='racing';raceCanvas.hidden=!racing;raceSummary.hidden=!racing;
+  const racing=m.game==='racing';raceCanvas.hidden=!racing||m.phase!=='lobby';raceBroadcast.root.hidden=!racing;raceSummary.hidden=!racing;
   lobby.classList.toggle('racing-lobby',racing);
-  if(racing){if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · ${m.race.laps}바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
+  if(racing){raceBroadcast.update(m);if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · ${m.race.laps}바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
     $('results').hidden=true;
   }
   currentPhase=m.phase;
