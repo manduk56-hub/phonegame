@@ -22,8 +22,11 @@ try{
     Assert ((Get-LocalManifest $ManifestPath $destination) -eq $ManifestPath) 'Explicit offline manifest was ignored.'
     Assert ((Get-LocalManifest '' $manifest.sourceDirectory) -eq $ManifestPath) 'Offline installer did not discover its bundle.'
     $projectVersion=(Get-Content -LiteralPath (Join-Path $projectRoot 'package.json') -Raw|ConvertFrom-Json).version
-    $nextOnlineVersion=& (Join-Path $projectRoot 'tools/Get-ReleaseVersion.ps1') -RunNumber 1
-    Assert ((Compare-PlayroomVersion $nextOnlineVersion $projectVersion) -gt 0) 'Online release cannot update the default local build.'
+    $runNumber=if($env:GITHUB_RUN_NUMBER){[long]$env:GITHUB_RUN_NUMBER}else{[long]($manifest.version.Split('.')[2])}
+    $onlineVersion=& (Join-Path $projectRoot 'tools/Get-ReleaseVersion.ps1') -RunNumber $runNumber
+    Assert ((Compare-PlayroomVersion $onlineVersion $projectVersion) -ge 0) 'Online release is older than the default local build.'
+    $nextOnlineVersion=& (Join-Path $projectRoot 'tools/Get-ReleaseVersion.ps1') -RunNumber ($runNumber+1)
+    Assert ((Compare-PlayroomVersion $nextOnlineVersion $projectVersion) -gt 0) 'Next online release cannot update the default local build.'
     Assert ((Compare-PlayroomVersion $projectVersion '0.4.1') -gt 0) 'Default build cannot update the previous local installation.'
     Assert (Test-Path -LiteralPath (Join-Path $destination 'launcher/Start-Launcher.ps1')) 'Stable launcher missing.'
     Install-Playroom -Directory $destination -Manifest $manifest -StatusPath $statusPath -SkipShortcut
