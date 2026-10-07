@@ -61,6 +61,7 @@ func triangle(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
 		tool.add_vertex(vertex)
 
 func _ready() -> void:
+	circuits.append(JSON.parse_string(FileAccess.get_file_as_string("res://bumper-arena.json")))
 	if not OS.get_environment("DIRT_RALLY_SERVER_URL").is_empty():
 		server_url = OS.get_environment("DIRT_RALLY_SERVER_URL").trim_suffix("/")
 	for arg in OS.get_cmdline_user_args():
@@ -82,6 +83,7 @@ func _ready() -> void:
 	add_child(sun)
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.cull_mask = 1048575
 	camera.size = 100
 	camera.position = Vector3(0,105,48)
 	add_child(camera)
@@ -97,6 +99,9 @@ func build_circuit() -> void:
 	var world := Node3D.new()
 	circuit_world = world
 	add_child(world)
+	if circuit.get("mode","") == "bumper":
+		build_bumper_arena(world)
+		return
 	for track in circuits:
 		if track.id != circuit.id:
 			continue
@@ -158,6 +163,51 @@ func build_circuit() -> void:
 		var light := block(world,Vector3(.48,.48,.55),origin+Vector3((i-2)*.8,4.5,0).rotated(Vector3.UP,start_yaw),Color("#da4b41"))
 		light.rotation.y = start_yaw
 	merge_parts(world)
+
+func build_bumper_arena(world: Node3D) -> void:
+	for spec in [[float(circuit.radius),-float(circuit.floorY),float(circuit.floorY)/2,"#59636a"],[float(circuit.radius)-0.45,0.1,0.05,"#414b53"],[100.0,1.0,float(circuit.floorY)-0.5,"#30383c"]]:
+		var node := MeshInstance3D.new()
+		var mesh := CylinderMesh.new()
+		mesh.top_radius = spec[0]
+		mesh.bottom_radius = spec[0]
+		mesh.height = spec[1]
+		mesh.radial_segments = 96
+		node.mesh = mesh
+		node.position.y = spec[2]
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(spec[3])
+		node.material_override = mat
+		world.add_child(node)
+	for i in range(96):
+		var angle := i*TAU/96.0
+		var stripe := block(world,Vector3(0.55,0.08,1.8),Vector3(sin(angle)*(float(circuit.radius)-0.9),0.14,cos(angle)*(float(circuit.radius)-0.9)),Color("#f8d37d") if i%2 else Color("#202b33"))
+		stripe.rotation.y = angle
+	for side in [-1,1]:
+		var line := block(world,Vector3(0.12,0.02,60),Vector3(side*12,0.12,0),Color("#667882"))
+		line.rotation.y = side*PI/3
+
+func update_bumper_blast(car: Dictionary, p: Dictionary) -> void:
+	var age := -1.0 if p.get("landedAt") == null else float(state.race.elapsed)-float(p.landedAt)
+	if age < 0 or age >= 1.5:
+		if car.has("blast"): car.blast.hide()
+		return
+	if not car.has("blast"):
+		var blast := Node3D.new()
+		add_child(blast)
+		for i in range(22):
+			var spark := block(blast,Vector3.ONE*(0.7 if i else 3.0),Vector3.ZERO,Color("#ff8b24") if i%3 else Color("#ffe79a"))
+			var mat: StandardMaterial3D = spark.material_override
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		car.blast = blast
+	car.blast.show()
+	car.blast.position = Vector3(p.x,float(circuit.floorY)+0.8,p.z)
+	for i in range(car.blast.get_child_count()):
+		var spark: MeshInstance3D = car.blast.get_child(i)
+		var angle := i*2.399
+		spark.position = Vector3(cos(angle)*age*(3+i%4),sin(i*3.1)*age*3+age*4,sin(angle)*age*(3+i%4))
+		spark.scale = Vector3.ONE*(1+age if i else 1+age*3)
+		spark.material_override.albedo_color.a = maxf(0,1-age/1.5)
 
 func merge_parts(parent: Node3D, brick := false) -> void:
 	var tool := SurfaceTool.new()
@@ -293,8 +343,6 @@ func build_ui() -> void:
 	ranking = text_label("%d바퀴 · 차량 충돌 사용" % int(circuit.laps),18)
 	score_panel.add_child(ranking)
 	lobby = PanelContainer.new()
-	lobby.position = Vector2(55,150)
-	lobby.custom_minimum_size = Vector2(440,600)
 	ui.add_child(lobby)
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation",8)
@@ -302,7 +350,7 @@ func build_ui() -> void:
 	layout.add_child(text_label("서킷 선택 / 대기실",28))
 	track_choice = OptionButton.new()
 	for track in circuits:
-		track_choice.add_item("%s · %.2f km · %s" % [track.name,float(track.length)/1000.0,track.difficulty])
+		track_choice.add_item(str(track.name)+" · 생존 대결" if track.get("mode","") == "bumper" else "%s · %.2f km · %s" % [track.name,float(track.length)/1000.0,track.difficulty])
 	track_choice.item_selected.connect(func(index):send_admin({"type":"track","track":circuits[index].id}))
 	layout.add_child(track_choice)
 	track_preview = Control.new()
@@ -353,6 +401,7 @@ func build_ui() -> void:
 	ui.add_child(return_button)
 	start_button.disabled = true
 	return_button.disabled = true
+	preload("res://lobby_ui.gd").setup(ui,lobby,qr,join_label,start_button,roster)
 
 func send_admin(message: Dictionary) -> void:
 	if authenticated and socket.get_ready_state() == WebSocketPeer.STATE_OPEN:
@@ -400,6 +449,7 @@ func accept_state(message: Dictionary) -> void:
 		circuit = message.circuit
 		build_circuit()
 		for car in cars.values():
+			if car.has("blast"): car.blast.queue_free()
 			car.root.queue_free()
 		cars.clear()
 	for index in range(circuits.size()):
@@ -417,6 +467,7 @@ func accept_state(message: Dictionary) -> void:
 		var p: Dictionary = state.players[index]
 		present[p.id] = true
 		if cars.has(p.id) and cars[p.id].signature != str(p.car)+str(p.color):
+			if cars[p.id].has("blast"): cars[p.id].blast.queue_free()
 			cars[p.id].root.queue_free()
 			cars.erase(p.id)
 		if not cars.has(p.id):
@@ -425,10 +476,18 @@ func accept_state(message: Dictionary) -> void:
 			if mesh is MeshInstance3D: mesh.layers = 1 << (index+1)
 	for id in cars.keys():
 		if not present.has(id):
+			if cars[id].has("blast"): cars[id].blast.queue_free()
 			cars[id].root.queue_free()
 			cars.erase(id)
-	broadcast.update_state(state)
-	lobby.visible = state.phase == "lobby"
+	if circuit.get("mode","") == "bumper":
+		broadcast.hide()
+		broadcast.main_view.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+		for tile in broadcast.tiles.values(): tile.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	else:
+		broadcast.main_view.viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		for tile in broadcast.tiles.values(): tile.viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		broadcast.update_state(state)
+	preload("res://lobby_ui.gd").sync(lobby,state.phase)
 	score_panel.visible = state.phase == "finished"
 	var connected: Array = state.players.filter(func(p):return p.connected)
 	start_button.disabled = not authenticated or connected.is_empty() or state.phase != "lobby"
@@ -448,6 +507,14 @@ func accept_state(message: Dictionary) -> void:
 		ranking.text = "최종 순위 / 체커기\n\n"
 		for p in state.results.players:
 			ranking.text += "%d위 · %s · %s\n" % [int(p.rank),p.name,"%.2f초" % float(p.time) if p.time != null else "%d바퀴" % int(p.lap)]
+
+	if circuit.get("mode","") == "bumper":
+		start_button.text = "▶ 범퍼카 생존 대결 시작"
+		var alive: int = state.players.filter(func(p):return p.get("eliminatedAt") == null).size()
+		status.text = "BUMPER ARENA / "+("대기실" if state.phase == "lobby" else "경기 종료" if state.phase == "finished" else "출발 %d" % ceili(state.race.countdown) if state.race.countdown > 0 else "%d초 · 생존 %d/%d" % [ceili(state.remaining),alive,state.players.size()])
+		ranking.text = "범퍼카 생존 순위\n\n"
+		for p in (state.results.players if state.phase == "finished" else players):
+			ranking.text += "%d위 · %s · %s\n" % [int(p.rank),p.name,"생존" if (p.get("survived",false) or (state.phase != "finished" and p.get("eliminatedAt") == null)) else "탈락"]
 
 func _process(delta: float) -> void:
 	elapsed += delta
@@ -484,7 +551,10 @@ func _process(delta: float) -> void:
 			if not cars.has(p.id):
 				continue
 			var car: Dictionary = cars[p.id]
-			car.root.position = car.root.position.lerp(Vector3(p.x,0,p.z),minf(1,delta*16))
+			car.root.visible = p.get("landedAt") == null
+			car.marker.visible = circuit.get("mode","") == "bumper"
+			if circuit.get("mode","") == "bumper": update_bumper_blast(car,p)
+			car.root.position = car.root.position.lerp(Vector3(p.x,float(p.get("y",0)),p.z),minf(1,delta*16))
 			car.root.rotation.y = lerp_angle(car.root.rotation.y,p.yaw,minf(1,delta*16))
 	var viewport_size := get_viewport().get_visible_rect().size
 	var bounds: Dictionary = circuit.bounds

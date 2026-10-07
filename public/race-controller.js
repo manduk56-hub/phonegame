@@ -59,8 +59,8 @@ export function createRaceController({send,fullscreen}){
     state=m;if(p.viewMode!==viewMode)send({type:'race-view',viewMode});root.hidden=false;document.body.classList.add('racing-phone');enabled=m.phase==='running'&&m.race.countdown===0&&p.finishedAt===null;if(!enabled)stop();
     if(!scene){try{scene=createRaceScene($('race-view'),{viewMode});}catch{sensorText('3D 화면을 열지 못했습니다. WebGL 지원 브라우저로 접속하세요.');}}scene?.update(m,p.id);drawRaceMinimap($('race-minimap'),m,p.id);
     $('race-driver').textContent=`${m.players.findIndex(q=>q.id===p.id)+1} · ${p.name}`;$('race-driver').style.color=p.color;
-    $('race-lap').textContent=`LAP ${Math.min(p.lap+1,m.race.laps)} / ${m.race.laps}`;$('race-rank').textContent=`${p.rank} / ${m.players.length}위`;$('race-speed').textContent=(p.speed<0?'R ':'')+Math.round(Math.abs(p.speed)*3.6);
-    $('race-countdown').textContent=m.phase==='running'&&m.race.countdown>0?Math.ceil(m.race.countdown):p.offroad?'코스 밖 · 감속':p.finishedAt!==null?'완주!':'';
+    $('race-lap').textContent=m.race.mode==='bumper'?`생존 ${m.players.filter(q=>q.eliminatedAt===null).length} / ${m.players.length}`:`LAP ${Math.min(p.lap+1,m.race.laps)} / ${m.race.laps}`;$('race-rank').textContent=`${p.rank} / ${m.players.length}위`;$('race-speed').textContent=(p.speed<0?'R ':'')+Math.round(Math.abs(p.speed)*3.6);
+    $('race-countdown').textContent=m.phase==='running'&&m.race.countdown>0?Math.ceil(m.race.countdown):m.race.mode==='bumper'?(p.falling?'추락! · 탈락':p.eliminatedAt!==null?'탈락 · 경기 관전':''):p.offroad?'코스 밖 · 감속':p.finishedAt!==null?'완주!':'';
     $('race-garage').hidden=m.phase!=='lobby';$('race-finish').hidden=m.phase!=='finished';
     if(m.phase==='lobby'){
       if(!$('race-car-list').children.length)for(const [index,car]of m.race.cars.entries()){
@@ -70,11 +70,11 @@ export function createRaceController({send,fullscreen}){
         button.append(art,title,info);button.onclick=()=>send({type:'car',car:car.id});$('race-car-list').append(button);
       }
       for(const button of $('race-car-list').children){button.setAttribute('aria-pressed',String(button.dataset.car===p.car));button.style.setProperty('--car-color',p.color);if(button.dataset.color!==p.color){renderCarPreview(button.querySelector('canvas'),button.dataset.car,p.color);button.dataset.color=p.color;}}
-      $('race-garage-status').textContent=`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · 내 색상 ${m.players.findIndex(q=>q.id===p.id)+1}번 · ${m.race.laps}바퀴 · 충돌 사용 · PC에서 시작을 기다리는 중`;$('race-garage-status').style.color=p.color;
+      $('race-garage-status').textContent=m.race.mode==='bumper'?`${m.circuit.name} · 상대를 밀어 떨어뜨리세요 · 마지막 생존자 승리 · PC에서 시작을 기다리는 중`:`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · 내 색상 ${m.players.findIndex(q=>q.id===p.id)+1}번 · ${m.race.laps}바퀴 · 충돌 사용 · PC에서 시작을 기다리는 중`;$('race-garage-status').style.color=p.color;
     }
     if(m.phase==='finished'){
-      const results=$('race-finish');results.replaceChildren();const heading=document.createElement('h1');heading.textContent='체커기!';results.append(heading);
-      for(const r of m.results.players){const row=document.createElement('p');row.style.color=r.color;row.textContent=`${r.rank}위 · ${r.name} · ${r.time===null?`${r.lap}바퀴 · 미완주`:`${r.time.toFixed(2)}초`}`;results.append(row);}
+      const results=$('race-finish');results.replaceChildren();const heading=document.createElement('h1');heading.textContent=m.race.mode==='bumper'?'범퍼카 경기 종료!':'체커기!';results.append(heading);
+      for(const r of m.results.players){const row=document.createElement('p');row.style.color=r.color;row.textContent=m.race.mode==='bumper'?`${r.rank}위 · ${r.name} · ${r.survived?'생존':r.time.toFixed(2)+'초 생존'}`:`${r.rank}위 · ${r.name} · ${r.time===null?`${r.lap}바퀴 · 미완주`:`${r.time.toFixed(2)}초`}`;results.append(row);}
       const note=document.createElement('p');note.textContent='PC에서 대기실로 돌아가면 다시 차량을 선택할 수 있어요.';results.append(note);
     }
   }};

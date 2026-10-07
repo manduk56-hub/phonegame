@@ -51,6 +51,15 @@ export function createRaceScene(canvas,{overview=false,viewMode='third',autoRend
   sun.shadow.bias=-.0005;sun.shadow.normalBias=.08;
   const world=new THREE.Group();scene.add(world);const cars=new Map();let latest,id,built=false,lastTime=performance.now(),frame,disposed=false,speedView=0;
   function build(track){
+    if(track.mode==='bumper'){
+      const disk=(r,h,y,color)=>{const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,96),material(color));mesh.position.y=y;mesh.receiveShadow=true;world.add(mesh);};
+      disk(track.radius,-track.floorY,track.floorY/2,'#59636a');disk(track.radius-.45,.1,.05,'#414b53');
+      disk(100,1,track.floorY-.5,'#30383c');
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(track.radius-.65,.18,6,96),material('#efb44f'));ring.rotation.x=Math.PI/2;ring.position.y=.12;world.add(ring);
+      for(let i=0;i<48;i++){const angle=i*Math.PI/24;const stripe=box(world,.5,.03,1.8,Math.sin(angle)*(track.radius-1.1),.13,Math.cos(angle)*(track.radius-1.1),i%2?'#f8d37d':'#202b33');stripe.rotation.y=angle;}
+      for(const side of [-1,1]){const line=box(world,.12,.02,60,side*12,.12,0,'#667882');line.rotation.y=side*Math.PI/3;}
+      built=track.id;return;
+    }
     for(const prop of circuits.find(t=>t.id===track.id).scenery){const mesh=box(world,...prop.size,...prop.pos,prop.color);mesh.rotation.y=prop.yaw;}
     const points=track.points;
     const edges=points.map((p,i)=>{const prev=points[(i+points.length-1)%points.length],next=points[(i+1)%points.length],dx=next.x-prev.x,dz=next.z-prev.z,len=Math.hypot(dx,dz);return [-1,1].map(side=>[p.x+dz/len*side*track.width/2,.075,p.z-dx/len*side*track.width/2]);});
@@ -76,17 +85,18 @@ export function createRaceScene(canvas,{overview=false,viewMode='third',autoRend
     for(let i=0;i<5;i++){const light=box(world,.48,.48,.55,a.x+(i-2)*.8*Math.cos(yaw),4.5,a.z-(i-2)*.8*Math.sin(yaw),'#da4b41');light.rotation.y=yaw;}
     mergeGroup(world);built=track.id;
   }
+  function removeBlast(car){const blast=car.userData.blast;if(!blast)return;scene.remove(blast);blast.traverse(n=>{n.geometry?.dispose();n.material?.dispose();});}
   function update(state,playerId){latest=state;id=playerId;if(built!==state.circuit.id){for(const mesh of [...world.children]){mesh.geometry?.dispose();world.remove(mesh);}build(state.circuit);for(const car of cars.values()){const p=state.players.find(p=>p.id===car.userData.target.id);if(p){car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;}}}
     for(const p of state.players){let car=cars.get(p.id);const signature=p.car+p.color;
-      if(car?.userData.signature!==signature){if(car){scene.remove(car);car.traverse(n=>n.geometry?.dispose());}car=makeCar(p.car,p.color);if(overview)car.scale.setScalar(1.3);car.userData.signature=signature;car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;cars.set(p.id,car);scene.add(car);}
-      car.userData.target=p;car.visible=overview||viewMode!=='first'||p.id!==id;
+      if(car?.userData.signature!==signature){if(car){removeBlast(car);scene.remove(car);car.traverse(n=>n.geometry?.dispose());}car=makeCar(p.car,p.color);if(overview)car.scale.setScalar(1.3);car.userData.signature=signature;car.position.set(p.x,0,p.z);car.rotation.y=p.yaw;cars.set(p.id,car);scene.add(car);}
+      car.userData.target=p;car.visible=p.landedAt==null&&(overview||viewMode!=='first'||p.id!==id);
     }
-    for(const [key,car]of cars)if(!state.players.some(p=>p.id===key)){scene.remove(car);car.traverse(n=>n.geometry?.dispose());cars.delete(key);}
+    for(const [key,car]of cars)if(!state.players.some(p=>p.id===key)){removeBlast(car);scene.remove(car);car.traverse(n=>n.geometry?.dispose());cars.delete(key);}
   }
   function render(time){if(disposed)return;if(autoRender)frame=requestAnimationFrame(render);if(!latest||!canvas.clientWidth||!canvas.clientHeight)return;
     const dt=Math.min(.1,(time-lastTime)/1000);lastTime=time;const w=canvas.clientWidth,h=canvas.clientHeight;
     if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio()))renderer.setSize(w,h,false);
-    for(const car of cars.values()){const p=car.userData.target;car.position.lerp(new THREE.Vector3(p.x,0,p.z),Math.min(1,dt*16));car.rotation.y+=Math.atan2(Math.sin(p.yaw-car.rotation.y),Math.cos(p.yaw-car.rotation.y))*Math.min(1,dt*16);}
+    for(const car of cars.values()){const p=car.userData.target;car.position.lerp(new THREE.Vector3(p.x,p.y||0,p.z),Math.min(1,dt*16));car.rotation.y+=Math.atan2(Math.sin(p.yaw-car.rotation.y),Math.cos(p.yaw-car.rotation.y))*Math.min(1,dt*16);}
     if(overview){const bounds=latest.circuit.bounds,cx=(bounds.minX+bounds.maxX)/2,cz=(bounds.minZ+bounds.maxZ)/2,halfW=Math.max((bounds.maxX-bounds.minX)*.51,(bounds.maxZ-bounds.minZ)*.49*w/h),halfH=halfW*h/w;camera.left=-halfW;camera.right=halfW;camera.top=halfH;camera.bottom=-halfH;camera.position.set(cx+60,600,cz+225);camera.lookAt(cx,0,cz);}
     else{camera.aspect=w/h;const car=cars.get(id);if(!car)return;const yaw=car.rotation.y,forwardX=Math.sin(yaw),forwardZ=Math.cos(yaw);
       const speed=latest.phase==='running'?Math.max(0,car.userData.target.speed):0;
@@ -98,14 +108,23 @@ export function createRaceScene(canvas,{overview=false,viewMode='third',autoRend
       }else if(viewMode==='third'){
         const distance=6+speedView*1.8;
         camera.fov=68+speedView*24;
-        camera.position.set(car.position.x-forwardX*distance,2.8-speedView*.35,car.position.z-forwardZ*distance);
-        camera.lookAt(car.position.x+forwardX*12,1,car.position.z+forwardZ*12);
+        camera.position.set(car.position.x-forwardX*distance,2.8-speedView*.35,car.position.z-forwardZ*distance);camera.position.y+=car.position.y;
+        camera.lookAt(car.position.x+forwardX*12,car.position.y+1,car.position.z+forwardZ*12);
       }else{
-        camera.fov=78+speedView*24;camera.position.set(car.position.x+forwardX*.2,1.35,car.position.z+forwardZ*.2);
-        camera.lookAt(camera.position.x+forwardX*20,1.15,camera.position.z+forwardZ*20);
+        camera.fov=78+speedView*24;camera.position.set(car.position.x+forwardX*.2,car.position.y+1.35,car.position.z+forwardZ*.2);
+        camera.lookAt(camera.position.x+forwardX*20,car.position.y+1.15,camera.position.z+forwardZ*20);
       }
+    }
+    // Server impact times let reconnecting clients show the same floor explosion.
+    for(const car of cars.values()){
+      const p=car.userData.target,age=p.landedAt==null?-1:latest.race.elapsed-p.landedAt;
+      if(age>=0&&age<1.5){
+        if(!car.userData.blast){const blast=new THREE.Group();for(let i=0;i<22;i++){const m=new THREE.Mesh(new THREE.IcosahedronGeometry(i? .45:1.8,0),new THREE.MeshBasicMaterial({color:i%3?'#ff8b24':'#ffe79a',transparent:true}));blast.add(m);}car.userData.blast=blast;scene.add(blast);}
+        const blast=car.userData.blast;blast.visible=true;blast.position.set(p.x,latest.circuit.floorY+.8,p.z);
+        blast.children.forEach((m,i)=>{const a=i*2.399;m.position.set(Math.cos(a)*age*(3+i%4),Math.sin(i*3.1)*age*3+age*4,Math.sin(a)*age*(3+i%4));m.scale.setScalar(i?1+age:1+age*3);m.material.opacity=Math.max(0,1-age/1.5);});
+      }else if(car.userData.blast)car.userData.blast.visible=false;
     }
     camera.updateProjectionMatrix();renderer.render(scene,camera);
   }if(autoRender)frame=requestAnimationFrame(render);
-  return {update,renderNow:render,setViewMode(mode){mode=['first','third','isometric'].includes(mode)?mode:'first';if(mode===viewMode)return;viewMode=mode;camera=makeCamera(mode);for(const [key,car]of cars)car.visible=overview||viewMode!=='first'||key!==id;},dispose(){disposed=true;cancelAnimationFrame(frame);renderer.dispose();scene.traverse(n=>n.geometry?.dispose());}};
+  return {update,renderNow:render,setViewMode(mode){mode=['first','third','isometric'].includes(mode)?mode:'first';if(mode===viewMode)return;viewMode=mode;camera=makeCamera(mode);for(const [key,car]of cars)car.visible=car.userData.target.landedAt==null&&(overview||viewMode!=='first'||key!==id);},dispose(){disposed=true;cancelAnimationFrame(frame);renderer.dispose();scene.traverse(n=>n.geometry?.dispose());}};
 }

@@ -2,7 +2,7 @@ import {FPS_ARENA,resetFps,fpsSpawn,fpsAim,fpsFire,fpsTick,fpsResults,dropFlag} 
 import {EXCAVATOR_MAPS,resetWater,waterAction,waterTick,waterResults,waterHeight,waterSnapshot} from './waterway.mjs';
 import { randomUUID } from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {raceSpawn,raceTick,chooseCar,CIRCUITS,TRACKS,CARS} from './racing.mjs';
+import {raceSpawn,raceTick,chooseCar,CIRCUITS,RACE_TRACKS,TRACKS,CARS} from './racing.mjs';
 import {excavatorOverlap} from './collision.mjs';
 import {BULL_ARENA,BULL_GATES,bullSpawn,bullStart,bullTick} from './bull.mjs';
 import {FISHING,fishingSpawn,fishingStart,fishingTick,fishingAction,fishingResults} from './fishing.mjs';
@@ -76,7 +76,7 @@ export class Match {
   selectTrack(id){
   selectBullMap(id){if(this.game!=='bull'||this.phase!=='lobby')throw Error('맵은 투우 대기실에서 선택하세요.');if(!['classic','gates'].includes(id))throw Error('올바른 맵을 선택하세요.');this.bullMap=id;this.bull=null;this.results=null;for(const p of this.players.values())this.spawn(p);}
     if(this.game!=='racing'||this.phase!=='lobby')throw Error('트랙은 레이싱 대기실에서 선택하세요.');
-    const circuit=CIRCUITS.find(t=>t.id===id);
+    const circuit=RACE_TRACKS.find(t=>t.id===id);
     if(!circuit)throw Error('올바른 트랙을 선택하세요.');
     this.circuit=circuit;this.raceLaps=circuit.laps;this.results=null;this.raceElapsed=0;this.raceDirector=null;this.countdown=0;
     for(const p of this.players.values())this.spawn(p);
@@ -247,7 +247,7 @@ export class Match {
       ...(this.game==='krill'?{krill:{...(this.krill||{elapsed:0,stage:'rest',safe:{x:0,y:0,r:2.8},obstacles:[]}),...KRILL}}:{}),
       ...(this.game==='fishing'?{fishing:{...(this.fishing||{elapsed:0}),...FISHING}}:{}),
       ...(this.game==='fps'?{fps:{...this.fps,arena:FPS_ARENA}}:{}),
-      ...(this.game==='racing'?{race:{laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,broadcast:this.raceDirector?{id:this.raceDirector.id,reason:this.raceDirector.reason}:null,cars:CARS,tracks:TRACKS},circuit:this.circuit}:{}),
+      ...(this.game==='racing'?{race:{mode:this.circuit.mode||'race',laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,broadcast:this.raceDirector?{id:this.raceDirector.id,reason:this.raceDirector.reason}:null,cars:CARS,tracks:TRACKS},circuit:this.circuit}:{}),
       players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,...(this.game==='krill'?{tailCooldown:cooldown}:{}),...(this.game==='excavator'?{bucket:this.bucket(p)}:{})}))};
   }
 }

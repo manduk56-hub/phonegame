@@ -1,9 +1,12 @@
+import {bumperSpawn,bumperTick} from './bumper.mjs';
 import {updateRaceDirector} from './race-director.mjs';
 import {readFileSync} from 'node:fs';
 import {raceBody,bodyContact} from './collision.mjs';
 export const CIRCUIT=JSON.parse(readFileSync(new URL('./game/circuit.json',import.meta.url),'utf8'));
 export const CIRCUITS=JSON.parse(readFileSync(new URL('./game/circuits.json',import.meta.url),'utf8')).map(({scenery,...track})=>track);
-export const TRACKS=CIRCUITS.map(({points,bounds,width,radius,...info})=>info);
+export const BUMPER_ARENA=JSON.parse(readFileSync(new URL('./game/bumper-arena.json',import.meta.url),'utf8'));
+export const RACE_TRACKS=[...CIRCUITS,BUMPER_ARENA];
+export const TRACKS=RACE_TRACKS.map(({points,bounds,width,radius,...info})=>info);
 export const CARS=[
   {id:'wedge',name:'에이펙스',description:'낮은 쐐기형 · 대형 공기흡입구'},
   {id:'classic',name:'클래식',description:'둥근 헤드램프 · 곡선 루프'},
@@ -26,12 +29,15 @@ export function nearestTrack(x,z,circuit=CIRCUIT){
 export function raceSpawn(match,p){
   const points=match.circuit.points;
   const index=[...match.players.keys()].indexOf(p.id),n=points.length;
-  const a=points[(n-2-Math.floor(index/2)*3+n)%n],b=points[(n-1-Math.floor(index/2)*3+n)%n];
+  const wrap=value=>((value%n)+n)%n;
+  const a=points[wrap(n-2-Math.floor(index/2)*3)],b=points[wrap(n-1-Math.floor(index/2)*3)];
   p.yaw=Math.atan2(b.x-a.x,b.z-a.z);const lane=index%2?2.0:-2.0;
   p.x=a.x+Math.cos(p.yaw)*lane;p.z=a.z-Math.sin(p.yaw)*lane;
   p.car=CARS.some(c=>c.id===p.car)?p.car:CARS[index%CARS.length].id;
   p.color=RACE_COLORS[index];p.speed=0;p.steer=0;p.driveThrottle=0;p.reverseHold=0;p.lap=0;p.checkpoint=0;p.raceDistance=0;
   p.finishedAt=null;p.rank=index+1;p.offroad=false;p.wallContact=false;p.message='';p.input=match.neutral();p.lastInput=0;
+  Object.assign(p,{y:0,pushX:0,pushZ:0,fallV:0,falling:false,eliminatedAt:null,landedAt:null,fallX:0,fallZ:0});
+  if(match.circuit.mode==='bumper')bumperSpawn(match,p);
 }
 export function chooseCar(match,id,car){
   if(match.game!=='racing'||match.phase!=='lobby')throw Error('차량은 레이싱 대기실에서 선택하세요.');
@@ -69,6 +75,7 @@ export function raceTick(match,dt,now){
   const circuit=match.circuit,points=circuit.points;
   if(match.phase!=='running')return;
   dt=Math.min(.1,Math.max(0,dt));
+  if(circuit.mode==='bumper'){bumperTick(match,dt,now,driveSpeed);return;}
   if(match.countdown>0){match.countdown=Math.max(0,match.countdown-dt);return;}
   match.remaining=Math.max(0,match.remaining-dt);match.raceElapsed+=dt;
   for(const p of match.players.values()){

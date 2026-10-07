@@ -10,6 +10,11 @@ func _draw() -> void:
 	draw_style_box(get_theme_stylebox("panel", "PanelContainer"), Rect2(Vector2.ZERO,size))
 	if track.is_empty():
 		return
+	if track.get("mode","") == "bumper":
+		var radius := minf(size.x,size.y)*0.4
+		draw_circle(size/2,radius,Color("#414b53"))
+		draw_arc(size/2,radius,0,TAU,64,Color(track.color),3,true)
+		return
 	var line := PackedVector2Array()
 	var scale_factor := minf(size.x/480.0,size.y/360.0)*0.9
 	for point in track.points:
