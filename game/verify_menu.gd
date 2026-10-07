@@ -3,6 +3,21 @@ extends SceneTree
 func _initialize() -> void:
 	run.call_deferred()
 
+func verify_preparation(hub: Node, name: String) -> void:
+	var game: Node = hub.active_game
+	await process_frame
+	await process_frame
+	assert(game.lobby.size.x == 960 and game.lobby.size.y == 616, "%s preparation size: %s" % [name,game.lobby.size])
+	assert(game.start_button.get_global_rect().end.y <= game.lobby.get_global_rect().end.y)
+	assert(game.qr.get_global_rect().position.x > game.lobby.get_global_rect().end.x)
+	game.lobby.hide()
+	assert(not game.qr.is_visible_in_tree())
+	game.lobby.show()
+	assert(game.qr.is_visible_in_tree())
+	if OS.get_environment("PLAYROOM_UI_CAPTURE") == "1":
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("res://../.runtime/preparation-%s.png" % name)
+
 func run() -> void:
 	var hub = load("res://main_menu.tscn").instantiate()
 	root.add_child(hub)
@@ -15,6 +30,8 @@ func run() -> void:
 			quit(1)
 			return
 	assert(not hub.play_button.disabled)
+	assert(hub.quit_button.text.contains("Esc") and hub.quit_button.pressed.is_connected(hub.quit_game))
+	assert(hub.quit_button.get_global_rect().end.y <= hub.size.y)
 	var qr_deadline := Time.get_ticks_msec()+6000
 	while hub.qr.texture == null or not hub.roster_label.text.contains("1 / 16"):
 		if Time.get_ticks_msec()>qr_deadline:
@@ -23,6 +40,9 @@ func run() -> void:
 			return
 		await process_frame
 	assert(hub.join_label.text.contains("/controller?room="))
+	if OS.get_environment("PLAYROOM_UI_CAPTURE") == "1":
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("res://../.runtime/selection-ui.png")
 	var fixed_qr_position: Vector2 = hub.qr.global_position
 	var shared_qr_texture: Texture2D = hub.qr.texture
 	assert(shared_qr_texture.get_width() == 1024)
@@ -46,6 +66,7 @@ func run() -> void:
 				quit(1)
 				return
 			await process_frame
+		await verify_preparation(hub,["bull","fishing","krill"][index-3])
 		hub.return_to_menu()
 		await process_frame
 	hub.cards[0].pressed.emit()
@@ -96,6 +117,7 @@ func run() -> void:
 			return
 		await process_frame
 	assert(hub.active_game.qr.texture != null)
+	await verify_preparation(hub,"racing")
 	hub.return_to_menu()
 	await process_frame
 	hub.select_game(2)
@@ -111,6 +133,7 @@ func run() -> void:
 	assert(hub.active_game.camera.position == Vector3(34,40,42))
 	assert(hub.active_game.state.fps.arena.walls.size() == hub.active_game.arena.walls.size())
 	assert(hub.active_game.camera.size == hub.active_game.arena.overviewSize)
+	await verify_preparation(hub,"fps")
 	hub.active_game.send_admin({"type":"start"})
 	deadline = Time.get_ticks_msec()+6000
 	while hub.active_game.state.get("phase") != "running":
@@ -124,5 +147,8 @@ func run() -> void:
 		await process_frame
 	hub.return_to_menu()
 	await process_frame
-	print("PASS: selection QR and roster, all six playable games, bull selection, host connection, running lock and return")
-	quit()
+	print("PASS: selection exit button and Escape, shared preparation layout and QR visibility, all six playable games, host connection, running lock and return")
+	var escape := InputEventKey.new()
+	escape.keycode = KEY_ESCAPE
+	escape.pressed = true
+	hub._input(escape)

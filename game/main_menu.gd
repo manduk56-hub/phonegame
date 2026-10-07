@@ -19,6 +19,7 @@ var detail_subtitle: Label
 var detail_description: Label
 var detail_meta: Label
 var play_button: Button
+var quit_button: Button
 var selected := 0
 var active_game: Node
 var back_layer: CanvasLayer
@@ -73,10 +74,10 @@ func _ready() -> void:
 	for side in ["left", "right"]:
 		menu.add_theme_constant_override("margin_"+side,64)
 	for side in ["top", "bottom"]:
-		menu.add_theme_constant_override("margin_"+side,32)
+		menu.add_theme_constant_override("margin_"+side,24)
 	add_child(menu)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation",24)
+	stack.add_theme_constant_override("separation",18)
 	menu.add_child(stack)
 	var welcome := HBoxContainer.new()
 	welcome.add_theme_constant_override("separation",28)
@@ -196,7 +197,17 @@ func _ready() -> void:
 	join_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	join_label.custom_minimum_size.x = 160
 	join_info.add_child(join_label)
-	stack.add_child(label("01  QR로 한 번 참가    →    02  게임 선택    →    03  계속 함께 플레이                           PLAY TOGETHER.",18,"#9ba6a5"))
+	var footer := HBoxContainer.new()
+	stack.add_child(footer)
+	var steps := label("01  QR로 한 번 참가    →    02  게임 선택    →    03  계속 함께 플레이",18,"#9ba6a5")
+	steps.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(steps)
+	quit_button = Button.new()
+	quit_button.text = "게임 종료  ·  Esc"
+	quit_button.name = "QuitGame"
+	quit_button.custom_minimum_size = Vector2(220,40)
+	quit_button.pressed.connect(quit_game)
+	footer.add_child(quit_button)
 	select_game(0)
 	cards[0].grab_focus()
 	server_url = OS.get_environment("DIRT_RALLY_SERVER_URL").trim_suffix("/") if OS.has_environment("DIRT_RALLY_SERVER_URL") else server_url
@@ -225,6 +236,15 @@ func select_game(index: int) -> void:
 	detail_meta.text = "크릴 생존 · 1–16명 · 모바일 이동 · 꼬리치기" if index == 5 else "개인 낚시 · 1–16명 · 모션 챔질 · 시계 방향 릴" if index == 4 else "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else "투우 · 랜덤/지정 황소 · 생존시간 기록"))
 	play_button.text = "대기실 입장   →" if index < 6 else "곧 만나요!"
 	play_button.disabled = index > 5
+
+func quit_game() -> void:
+	if menu.visible and not is_instance_valid(active_game):
+		get_tree().quit()
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE and menu.visible:
+		get_viewport().set_input_as_handled()
+		quit_game()
 
 func launch_game() -> void:
 	if selected > 5 or is_instance_valid(active_game):

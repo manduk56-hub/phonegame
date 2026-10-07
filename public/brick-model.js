@@ -1,0 +1,5 @@
+import * as THREE from '/vendor/three.module.js';
+export function createBrickGeometry(p){
+  const normals=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],faces=[[[1,-1,-1],[1,1,-1],[1,1,1],[1,-1,1]],[[-1,-1,1],[-1,1,1],[-1,1,-1],[-1,-1,-1]],[[-1,1,-1],[-1,1,1],[1,1,1],[1,1,-1]],[[-1,-1,1],[-1,-1,-1],[1,-1,-1],[1,-1,1]],[[1,-1,1],[1,1,1],[-1,1,1],[-1,-1,1]],[[-1,-1,-1],[-1,1,-1],[1,1,-1],[1,-1,-1]]];
+ const positions=[],directions=[],colors=[],palette=p.palette.map(c=>new THREE.Color(c));for(const cell of p.cells){const color=palette[cell[3]];for(let side=0;side<6;side++){if(!(cell[4]&(1<<side)))continue;for(const index of [0,1,2,0,2,3]){positions.push(...faces[side][index].map((v,k)=>(cell[k]+v*.5)*p.cell));directions.push(...normals[side]);colors.push(color.r,color.g,color.b);}}}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(directions,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));return g;
+}
