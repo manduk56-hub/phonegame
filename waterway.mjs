@@ -17,6 +17,19 @@ export function resetWater(m){
     }
     return {team:t.id,angle:0,x:(t.id-(m.teamCount-1)/2)*7.8,z:0,progress:0,finishedAt:null,revision:0,depth,wet};
   })};
+  // Flat soil covers the whole arena; openings contain the excavatable meshes
+  // and their sloping edges. Both renderers use these same patch dimensions.
+  const w=m.water,extent=80,edgeBlend=.8,halfWidth=(cols-1)*size/2+edgeBlend;
+  const near=start-edgeBlend,far=start+(rows-1)*size+edgeBlend;
+  const patches=[[extent*2,extent+near,0,(-extent+near)/2],[extent*2,extent-far,0,(far+extent)/2]];
+  let left=-extent;
+  for(const lane of w.lanes){
+    const right=lane.x-halfWidth;
+    patches.push([right-left,far-near,(left+right)/2,(near+far)/2]);
+    left=lane.x+halfWidth;
+  }
+  patches.push([extent-left,far-near,(left+extent)/2,(near+far)/2]);
+  w.soil={extent,edgeBlend,patches};
 }
 export function waterLocal(w,lane,point){
   const s=Math.sin(lane.angle),c=Math.cos(lane.angle),x=point.x-lane.x,z=point.z-lane.z;
@@ -34,7 +47,17 @@ function sample(w,lane,x,z){
   const at=(r,c)=>lane.depth[r*w.cols+c];
   return (at(row,col)*(1-fx)+at(row,col+1)*fx)*(1-fz)+(at(row+1,col)*(1-fx)+at(row+1,col+1)*fx)*fz;
 }
-export function waterHeight(m,point){const hit=waterHit(m,point);return hit?-sample(m.water,hit.lane,hit.x,hit.z):0;}
+export function waterHeight(m,point){
+  if(!m.water)return 0;
+  const w=m.water,blend=w.soil.edgeBlend,halfWidth=(w.cols-1)*w.size/2,length=(w.rows-1)*w.size;
+  for(const lane of w.lanes){
+    const local=waterLocal(w,lane,point);
+    const dx=Math.max(0,Math.abs(local.x)-halfWidth),dz=Math.max(0,-local.z,local.z-length);
+    if(dx>=blend||dz>=blend)continue;
+    return -sample(w,lane,local.x,local.z)*(1-dx/blend)*(1-dz/blend);
+  }
+  return 0;
+}
 export function waterAction(m,p,action,tip){
   const hit=waterHit(m,tip),w=m.water;
   if(action==='scoop'){

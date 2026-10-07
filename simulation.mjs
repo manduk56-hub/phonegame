@@ -11,6 +11,8 @@ export const ARENA=JSON.parse(readFileSync(new URL('./game/arena.json',import.me
 export const COLORS = ['#faad28','#52c8fa','#f078a6','#77d99b','#a99aff','#fb775b','#e0d16c','#69d3cb'];
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a,b) => Math.hypot(a.x-b.x, a.z-b.z);
+// Let the cutting teeth enter the soil slightly without locking the controls.
+const BUCKET_GROUND_ALLOWANCE = .18;
 export class Match {
   constructor() {
     this.bullChoice='random';this.bullMap='classic';this.bull=null;
@@ -156,7 +158,7 @@ export class Match {
       const key=source===this?'central':'dirt';
       const surface=source===this?this.pileHeight(tip,origin,4.3,this.central,4000,true):this.pileHeight(tip,source,source.radius||2.5,source.dirt,loose?40:400);
       if(source[key]<=0) {p.message='남은 흙이 없어요';return;}
-      if(surface===0||tip.height>surface+.35||tip.height<-.02) {p.message='버킷 이빨을 흙더미 가까이 내리세요';return;}
+      if(surface===0||tip.height>surface+.35||tip.height<-BUCKET_GROUND_ALLOWANCE-1e-8) {p.message='버킷 이빨을 흙더미 가까이 내리세요';return;}
       const amount=Math.min(40-p.cargo,source[key]); source[key]-=amount;p.cargo+=amount;
       if(!loose&&source!==this&&source.id!==p.team)p.disrupted+=amount;
       if(loose&&loose.dirt===0) this.groundPiles=this.groundPiles.filter(s=>s!==loose);
@@ -200,16 +202,27 @@ export class Match {
       if(ceremony||canMove(turned))p.turret=turned.turret;
       const old={boom:p.boom,stick:p.stick,curl:p.curl};
       const target={boom:clamp(p.boom+i.boom*.7*dt,-.25,1.35),stick:clamp(p.stick+i.stick*.9*dt,-2.4,-.25),curl:clamp(p.curl+i.curl*1.8*dt,-1.2,1.2)};
+      const clearance=()=>{const tip=this.bucket(p);return tip.height-(this.water&&!ceremony?waterHeight(this,tip):0);};
+      // A terrain change can leave the teeth below the limit: allow recovery.
+      const minimum=Math.min(-BUCKET_GROUND_ALLOWANCE,clearance());
       Object.assign(p,target);
-      const floor=()=>{const tip=this.bucket(p);return .02+(this.water&&!ceremony?waterHeight(this,tip):0);};
-      if(this.bucket(p).height<floor()) {
-        let low=0,high=1;
-        for(let step=0;step<14;step++) {
-          const fraction=(low+high)/2;
-          for(const key of Object.keys(old))p[key]=old[key]+(target[key]-old[key])*fraction;
-          if(this.bucket(p).height>=floor())low=fraction;else high=fraction;
+      if(clearance()<minimum) {
+        Object.assign(p,old);
+        // Ground contact limits only the blocked joint, never the whole joystick.
+        // Curl first so scooping/releasing remains responsive at ground level.
+        for(const key of ['curl','boom','stick']) {
+          const start=p[key];
+          const jointMinimum=Math.min(-BUCKET_GROUND_ALLOWANCE,clearance());
+          p[key]=target[key];
+          if(clearance()>=jointMinimum)continue;
+          let low=0,high=1;
+          for(let step=0;step<14;step++) {
+            const fraction=(low+high)/2;
+            p[key]=start+(target[key]-start)*fraction;
+            if(clearance()>=jointMinimum)low=fraction;else high=fraction;
+          }
+          p[key]=start+(target[key]-start)*low;
         }
-        for(const key of Object.keys(old))p[key]=old[key]+(target[key]-old[key])*low;
       }
       if(i.curl>.2&&(this.water||p.curl>.1)&&p.cargo<40) this.action(p.id,'scoop');
       if(i.curl<-.2&&p.curl<-.5&&p.cargo>0) this.action(p.id,'drop');

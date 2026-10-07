@@ -4,7 +4,7 @@ import {WebSocket} from 'ws';
 import {Match} from '../simulation.mjs';
 import {createServer} from '../server.mjs';
 import {EXCAVATOR_MAPS,waterHeight} from '../waterway.mjs';
-import {decodeSurface,groundGeometry,waterGeometry} from '../public/water-surface.js';
+import {decodeSurface,groundGeometry,terrainGeometry,waterGeometry} from '../public/water-surface.js';
 
 function match(count=2,map='waterfall'){const m=new Match();m.configure(count,60);m.selectExcavatorMap(map);const players=Array.from({length:count},(_,i)=>m.join('굴착 '+i));m.start();return {m,a:players[0],b:players[1]};}
 function aim(m,p,x,z,height=.02,heading=0){
@@ -57,6 +57,45 @@ test('continuous water outline fits the curved pool and does not fill a rectangu
  const {m}=match();const w=m.snapshot().water,{depth,wet}=decodeSurface(w.lanes[0].surface,w.rows*w.cols),vertices=waterGeometry(w,depth,wet);assert(vertices.length>0);
  const z=[...vertices].filter((_,i)=>i%3===2);assert(z.some(v=>Math.abs((v-w.start)/w.size-Math.round((v-w.start)/w.size))>.01),'shore must interpolate between samples');
  assert.deepEqual([...decodeSurface(w.lanes[0].surface,w.rows*w.cols).wet],[...wet]);
+});
+
+test('soil fills the entire arena around every team lane without overlapping excavation surfaces',()=>{
+ for(let count=1;count<=8;count++){
+  const {m}=match(count),w=m.water,edge=w.soil.edgeBlend,half=(w.cols-1)*w.size/2;
+  const near=w.start-edge,far=w.start+(w.rows-1)*w.size+edge;
+  for(let x=-30.913;x<=31;x+=.75)for(let z=-30.871;z<=31;z+=.75){
+   const inLane=w.lanes.some(l=>Math.abs(x-l.x)<half+edge&&z>near&&z<far);
+   const covering=w.soil.patches.filter(([width,length,cx,cz])=>Math.abs(x-cx)<width/2&&Math.abs(z-cz)<length/2).length;
+   assert.equal(covering,inLane?0:1,`${count} teams: soil coverage at ${x}, ${z}`);
+  }
+ }
+});
+
+test('dug edges slope continuously into the surrounding soil and chassis can drive out',()=>{
+ const {m,a}=match(1),w=m.water,lane=w.lanes[0],edge=w.soil.edgeBlend;
+ lane.depth.fill(.6);lane.revision++;
+ const half=(w.cols-1)*w.size/2,end=w.start+(w.rows-1)*w.size;
+ for(const point of [{x:half,z:0},{x:-half,z:0},{x:0,z:end},{x:0,z:w.start}]){
+  const direction=point.x!==0?{x:Math.sign(point.x),z:0}:{x:0,z:Math.sign(point.z)};
+  let previous=-.6;
+  for(let step=0;step<=8;step++){
+   const distance=edge*step/8,height=waterHeight(m,{x:point.x+direction.x*distance,z:point.z+direction.z*distance});
+   assert(Math.abs(height-(-.6*(1-step/8)))<1e-8);
+   assert(height>=previous-1e-8);previous=height;
+  }
+ }
+ const mesh=terrainGeometry(w,lane.depth),cols=w.cols+2,rows=w.rows+2;
+ for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+  const index=(row*cols+col)*3;
+  if(row===0||row===rows-1||col===0||col===cols-1)assert(Math.abs(mesh.positions[index+1])<1e-8);
+ }
+ Object.assign(a,{x:0,z:end-.1,yaw:0,turret:0,y:-.6});
+ let previousY=a.y;
+ for(let step=0;step<12;step++){
+  m.input(a.id,{travelL:1,travelR:1},1000+step*100);m.tick(.1,1000+step*100);
+  assert(a.y>=previousY-1e-8&&a.y-previousY<.26);previousY=a.y;
+ }
+ assert(a.z>end+edge);assert.equal(a.y,0);
 });
 
 test('isolated pits and a shallow crest block flow; a connected deep channel reaches the goal and freezes results',()=>{

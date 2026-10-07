@@ -118,7 +118,7 @@ test('closing and opening the bucket via joystick transfers dirt without action 
   m.input(p.id,{curl:-1},1000);m.tick(.1,1000);assert.equal(p.cargo,0);assert.equal(m.teams[0].dirt,40);
 });
 
-test('curl moves the actual teeth and all articulated axes stop at the ground',()=>{
+test('curl moves the actual teeth and ground contact allows shallow digging only',()=>{
   const m=new Match(),p=m.join('Operator');m.start();
   const open=m.bucket(p);p.curl=.4;const closed=m.bucket(p);
   assert(closed.height>open.height+.1,'closing must lift the teeth');
@@ -131,7 +131,7 @@ test('curl moves the actual teeth and all articulated axes stop at the ground',(
   for(let step=0;step<400;step++) {
     const control=step<100?{boom:-1,curl:-1,stick:-1}:step<200?{boom:1,curl:1,stick:1}:step<300?{boom:-1,stick:1,curl:-1}:{boom:1,stick:-1,curl:1};
     m.input(p.id,control,now);m.tick(.05,now);now+=50;
-    assert(m.bucket(p).height>=.01999,`ground penetration at ${step}`);
+    assert(m.bucket(p).height>=-.18001,`excessive ground penetration at ${step}`);
   }
 });
 

@@ -1,25 +1,31 @@
 import * as THREE from '/vendor/three.module.js';
-import {decodeSurface,groundGeometry,waterGeometry} from './water-surface.js';
+import {decodeSurface,groundGeometry,terrainGeometry,waterGeometry} from './water-surface.js';
 
 export function createWaterTerrain(scene){
   const root=new THREE.Group();scene.add(root);
-  const geometry=new THREE.BoxGeometry(1,1,1),materials=new Map();let signature='',surfaces=[],falls=[];
+  const geometry=new THREE.BoxGeometry(1,1,1),materials=new Map();let signature='',surfaces=[],falls=[],soilPatches=[];
   const material=color=>{if(!materials.has(color))materials.set(color,new THREE.MeshLambertMaterial({color}));return materials.get(color);};
   const dirtMaterial=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide});
   const waterMaterial=new THREE.MeshLambertMaterial({color:'#50cfe4',side:THREE.DoubleSide});
   function box(parent,size,pos,color){const mesh=new THREE.Mesh(geometry,material(color));mesh.scale.set(...size);mesh.position.set(...pos);parent.add(mesh);return mesh;}
   function update(m){
     root.visible=Boolean(m.water)&&m.phase!=='finished';if(!m.water)return;const w=m.water;
-    const key=JSON.stringify([m.excavatorMap.id,m.teamCount,w.rows,w.cols,w.size,w.start,w.lanes.map(l=>[l.x,l.z,l.angle])]);
+    const key=JSON.stringify([m.excavatorMap.id,m.teamCount,w.rows,w.cols,w.size,w.start,w.soil,w.lanes.map(l=>[l.x,l.z,l.angle])]);
     if(signature!==key){
       for(const surface of surfaces){surface.ground.geometry.dispose();surface.flow.geometry.dispose();}
-      root.clear();surfaces=[];falls=[];signature=key;
-      box(root,[m.teamCount*7.8+2.2,.3,(w.rows-1)*w.size+5],[0,-1.05,w.start+(w.rows-1)*w.size/2],'#56815b');
+      for(const patch of soilPatches)patch.geometry.dispose();
+      root.clear();surfaces=[];falls=[];soilPatches=[];signature=key;
+      for(const [width,length,x,z] of w.soil.patches){
+        const data=groundGeometry({cols:2,rows:2,size:1,start:-.5},new Float32Array(4)),g=new THREE.BufferGeometry();
+        g.setAttribute('position',new THREE.BufferAttribute(data.positions,3));g.setAttribute('normal',new THREE.BufferAttribute(data.normals,3));
+        g.setAttribute('color',new THREE.BufferAttribute(data.colors,3));g.setIndex(new THREE.BufferAttribute(data.indices,1));
+        const patch=new THREE.Mesh(g,dirtMaterial);patch.scale.set(width,1,length);patch.position.set(x,0,z);root.add(patch);soilPatches.push(patch);
+      }
+      box(root,[w.soil.extent*2,.3,w.soil.extent*2],[0,-w.maxDepth-.15,0],'#896a3e');
       for(const lane of w.lanes){
         const bank=new THREE.Group();root.add(bank);bank.rotation.y=lane.angle;bank.position.set(lane.x,0,lane.z);
         const len=(w.rows-1)*w.size,mid=w.start+len/2,width=(w.cols-1)*w.size;
-        for(const side of [-1,1])box(bank,[3,.9,len+4],[side*(width/2+1.5),-.45,mid],'#759368');
-        box(bank,[7.8,4.2,2],[0,1.3,w.start-1.3],'#68766a');
+        box(bank,[7.8,4.2,2],[0,1.3,w.start-1.3],'#b28b50');
         const fall=box(bank,[3.8,3.9,.15],[0,1.55,w.start-.22],'#7cdeef');falls.push(fall);fall.userData.streaks=[];
         for(let i=0;i<6;i++){const streak=box(bank,[.05,.55,.04],[(i-2.5)*.55,0,w.start-.11],'#e2fbff');streak.userData.offset=i/6;fall.userData.streaks.push(streak);}
         box(bank,[width+.6,.09,.13],[0,.06,w.start+len],m.teams[lane.team].color);
@@ -32,7 +38,7 @@ export function createWaterTerrain(scene){
       const surface=surfaces[i];if(surface.encoded===lane.surface)return;surface.encoded=lane.surface;
       const {depth,wet}=decodeSurface(lane.surface,w.rows*w.cols);
       if(surface.revision!==lane.revision){
-        surface.revision=lane.revision;const mesh=groundGeometry(w,depth),g=new THREE.BufferGeometry();surface.ground.geometry.dispose();surface.ground.geometry=g;
+        surface.revision=lane.revision;const mesh=terrainGeometry(w,depth),g=new THREE.BufferGeometry();surface.ground.geometry.dispose();surface.ground.geometry=g;
         g.setAttribute('position',new THREE.BufferAttribute(mesh.positions,3));g.setAttribute('normal',new THREE.BufferAttribute(mesh.normals,3));g.setAttribute('color',new THREE.BufferAttribute(mesh.colors,3));g.setIndex(new THREE.BufferAttribute(mesh.indices,1));g.computeBoundingSphere();
       }
       const points=waterGeometry(w,depth,wet),g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(points,3));g.computeVertexNormals();g.computeBoundingSphere();surface.flow.geometry.dispose();surface.flow.geometry=g;

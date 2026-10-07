@@ -32,7 +32,26 @@ func build(m: Dictionary) -> void:
 	lanes.clear()
 	streaks.clear()
 	var w: Dictionary = m.water
-	box(self,Vector3(int(m.teamCount)*7.8+2.2,0.3,(int(w.rows)-1)*float(w.size)+5),Vector3(0,-1.05,float(w.start)+(int(w.rows)-1)*float(w.size)/2),"#56815b")
+	for patch in w.soil.patches:
+		var soil := MeshInstance3D.new()
+		var half_x := float(patch[0])/2
+		var half_z := float(patch[1])/2
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(-half_x,0,-half_z),Vector3(half_x,0,-half_z),Vector3(-half_x,0,half_z),Vector3(half_x,0,half_z)])
+		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array([Vector3.UP,Vector3.UP,Vector3.UP,Vector3.UP])
+		var color := Color(0.82,0.66,0.40)
+		arrays[Mesh.ARRAY_COLOR] = PackedColorArray([color,color,color,color])
+		arrays[Mesh.ARRAY_INDEX] = PackedInt32Array([0,2,1,1,2,3])
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays)
+		soil.mesh = mesh
+		var dirt := paint("#ffffff").duplicate() as StandardMaterial3D
+		dirt.vertex_color_use_as_albedo = true
+		soil.material_override = dirt
+		soil.position = Vector3(float(patch[2]),0,float(patch[3]))
+		add_child(soil)
+	box(self,Vector3(float(w.soil.extent)*2,0.3,float(w.soil.extent)*2),Vector3(0,-float(w.maxDepth)-0.15,0),"#896a3e")
 	var length := (int(w.rows)-1)*float(w.size)
 	var width := (int(w.cols)-1)*float(w.size)
 	var mid := float(w.start)+length/2
@@ -41,9 +60,7 @@ func build(m: Dictionary) -> void:
 		add_child(bank)
 		bank.rotation.y = float(lane.angle)
 		bank.position = Vector3(float(lane.x),0,float(lane.z))
-		for side in [-1,1]:
-			box(bank,Vector3(3,0.9,length+4),Vector3(side*(width/2+1.5),-0.45,mid),"#759368")
-		box(bank,Vector3(7.8,4.2,2),Vector3(0,1.3,float(w.start)-1.3),"#68766a")
+		box(bank,Vector3(7.8,4.2,2),Vector3(0,1.3,float(w.start)-1.3),"#b28b50")
 		box(bank,Vector3(3.8,3.9,0.15),Vector3(0,1.55,float(w.start)-0.22),"#7cdeef")
 		for i in range(6):
 			var streak := Node3D.new()
@@ -78,20 +95,37 @@ func depth_at(depth: PackedFloat32Array, w: Dictionary, row: int, col: int) -> f
 	return depth[clampi(row,0,int(w.rows)-1)*int(w.cols)+clampi(col,0,int(w.cols)-1)]
 
 func ground_mesh(w: Dictionary, depth: PackedFloat32Array) -> ArrayMesh:
+	var padded := PackedFloat32Array()
+	var terrain := w.duplicate()
+	terrain.cols = int(w.cols)+2
+	terrain.rows = int(w.rows)+2
+	terrain.start = float(w.start)-float(w.size)
+	padded.resize(int(terrain.cols)*int(terrain.rows))
+	for row in range(int(w.rows)):
+		for col in range(int(w.cols)):
+			padded[(row+1)*int(terrain.cols)+col+1] = depth[row*int(w.cols)+col]
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
 	var indices := PackedInt32Array()
-	var cols := int(w.cols)
-	var rows := int(w.rows)
+	var cols := int(terrain.cols)
+	var rows := int(terrain.rows)
 	var size := float(w.size)
 	for row in range(rows):
 		for col in range(cols):
 			var i := row*cols+col
-			var d := depth[i]
-			vertices.append(Vector3((col-(cols-1)/2.0)*size,-d,float(w.start)+row*size))
-			var nx := (depth_at(depth,w,row,col+1)-depth_at(depth,w,row,col-1))/(2*size)
-			var nz := (depth_at(depth,w,row+1,col)-depth_at(depth,w,row-1,col))/(2*size)
+			var d := padded[i]
+			var x := (col-(cols-1)/2.0)*size
+			var z := float(terrain.start)+row*size
+			var half := (int(w.cols)-1)*size/2
+			var edge := float(w.soil.edgeBlend)
+			if col == 0: x = -half-edge
+			if col == cols-1: x = half+edge
+			if row == 0: z = float(w.start)-edge
+			if row == rows-1: z = float(w.start)+(int(w.rows)-1)*size+edge
+			vertices.append(Vector3(x,-d,z))
+			var nx := (depth_at(padded,terrain,row,col+1)-depth_at(padded,terrain,row,col-1))/(2*size)
+			var nz := (depth_at(padded,terrain,row+1,col)-depth_at(padded,terrain,row-1,col))/(2*size)
 			normals.append(Vector3(nx,1,nz).normalized())
 			var shade := 1.0-minf(0.48,maxf(0.0,d)*1.1)
 			colors.append(Color(0.82*shade,0.66*shade,0.40*shade))
@@ -155,7 +189,7 @@ func water_mesh(w: Dictionary, depth: PackedFloat32Array, wet: PackedFloat32Arra
 
 func update_surface(m: Dictionary) -> void:
 	var w: Dictionary = m.water
-	var key := JSON.stringify([m.excavatorMap.id,m.teamCount,w.rows,w.cols,w.size,w.start,w.lanes.map(func(l):return [l.x,l.z,l.angle])])
+	var key := JSON.stringify([m.excavatorMap.id,m.teamCount,w.rows,w.cols,w.size,w.start,w.soil,w.lanes.map(func(l):return [l.x,l.z,l.angle])])
 	if signature != key:
 		signature = key
 		build(m)

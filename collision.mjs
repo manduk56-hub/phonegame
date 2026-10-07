@@ -36,6 +36,7 @@ function body(p,bounds,yaw=p.yaw){
 export const raceBody=p=>body(p,carBounds.get(p.car)||carBounds.get('gt'));
 export function excavatorBodies(p){
   // Tracks including end treads; upper body includes the cab and rear counterweight.
+  // Boom, stick and bucket deliberately have no player collision, at any pose.
   return [body(p,{minX:-.97,maxX:.97,minZ:-1.23,maxZ:1.23}),
     body(p,{minX:-.82,maxX:.8,minZ:-1.13,maxZ:.6},p.yaw+(p.turret||0))];
 }

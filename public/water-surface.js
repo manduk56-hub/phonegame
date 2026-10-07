@@ -19,6 +19,21 @@ export function groundGeometry(w,depth){
   }
   return {positions,normals,colors,indices:new Uint16Array(indices)};
 }
+// One flat outer ring joins each excavated edge to the surrounding soil.
+export function terrainGeometry(w,depth){
+  const cols=w.cols+2,rows=w.rows+2,padded=new Float32Array(cols*rows);
+  for(let row=0;row<w.rows;row++)padded.set(depth.subarray(row*w.cols,(row+1)*w.cols),(row+1)*cols+1);
+  const mesh=groundGeometry({...w,cols,rows,start:w.start-w.size},padded);
+  const edge=w.soil.edgeBlend,half=(w.cols-1)*w.size/2,end=w.start+(w.rows-1)*w.size;
+  for(let row=0;row<rows;row++)for(let col=0;col<cols;col++){
+    const k=(row*cols+col)*3;
+    if(col===0)mesh.positions[k]=-half-edge;
+    if(col===cols-1)mesh.positions[k]=half+edge;
+    if(row===0)mesh.positions[k+2]=w.start-edge;
+    if(row===rows-1)mesh.positions[k+2]=end+edge;
+  }
+  return mesh;
+}
 export function waterGeometry(w,depth,wet){
   const positions=[];
   const point=i=>({x:(i%w.cols-(w.cols-1)/2)*w.size,z:w.start+Math.floor(i/w.cols)*w.size,q:Math.min(wet[i]-.04,(depth[i]+w.level)*4)});
