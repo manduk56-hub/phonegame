@@ -9,7 +9,7 @@ const delay=ms=>new Promise(r=>setTimeout(r,ms));let renderer;
 async function connect(hello){const ws=new WebSocket(base.replace('http:','ws:'));clients.push(ws);const messages=[];ws.on('message',b=>messages.push(JSON.parse(b)));await once(ws,'open');ws.send(JSON.stringify(hello));return {ws,messages,send:m=>ws.send(JSON.stringify(m))};}
 async function wait(c,fn){for(let i=0;i<300;i++){const m=c.messages.find(fn);if(m)return m;await delay(10);}throw Error('WebSocket state timeout');}
 try{
- for(const path of ['/fishing-models.json','/fishing-controller.js','/fishing-controls.js','/fishing-scene.js','/fishing.css','/assets/fishing-card.png'])assert.equal((await fetch(base+path)).status,200,path);
+ for(const path of ['/fishing-models.json','/fishing-controller.js','/fishing-controls.js','/fishing-effects.js','/fishing-view.js','/fishing-scene.js','/fishing.css','/assets/fishing-card.png'])assert.equal((await fetch(base+path)).status,200,path);
  const config=await fetch(base+'/config').then(r=>r.json()),host=await connect({type:'host',key:config.adminKey});await wait(host,m=>m.type==='host-ready');host.send({type:'game',game:'fishing'});await wait(host,m=>m.game==='fishing');
  const phones=await Promise.all(Array.from({length:16},(_,i)=>connect({type:'join',room:app.room,name:`낚시꾼 ${i+1}`})));const joined=await Promise.all(phones.map(p=>wait(p,m=>m.type==='joined')));
  host.send({type:'start'});await wait(host,m=>m.phase==='running');assert.equal(app.match.players.size,16);
@@ -25,6 +25,13 @@ try{
  let output='';renderer.stdout.on('data',b=>output+=b);renderer.stderr.on('data',b=>output+=b);const timer=setTimeout(()=>renderer.kill(),15000);const code=await new Promise((r,j)=>{renderer.once('exit',r);renderer.once('error',j);});clearTimeout(timer);assert.equal(code,0,output);assert(!/SCRIPT ERROR|^ERROR:/m.test(output),output);
  const metrics=JSON.parse(await readFile('.runtime/fishing-render.json','utf8'));assert.equal(metrics.players,16);assert(metrics.qr);assert.equal(metrics.phase,'running');assert(metrics.fps>15);
  app.match.remaining=.01;app.match.tick(.05);await wait(phones[0],m=>m.phase==='finished');assert.equal(app.match.results.players[0].score,1);assert.deepEqual(app.match.results.winnerIds,[a.id]);
+ const ceremony=app.match.fishing.ceremony,results=JSON.stringify(app.match.results);
+ phones[1].send({type:'action',action:'cast',id:a.id});await delay(30);assert.equal(ceremony.stage,'ready');
+ phones[0].send({type:'action',action:'cast',id:b.id});await delay(30);assert.equal(ceremony.id,a.id);app.match.tick(.7);assert.equal(ceremony.stage,'bite');
+ phones[1].send({type:'action',action:'hook',id:a.id});await delay(30);assert.equal(ceremony.stage,'bite');
+ phones[0].send({type:'action',action:'hook'});await delay(30);assert.equal(ceremony.stage,'reeling');
+ phones[1].send({type:'input',reel:1,id:a.id});await delay(30);app.match.tick(.1);assert.equal(ceremony.distance,34);
+ phones[0].send({type:'input',reel:1});await delay(30);for(let i=0;i<60;i++)app.match.tick(.1);assert.equal(ceremony.stage,'close');assert.equal(ceremony.distance,1.8);assert.equal(JSON.stringify(app.match.results),results);
  host.send({type:'lobby'});await delay(60);phones[0].ws.close();await delay(60);const again=await connect({type:'join',room:app.room,token:joined[0].token});assert.equal((await wait(again,m=>m.type==='joined')).id,a.id);
- console.log('PASS: 16 real WebSocket phones, owned actions/input, cast/hook/catch, individual result, reconnect, assets and actual Godot PC rendering',metrics);
+ console.log('PASS: 16 real WebSocket phones, owned actions/input, cast/hook/catch, winner-only result camera, unchanged scores, reconnect, assets and actual Godot PC rendering',metrics);
 }finally{renderer?.kill();for(const ws of clients)ws.terminate();await app.close();}

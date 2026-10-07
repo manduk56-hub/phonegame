@@ -5,6 +5,12 @@ var boat := Node3D.new()
 var waves: Array[Node3D] = []
 var fishing_board: Label
 var captures := 0
+var catch_nodes := {}
+var state_received_elapsed := 0.0
+var ceremony_owner := ""
+var ceremony_distance := 34.0
+const CATCH_DURATION := 1.2
+const PC_OVERVIEW_POSITION := Vector3(24,48,36)
 
 func _ready() -> void:
 	if not OS.get_environment("DIRT_RALLY_SERVER_URL").is_empty():
@@ -28,7 +34,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
 	camera.size = 46
-	camera.position = Vector3(0,51,29)
+	camera.position = PC_OVERVIEW_POSITION
 	add_child(camera)
 	camera.look_at(Vector3.ZERO)
 	block(self,Vector3(180,.1,180),Vector3(0,-.18,0),Color("#126477"))
@@ -42,13 +48,12 @@ func _ready() -> void:
 	score_strip.add_child(match_clock)
 	status.text = "TIDELINE · 바다 낚시"
 	ranking.text = "큰 입질 → 당겨 챔질 → 물고기 방향으로 기울이기 → 시계 방향 릴 감기"
-	var layout: VBoxContainer = lobby.get_child(0)
-	layout.get_child(0).text = "TIDELINE / 낚시 대기실"
-	layout.get_child(1).text = "가로 폰 · 챔질 모션 · 원형 릴 감기"
+	lobby_title.text = "TIDELINE / 낚시 대기실"
+	lobby_hint.text = "가로 폰 · 챔질 모션 · 원형 릴 감기"
 	teams_input.hide()
 	teams_input.value = 4
 	teams_input.get_parent().get_child(0).hide()
-	layout.get_child(5).text = "경기 시간 적용"
+	configure_button.text = "경기 시간 적용"
 	start_button.text = "▶ 낚시 시작"
 	fishing_board = text_label("",17)
 	fishing_board.position = Vector2(24,108)
@@ -146,6 +151,7 @@ func accept_state(message: Dictionary) -> void:
 	if message.get("game") != "fishing":
 		return
 	state = message
+	state_received_elapsed = elapsed
 	var phase: String = message.phase
 	status.text = "TIDELINE · %s · %d초" % [{"lobby":"대기실","running":"낚시 중","finished":"경기 종료"}[phase],ceil(message.remaining)]
 	var sorted: Array = message.players.duplicate()
@@ -175,12 +181,17 @@ func accept_state(message: Dictionary) -> void:
 				winners.append(p.name)
 		status.text += " · " + (" · ".join(winners)+" 우승!" if winners.size() else "무승부")
 		fishing_board.text = "\n".join(message.results.players.map(func(p):return "%d위 · %s · %d마리" % [p.rank,p.name,p.score]))
-	lobby.visible = phase == "lobby"
+		var ceremony: Dictionary = message.fishing.get("ceremony",{}) if message.fishing.get("ceremony") != null else {}
+		if not ceremony.is_empty():
+			ranking.text = {"ready":"우승자: 던지기 → 폰을 당겨 카메라 낚아채기 → 원형 릴 감기", "casting":"우승자가 카메라를 향해 던지는 중", "bite":"폰 윗부분을 몸 안쪽으로 당겨 카메라를 낚아채세요!", "reeling":"우승자가 릴을 감아 카메라를 당기고 있습니다", "close":"우승자의 얼굴까지 도착! 던지기로 다시 연출할 수 있습니다"}.get(ceremony.stage,"")
+	else:
+		ranking.text = "큰 입질 → 당겨 챔질 → 물고기 방향으로 기울이기 → 시계 방향 릴 감기"
+	preload("res://lobby_ui.gd").sync(lobby,phase)
 	start_button.disabled = not authenticated or phase != "lobby" or not message.players.any(func(p):return p.connected)
 	return_button.disabled = not authenticated
 	time_input.editable = authenticated and phase == "lobby"
 	time_input.value = message.duration
-	var configure: Button = lobby.get_child(0).get_child(5)
+	var configure: Button = configure_button
 	configure.disabled = not authenticated or phase != "lobby"
 	match_clock.text = "%02d:%02d" % [int(ceil(message.remaining))/60,int(ceil(message.remaining))%60]
 	score_strip.visible = phase == "running"
@@ -201,6 +212,7 @@ func accept_state(message: Dictionary) -> void:
 		actor.rotation.y = p.yaw
 		actor.visible = phase == "lobby" or p.participating
 		actor.get_node("Marker").text = "%d · %s · %d" % [message.players.find(p)+1,p.name,p.caught]
+		actor.get_node("Marker").visible = phase != "finished"
 		var f: Dictionary = p.fishing
 		actor.get_node("Body").rotation.z = f.direction*.09 if f.stage == "fighting" else 0
 		actor.get_node("Body/Rod").rotation.x = -.65 if f.stage == "casting" else (-.18 if f.stage == "fighting" else 0.0)
@@ -231,13 +243,77 @@ func accept_state(message: Dictionary) -> void:
 				actors[id].get_meta(key).queue_free()
 			actors[id].queue_free()
 			actors.erase(id)
+	var events: Array = message.fishing.get("catches",[])
+	var visible: Array = events.filter(func(e):return message.fishing.elapsed-e.at < CATCH_DURATION)
+	var landed: Array = events.filter(func(e):return message.fishing.elapsed-e.at >= CATCH_DURATION)
+	visible.append_array(landed.slice(maxi(0,landed.size()-20)))
+	for event in visible:
+		if not catch_nodes.has(event.id):
+			var caught_fish := fishing_model(meshes.fishModels[event.species])
+			add_child(caught_fish)
+			catch_nodes[event.id] = {"node":caught_fish,"event":event}
+	for id in catch_nodes.keys():
+		if not visible.any(func(e):return e.id == id):
+			catch_nodes[id].node.queue_free()
+			catch_nodes.erase(id)
+	animate_effects()
 	var connection := JSON.stringify(message.get("connection",{}))
 	if connection != connection_signature:
 		connection_signature = connection
 		fetch_config()
 
+func animate_effects(delta := 0.0) -> void:
+	if state.get("game") != "fishing":
+		return
+	var effect_time: float = state.fishing.elapsed+minf(.15,elapsed-state_received_elapsed)
+	for value in catch_nodes.values():
+		var event: Dictionary = value.event
+		var age: float = maxf(0,effect_time-event.at)
+		var t := clampf((age-.2)/(CATCH_DURATION-.2),0,1)
+		var slot := int(event.id)%20
+		var end := Vector3((slot%5-2)*.48,1.22+floor((int(event.id)%60)/20.0)*.08,(int(slot/5)-1.5)*.42)
+		var from := Vector3(event.from[0],event.from[1],event.from[2])
+		var node: Node3D = value.node
+		node.position = from.lerp(end,t)+Vector3(0,4*3.2*t*(1-t),0)
+		node.rotation = Vector3(t*TAU,event.yaw+t*PI,sin(t*PI)*.5)
+		node.scale = Vector3.ONE*(.28 if age >= CATCH_DURATION else .5)
+	for id in actors:
+		var actor: Node3D = actors[id]
+		actor.get_node("Body").rotation.y = 0
+		actor.get_node("Body/Rod").visible = true
+		for event in state.fishing.get("catches",[]):
+			if event.playerId == id and effect_time-event.at >= 0 and effect_time-event.at < CATCH_DURATION:
+				var swing := sin(PI*(effect_time-event.at)/CATCH_DURATION)
+				actor.get_node("Body").rotation.y = PI*swing
+				actor.get_node("Body").rotation.z = -.15*swing
+				actor.get_node("Body/Rod").rotation.x = -1.1*swing
+	var ceremony = state.fishing.get("ceremony") if state.phase == "finished" else null
+	if ceremony != null:
+		for p in state.players:
+			if p.id == ceremony.id:
+				actors[p.id].get_node("Body").rotation.z = -.04 if ceremony.stage == "reeling" else 0.0
+				actors[p.id].get_node("Body/Rod").rotation.x = -.65 if ceremony.stage == "casting" else (-.18 if ceremony.stage == "reeling" else 0.0)
+				actors[p.id].get_node("Body/Rod").visible = ceremony.distance > 3
+				if ceremony_owner != str(p.id):
+					ceremony_owner = str(p.id)
+					ceremony_distance = ceremony.distance
+				ceremony_distance = lerpf(ceremony_distance,ceremony.distance,1-exp(-delta*10))
+				var distance := clampf(ceremony_distance,1.8,34)
+				var face := Vector3(p.x,p.y+2.22,p.z)
+				camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+				camera.fov = 48
+				camera.position = face+Vector3(sin(p.yaw)*distance,distance*.24*minf(1,(distance-1.8)/8),cos(p.yaw)*distance)
+				camera.look_at(face)
+	else:
+		ceremony_owner = ""
+		camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		camera.size = 46
+		camera.position = PC_OVERVIEW_POSITION
+		camera.look_at(Vector3.ZERO)
+
 func _process(delta: float) -> void:
 	elapsed += delta
+	animate_effects(delta)
 	if "--fishing-capture" in OS.get_cmdline_user_args() and elapsed > 4 and state.get("game") == "fishing":
 		set_process(false)
 		await RenderingServer.frame_post_draw

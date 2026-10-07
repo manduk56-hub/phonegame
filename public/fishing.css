@@ -22,3 +22,16 @@
 #fishing-pc-panel{background:#183e4b;border:2px solid #769d9b;color:#f4e3c2;padding:20px;margin:20px 0}
 #fishing-pc-panel h2{color:#f4cf86}#fishing-pc-panel .fishing-standings{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 #fishing-pc-panel .fishing-standing{background:#102d39;padding:12px;border-left:4px solid var(--angler);line-height:1.7}
+
+.fishing-camera{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.has-camera .fishing-float-view{display:none}
+#fishing-controller .fishing-cast,#fishing-controller .fishing-reel{z-index:2}
+#fishing-controller .fishing-status{z-index:2;background:#102f43d9;border-radius:12px;padding:6px 12px;text-shadow:0 1px 2px #102f43}
+#fishing-controller header{padding:5px;border-radius:10px;background:#102f438c}
+
+.fishing-final[hidden]{display:none!important}
+.fishing-final{position:absolute;z-index:3;top:65px;left:27%;right:35%;text-align:center;background:#102f43d9;border:1px solid #e4ba72;border-radius:12px;padding:6px 10px}
+.fishing-final h2{font-size:16px;color:#ffe1a1;margin:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.fishing-final p{font-size:13px;margin:3px 0}.fishing-final button{font-size:11px;padding:3px 10px;min-height:26px;background:#214b5a;color:#fff1d5;border:1px solid #94b3b0}
+.fishing-final ol{padding:0;margin:5px 0 0;list-style:none;max-height:38vh;overflow:auto;font-size:12px;line-height:1.8;touch-action:pan-y}
+@media(max-height:340px){.fishing-final{top:57px;padding:4px 6px}.fishing-final h2{font-size:13px}.fishing-final p{font-size:11px}.fishing-status{left:2%;right:2%}}

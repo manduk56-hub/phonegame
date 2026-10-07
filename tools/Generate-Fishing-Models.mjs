@@ -118,6 +118,20 @@ for(const z of [-3.7,3.4]){
  box(boat,[9.4,.09,.16],[0,1.64,z+.5],'#e3ad60');
  for(const x of [-3.6,3.6])box(boat,[.26,.62,.83],[x,1.14,z],'#624326');
 }
+// Open catch chest between the benches: timber slats, blue frame and icy lining.
+box(boat,[3.35,.20,2.65],[0,1.01,0],'#355466','CatchChestFloor');
+box(boat,[2.95,.12,2.25],[0,1.17,0],'#cee5de','CatchChestIce');
+for(const x of [-1.6,1.6]){
+ box(boat,[.2,.95,2.65],[x,1.52,0],'#6d512f','CatchChestSide');
+ box(boat,[.27,.15,2.8],[x,2.02,0],'#e4b66d','CatchChestRim');
+}
+for(const z of [-1.22,1.22]){
+ box(boat,[3.1,.95,.2],[0,1.52,z],'#ac7b43','CatchChestEnd');
+ box(boat,[3.35,.15,.27],[0,2.02,z],'#e4b66d','CatchChestRim');
+ for(const y of [1.24,1.52,1.8])box(boat,[3.13,.045,.025],[0,y,z+Math.sign(z)*.11],'#765531');
+ box(boat,[.7,.19,.08],[0,1.61,z+Math.sign(z)*.15],'#d5dce0','CatchChestHandle');
+}
+for(const x of [-1.55,1.55])for(const z of [-1.23,1.23])box(boat,[.25,1.06,.25],[x,1.55,z],'#355466','CatchChestCorner');
 box(boat,[1.8,.45,1.2],[2.2,1.06,-6.45],'#536732');box(boat,[1.9,.13,1.25],[2.2,1.34,-6.45],'#879650');
 box(boat,[.28,.40,.22],[2.2,1.2,-5.77],'#7c8d9e');
 // Rounded step silhouette for the dark outboard cowling, silver trim, red badge and tiller.
