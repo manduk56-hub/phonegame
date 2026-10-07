@@ -74,9 +74,9 @@ export class Match {
     this.excavatorMap=map;this.results=null;this.resetTeams();for(const p of this.players.values())this.spawn(p);
   }
   chooseBull(id){if(this.game!=='bull'||this.phase!=='lobby')throw Error('황소는 투우 대기실에서 선택하세요.');if(id!=='random'&&!this.players.has(id))throw Error('참가자를 선택하세요.');this.bullChoice=id;}
+  selectBullMap(id){if(this.game!=='bull'||this.phase!=='lobby')throw Error('맵은 투우 대기실에서 선택하세요.');if(!['classic','gates'].includes(id))throw Error('올바른 맵을 선택하세요.');this.bullMap=id;this.bull=null;this.results=null;for(const p of this.players.values())this.spawn(p);}
   chooseCar(id,car){chooseCar(this,id,car);}
   selectTrack(id){
-  selectBullMap(id){if(this.game!=='bull'||this.phase!=='lobby')throw Error('맵은 투우 대기실에서 선택하세요.');if(!['classic','gates'].includes(id))throw Error('올바른 맵을 선택하세요.');this.bullMap=id;this.bull=null;this.results=null;for(const p of this.players.values())this.spawn(p);}
     if(this.game!=='racing'||this.phase!=='lobby')throw Error('트랙은 레이싱 대기실에서 선택하세요.');
     const circuit=RACE_TRACKS.find(t=>t.id===id);
     if(!circuit)throw Error('올바른 트랙을 선택하세요.');
