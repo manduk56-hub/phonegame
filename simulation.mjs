@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {raceSpawn,raceTick,chooseCar,CIRCUITS,TRACKS,CARS} from './racing.mjs';
 import {excavatorOverlap} from './collision.mjs';
-import {BULL_ARENA,bullSpawn,bullStart,bullTick} from './bull.mjs';
+import {BULL_ARENA,BULL_GATES,bullSpawn,bullStart,bullTick} from './bull.mjs';
 import {FISHING,fishingSpawn,fishingStart,fishingTick,fishingAction,fishingResults} from './fishing.mjs';
 import {KRILL,krillSpawn,krillStart,krillTick,krillAction} from './krill.mjs';
 export const ARENA=JSON.parse(readFileSync(new URL('./game/arena.json',import.meta.url),'utf8'));
@@ -13,7 +13,7 @@ const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const distance = (a,b) => Math.hypot(a.x-b.x, a.z-b.z);
 export class Match {
   constructor() {
-    this.bullChoice='random';this.bull=null;
+    this.bullChoice='random';this.bullMap='classic';this.bull=null;
     this.excavatorMap=EXCAVATOR_MAPS[0];
     this.circuit=CIRCUITS[0];
     this.players = new Map(); this.teamCount = 4; this.duration = 180;
@@ -58,7 +58,7 @@ export class Match {
     p={id:randomUUID(),token:randomUUID(),name:String(name||'플레이어').trim().slice(0,16)||'플레이어',team:counts.indexOf(Math.min(...counts)),connected:true};
     this.players.set(p.id,p); for(const q of this.players.values()) this.spawn(q); return p;
   }
-  neutral() {if(this.game==='krill')return {moveX:0,moveY:0};if(this.game==='fishing')return {tilt:0,reel:0};if(this.game==='bull')return {forward:0,steer:0};if(this.game==='fps')return {forward:0,strafe:0};return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
+  neutral() {if(this.game==='krill')return {moveX:0,moveY:0};if(this.game==='fishing')return {tilt:0,reel:0};if(this.game==='bull')return {forward:0,steer:0,wave:0};if(this.game==='fps')return {forward:0,strafe:0};return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
   selectGame(game){
     if(this.game===game)return;
     if(this.phase!=='lobby')throw Error('대기실에서 게임을 변경하세요.');
@@ -74,6 +74,7 @@ export class Match {
   chooseBull(id){if(this.game!=='bull'||this.phase!=='lobby')throw Error('황소는 투우 대기실에서 선택하세요.');if(id!=='random'&&!this.players.has(id))throw Error('참가자를 선택하세요.');this.bullChoice=id;}
   chooseCar(id,car){chooseCar(this,id,car);}
   selectTrack(id){
+  selectBullMap(id){if(this.game!=='bull'||this.phase!=='lobby')throw Error('맵은 투우 대기실에서 선택하세요.');if(!['classic','gates'].includes(id))throw Error('올바른 맵을 선택하세요.');this.bullMap=id;this.bull=null;this.results=null;for(const p of this.players.values())this.spawn(p);}
     if(this.game!=='racing'||this.phase!=='lobby')throw Error('트랙은 레이싱 대기실에서 선택하세요.');
     const circuit=CIRCUITS.find(t=>t.id===id);
     if(!circuit)throw Error('올바른 트랙을 선택하세요.');
@@ -242,8 +243,8 @@ export class Match {
   snapshot() {
     return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
       ...(this.game==='excavator'?{excavatorMap:this.excavatorMap,excavatorMaps:EXCAVATOR_MAPS,water:waterSnapshot(this.water)}:{}),
-      ...(this.game==='bull'?{bull:{...(this.bull||{}),arena:BULL_ARENA,choice:this.bullChoice}}:{}),
-      ...(this.game==='krill'?{krill:{...(this.krill||{elapsed:0,stage:'rest',danger:{x:0,y:0,r:3.6},obstacles:[]}),...KRILL}}:{}),
+      ...(this.game==='bull'?{bull:{...(this.phase==='lobby'?{}:this.bull||{}),map:this.bullMap,arena:BULL_ARENA,gates:BULL_GATES,choice:this.bullChoice}}:{}),
+      ...(this.game==='krill'?{krill:{...(this.krill||{elapsed:0,stage:'rest',safe:{x:0,y:0,r:2.8},obstacles:[]}),...KRILL}}:{}),
       ...(this.game==='fishing'?{fishing:{...(this.fishing||{elapsed:0}),...FISHING}}:{}),
       ...(this.game==='fps'?{fps:{...this.fps,arena:FPS_ARENA}}:{}),
       ...(this.game==='racing'?{race:{laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,broadcast:this.raceDirector?{id:this.raceDirector.id,reason:this.raceDirector.reason}:null,cars:CARS,tracks:TRACKS},circuit:this.circuit}:{}),

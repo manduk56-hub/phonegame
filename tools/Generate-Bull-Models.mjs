@@ -1,4 +1,5 @@
 import {writeFileSync} from 'node:fs';
+import {brickModel} from './models/krill-bricks.mjs';
 // Shared solid geometry and joint hierarchy for the Godot and Three.js renderers.
 function model(){return {joints:[{id:'body',parent:null,pos:[0,0,0]}],parts:[]};}
 function joint(m,id,parent,pos){m.joints.push({id,parent,pos});}
@@ -52,5 +53,5 @@ for(const side of [-1,1]){
   joint(human,'leg'+suffix,'body',[side*.22,1.04,0]);part(human,'leg'+suffix,'box',[0,-.28,0],[.34,.55,.4],'#245da1');
   joint(human,'shin'+suffix,'leg'+suffix,[0,-.53,0]);part(human,'shin'+suffix,'box',[0,-.22,0],[.3,.43,.34],'#17417b');part(human,'shin'+suffix,'box',[0,-.43,.12],[.4,.24,.64],'#ece4d5');part(human,'shin'+suffix,'box',[0,-.54,.12],[.42,.075,.66],'#4b4846');
 }
-writeFileSync(new URL('../game/bull-models.json',import.meta.url),JSON.stringify({bull,human},null,2)+'\n');
-console.log('Created solid bull and human models with articulated joints');
+writeFileSync(new URL('../game/bull-models.json',import.meta.url),JSON.stringify({schema:3,bull:brickModel(bull,.075),human:brickModel(human,.045)})+'\n');
+console.log('Created articulated bull and human with stepped brick surfaces');

@@ -50,4 +50,6 @@ func render_models() -> void:
 		await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png("res://../.runtime/bull-models.png")
+	if "--bull-model-card" in OS.get_cmdline_user_args():
+		root.get_texture().get_image().save_png("res://bull-card.png")
 	quit()
