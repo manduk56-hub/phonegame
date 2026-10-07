@@ -24,6 +24,9 @@ var roster: VBoxContainer
 var join_label: Label
 var qr: TextureRect
 var lobby: PanelContainer
+var lobby_title: Label
+var lobby_hint: Label
+var configure_button: Button
 var start_button: Button
 var return_button: Button
 var teams_input: SpinBox
@@ -159,12 +162,6 @@ func build_ui() -> void:
 	var theme_resource := Theme.new()
 	theme_resource.default_font = FONT
 	preload("res://pixel_ui.gd").apply(theme_resource)
-	for type in ["Button","OptionButton","LineEdit"]:
-		theme_resource.set_stylebox("normal",type,preload("res://pixel_ui.gd").tile("#343e47","#a4b0ba"))
-		theme_resource.set_stylebox("hover",type,preload("res://pixel_ui.gd").tile("#46535e","#dce5eb"))
-		theme_resource.set_stylebox("disabled",type,preload("res://pixel_ui.gd").tile("#293139","#56616a"))
-		theme_resource.set_stylebox("pressed",type,preload("res://pixel_ui.gd").tile("#28323b","#a4b0ba",true))
-	theme_resource.set_stylebox("panel","PanelContainer",preload("res://pixel_ui.gd").tile("#252e36","#a4b0ba"))
 	ui.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	ui.theme = theme_resource
 	layer.add_child(ui)
@@ -187,13 +184,13 @@ func build_ui() -> void:
 	clock_style.set_content_margin_all(12)
 	match_clock.add_theme_stylebox_override("normal",clock_style)
 	lobby = PanelContainer.new()
-	lobby.position = Vector2(35,145)
-	lobby.custom_minimum_size = Vector2(420,560)
 	ui.add_child(lobby)
 	var layout := VBoxContainer.new()
 	lobby.add_child(layout)
-	layout.add_child(text_label("깃발 쟁탈전 / 대기실",28))
-	layout.add_child(text_label("360도 스틱 이동·조준 · 발사 버튼으로 사격",18))
+	lobby_title = text_label("깃발 쟁탈전 / 대기실",28)
+	layout.add_child(lobby_title)
+	lobby_hint = text_label("360도 스틱 이동·조준 · 발사 버튼으로 사격",18)
+	layout.add_child(lobby_hint)
 	qr = TextureRect.new()
 	qr.custom_minimum_size = Vector2(130,130)
 	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -215,21 +212,20 @@ func build_ui() -> void:
 	time_input.max_value = 900
 	time_input.value = 180
 	row.add_child(time_input)
-	var configure := Button.new()
-	configure.text = "팀 수/시간 적용 · 균등 배정"
-	configure.pressed.connect(func():
+	configure_button = Button.new()
+	configure_button.text = "팀 수/시간 적용 · 균등 배정"
+	configure_button.pressed.connect(func():
 		teams_input.apply()
 		time_input.apply()
 		send_admin({"type":"configure","teams":int(teams_input.value),"duration":time_input.value})
 	)
-	layout.add_child(configure)
+	layout.add_child(configure_button)
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size.y = 155
 	layout.add_child(scroll)
 	roster = VBoxContainer.new()
 	scroll.add_child(roster)
 	start_button = Button.new()
-	start_button.add_theme_stylebox_override("normal",preload("res://pixel_ui.gd").tile("#667681","#dce5eb"))
 	start_button.text = "▶ 깃발 쟁탈전 시작"
 	start_button.pressed.connect(func():send_admin({"type":"start"}))
 	layout.add_child(start_button)
@@ -244,6 +240,7 @@ func build_ui() -> void:
 	ui.add_child(return_button)
 	start_button.disabled = true
 	return_button.disabled = true
+	preload("res://lobby_ui.gd").setup(ui,lobby,qr,join_label,start_button,roster)
 
 func accept_state(message: Dictionary) -> void:
 	state = message
@@ -367,7 +364,7 @@ func accept_state(message: Dictionary) -> void:
 		for id in message.results.winnerIds:
 			winners.append("팀 %d" % (int(id)+1))
 		status.text += " · " + (" / ".join(winners)+" 우승!" if winners.size() > 0 else "무승부")
-	lobby.visible = message.phase == "lobby"
+	preload("res://lobby_ui.gd").sync(lobby,message.phase)
 	start_button.disabled = not authenticated or message.phase != "lobby" or not message.players.any(func(p):return p.connected)
 	return_button.disabled = not authenticated
 	var roster_signature := JSON.stringify([message.teamCount,message.players.map(func(p):return [p.id,p.name,p.team,p.connected])])

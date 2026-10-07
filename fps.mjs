@@ -1,13 +1,15 @@
 import {readFileSync} from 'node:fs';
 export const FPS_ARENA=JSON.parse(readFileSync(new URL('./game/fps-arena.json',import.meta.url),'utf8'));
 export const FPS_MOVE_SPEED=7;
+export const FPS_MAGAZINE_SIZE=12;
+export const FPS_RELOAD_SECONDS=.75;
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
-export function resetFps(m){m.fps={flag:{x:0,z:0,carrier:null,pickupRadius:2.5},shots:[],sequence:0};for(const t of m.teams){t.captures=0;if(m.game==='fps')t.color=['#2866ce','#d84238','#eab642','#65b879','#9b76d3','#ea7b43','#db6da0','#46b5bf'][t.id];}}
+export function resetFps(m){m.fps={magazineSize:FPS_MAGAZINE_SIZE,reloadSeconds:FPS_RELOAD_SECONDS,flag:{x:0,z:0,carrier:null,pickupRadius:2.5},shots:[],sequence:0};for(const t of m.teams){t.captures=0;if(m.game==='fps')t.color=['#2866ce','#d84238','#eab642','#65b879','#9b76d3','#ea7b43','#db6da0','#46b5bf'][t.id];}}
 export function fpsSpawn(m,p){
   const members=[...m.players.values()].filter(q=>q.team===p.team),slot=members.indexOf(p),a=p.team*Math.PI*2/m.teamCount;
   const t=m.teams[p.team],side=(slot-(members.length-1)/2)*1.2;
-  Object.assign(p,{x:t.x+Math.cos(a)*side,z:t.z-Math.sin(a)*side,y:0,yaw:a+Math.PI,pitch:0,hp:100,respawn:0,cooldown:0,kills:0,deaths:0,captures:0,hitSerial:0,hit:false,message:'',input:m.neutral(),lastInput:0});
+  Object.assign(p,{x:t.x+Math.cos(a)*side,z:t.z-Math.sin(a)*side,y:0,yaw:a+Math.PI,pitch:0,hp:100,respawn:0,cooldown:0,ammo:FPS_MAGAZINE_SIZE,reload:0,kills:0,deaths:0,captures:0,hitSerial:0,hit:false,message:'',input:m.neutral(),lastInput:0});
 }
 export function fpsAim(p,v){
   const {forward,strafe}=p.input;
@@ -26,8 +28,9 @@ export function rayBox(o,d,b){
 }
 export const wallBox=w=>({min:{x:w.x-w.w/2,y:0,z:w.z-w.d/2},max:{x:w.x+w.w/2,y:w.h,z:w.z+w.d/2}});
 export function fpsFire(m,id,v={}){
-  const p=m.players.get(id);if(m.game!=='fps'||m.phase!=='running'||!p?.connected||p.hp<=0||p.cooldown>0)return;
+  const p=m.players.get(id);if(m.game!=='fps'||m.phase!=='running'||!p?.connected||p.hp<=0||p.cooldown>0||p.reload>0||p.ammo<=0)return;
   p.pitch=0;p.cooldown=.25;p.hit=false;
+  p.ammo--;if(p.ammo===0)p.reload=FPS_RELOAD_SECONDS;
   const o={x:p.x,y:FPS_ARENA.eye,z:p.z},d={x:Math.sin(p.yaw),y:0,z:Math.cos(p.yaw)};
   let nearest=100,target=null;
   for(const w of FPS_ARENA.walls)nearest=Math.min(nearest,rayBox(o,d,wallBox(w)));
@@ -54,7 +57,8 @@ export function fpsTick(m,dt,now){
   m.fps.shots=m.fps.shots.filter(s=>(s.ttl-=dt)>0);
   for(const p of m.players.values()){
     p.cooldown=Math.max(0,p.cooldown-dt);
-    if(p.hp<=0){p.respawn=Math.max(0,p.respawn-dt);if(p.respawn<=1e-8){p.hp=100;p.respawn=0;p.input=m.neutral();p.lastInput=0;p.message='부활!';}continue;}
+    if(p.reload>0){p.reload=Math.max(0,p.reload-dt);if(p.reload<=1e-8){p.reload=0;p.ammo=FPS_MAGAZINE_SIZE;}}
+    if(p.hp<=0){p.respawn=Math.max(0,p.respawn-dt);if(p.respawn<=1e-8){p.hp=100;p.respawn=0;p.ammo=FPS_MAGAZINE_SIZE;p.reload=0;p.cooldown=0;p.input=m.neutral();p.lastInput=0;p.message='부활!';}continue;}
     if(!p.connected||now-p.lastInput>350)continue;
     const i=p.input,len=Math.max(1,Math.hypot(i.forward,i.strafe)),speed=FPS_MOVE_SPEED*(m.fps.flag.carrier===p.id?.8:1);
     const dx=(Math.sin(p.yaw)*i.forward+Math.cos(p.yaw)*i.strafe)/len*speed*dt,dz=(Math.cos(p.yaw)*i.forward-Math.sin(p.yaw)*i.strafe)/len*speed*dt;

@@ -3,6 +3,27 @@ import assert from 'node:assert/strict';
 import {Match} from '../simulation.mjs';
 import {FPS_ARENA,FPS_MOVE_SPEED,fpsBlocked} from '../fps.mjs';
 function setup(){const m=new Match();m.selectGame('fps');m.configure(2,30);const a=m.join('A'),b=m.join('B');m.start();Object.assign(a,{x:0,z:5,yaw:Math.PI});Object.assign(b,{x:0,z:-5});return {m,a,b};}
+test('twelve rounds trigger a .75 second automatic reload and server rejects extra shots',()=>{
+  const {m,a}=setup();a.yaw=Math.PI/2;
+  assert.equal(a.ammo,12);
+  for(let i=0;i<12;i++){
+    if(i)m.tick(.25);
+    m.fire(a.id);assert.equal(a.ammo,11-i);
+    const sequence=m.fps.sequence;m.fire(a.id);assert.equal(m.fps.sequence,sequence);
+  }
+  assert.equal(a.reload,.75);assert.equal(m.fps.sequence,12);
+  const state=m.snapshot();assert.equal(state.fps.magazineSize,12);assert.equal(state.players.find(p=>p.id===a.id).reload,.75);
+  m.tick(.25);m.fire(a.id);assert.equal(m.fps.sequence,12);
+  m.tick(.49);m.fire(a.id);assert.equal(a.ammo,0);assert.equal(m.fps.sequence,12);
+  m.tick(.01);assert.equal(a.reload,0);assert.equal(a.ammo,12);
+  m.fire(a.id);assert.equal(a.ammo,11);assert.equal(m.fps.sequence,13);
+});
+test('respawn and rematch restore a full magazine without pending reload',()=>{
+  const {m,a}=setup();Object.assign(a,{hp:0,respawn:.1,ammo:0,reload:.75});
+  m.tick(.1);assert.equal(a.hp,100);assert.equal(a.ammo,12);assert.equal(a.reload,0);
+  Object.assign(a,{ammo:0,reload:.75});m.lobby();assert.equal(a.ammo,12);assert.equal(a.reload,0);
+  m.start();assert.equal(a.ammo,12);assert.equal(a.reload,0);
+});
 test('shots follow character facing, ignore aim overrides, stay horizontal, and are rate limited',()=>{
   const {m,a,b}=setup();m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);
   m.tick(.25);a.yaw=Math.PI+.2;m.fire(a.id,{yaw:Math.PI,pitch:0});assert.equal(b.hp,66);

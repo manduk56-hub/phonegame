@@ -4,7 +4,7 @@ import {createFpsScene} from './fps-scene.js';
 export function createFpsController({send,fullscreen}){
   const style=document.createElement('link');style.rel='stylesheet';style.href='/fps.css';document.head.append(style);
   const root=document.createElement('section');root.id='fps-controller';root.hidden=true;
-  root.innerHTML='<canvas id="fps-view" aria-label="캐릭터 1인칭 조준 화면"></canvas><div id="fps-crosshair" aria-hidden="true"></div><header class="fps-hud"><span id="fps-identity"></span><span id="fps-health"></span><button id="fps-fullscreen">전체화면</button></header><div id="fps-score" class="fps-scoreboard"></div><div id="fps-objective"></div><div id="fps-notice" role="status"></div><div id="fps-move" class="fps-pad" aria-label="PC 화면 기준 360도 이동 스틱"><span>이동 · 360° 아날로그</span><i class="pad-up">▲</i><i class="pad-right">▶</i><i class="pad-down">▼</i><i class="pad-left">◀</i><div class="knob"></div></div><button id="fps-fire" aria-label="발사">발사</button><div id="fps-hit" hidden>명중!</div><div class="fps-portrait">폰을 가로로 돌려주세요</div>';
+  root.innerHTML='<canvas id="fps-view" aria-label="캐릭터 1인칭 조준 화면"></canvas><div id="fps-crosshair" aria-hidden="true"></div><header class="fps-hud"><span id="fps-identity"></span><span id="fps-health"></span><button id="fps-fullscreen">전체화면</button></header><div id="fps-score" class="fps-scoreboard"></div><div id="fps-objective"></div><div id="fps-notice" role="status"></div><div id="fps-move" class="fps-pad" aria-label="PC 화면 기준 360도 이동 스틱"><span>이동 · 360° 아날로그</span><i class="pad-up">▲</i><i class="pad-right">▶</i><i class="pad-down">▼</i><i class="pad-left">◀</i><div class="knob"></div></div><div id="fps-ammo" role="status" aria-label="탄창 상태"></div><button id="fps-fire" aria-label="발사">발사</button><div id="fps-hit" hidden>명중!</div><div class="fps-portrait">폰을 가로로 돌려주세요</div>';
   document.body.append(root);const $=id=>root.querySelector('#'+id),input={forward:0,strafe:0},aim={yaw:0,pitch:0},move={x:0,y:0};
   const scene=createFpsScene($('fps-view'));
   let state,enabled=false,firePointer=null,hitSerial=0,hitUntil=0,lastSpawn=null,offline=false;
@@ -30,6 +30,8 @@ export function createFpsController({send,fullscreen}){
     if(score.dataset.teams!==scoreKey){score.replaceChildren();for(const t of m.teams){const item=document.createElement('span');item.className='fps-team-score';item.style.setProperty('--team-color',t.color);item.dataset.team=t.id;score.append(item);}const timer=document.createElement('b');timer.className='fps-clock';score.insertBefore(timer,score.children[Math.ceil(m.teams.length/2)]??null);score.dataset.teams=scoreKey;}
     for(const t of m.teams){const item=score.querySelector('[data-team="'+t.id+'"]');item.textContent='⚑ '+t.captures;item.setAttribute('aria-label','팀 '+(t.id+1)+' '+t.captures+'점');}score.querySelector('.fps-clock').textContent=clock;
     $('fps-health').textContent=`✚ ${p.hp}`;
+    $('fps-ammo').textContent=p.reload>0?`재장전 ${p.reload.toFixed(2)}초`:`탄창 ${p.ammo} / ${m.fps.magazineSize}`;
+    button.classList.toggle('reloading',p.reload>0);
     const carrier=m.players.find(q=>q.id===m.fps.flag.carrier);
     $('fps-objective').textContent=carrier?.id===p.id?'깃발 운반 중 · 이동속도 20% 감소 · 우리 진영으로 돌아가세요':carrier?`팀 ${carrier.team+1} · ${carrier.name} 깃발 운반 중`:Math.hypot(m.fps.flag.x,m.fps.flag.z)>.1?'떨어진 노란 깃발을 회수해 우리 진영으로 가져오세요':'노란 깃발을 가져와 우리 진영에 놓으세요';
     const results=m.results;
