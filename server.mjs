@@ -17,8 +17,8 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   let chatSequence=0;
   const files={'/':'host.html','/controller':'controller.html','/style.css':'style.css','/host.js':'host.js','/controller.js':'controller.js','/results.js':'results.js','/pointer-pad.js':'pointer-pad.js','/cab-view.js':'cab-view.js','/water-view.js':'water-view.js','/water-surface.js':'water-surface.js','/bucket-shape.js':'bucket-shape.js'};
   Object.assign(files,{'/race-scene.js':'race-scene.js','/race-controller.js':'race-controller.js','/race-sensors.js':'race-sensors.js','/race.css':'race.css','/race-minimap.js':'race-minimap.js','/race-broadcast.js':'race-broadcast.js','/fps-scene.js':'fps-scene.js','/fps-controller.js':'fps-controller.js','/fps.css':'fps.css','/fps-controls.js':'fps-controls.js'});
-  Object.assign(files,{'/bull-scene.js':'bull-scene.js','/bull-controller.js':'bull-controller.js','/bull.css':'bull.css'});
-  Object.assign(files,{'/fishing-scene.js':'fishing-scene.js','/fishing-controller.js':'fishing-controller.js','/fishing-controls.js':'fishing-controls.js','/fishing.css':'fishing.css'});
+  Object.assign(files,{'/bull-scene.js':'bull-scene.js','/bull-controller.js':'bull-controller.js','/bull.css':'bull.css','/brick-model.js':'brick-model.js'});
+  Object.assign(files,{'/fishing-scene.js':'fishing-scene.js','/fishing-view.js':'fishing-view.js','/fishing-effects.js':'fishing-effects.js','/fishing-controller.js':'fishing-controller.js','/fishing-controls.js':'fishing-controls.js','/fishing.css':'fishing.css'});
   Object.assign(files,{'/krill-scene.js':'krill-scene.js','/krill-controller.js':'krill-controller.js','/krill.css':'krill.css'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
@@ -114,6 +114,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
           }
           if(m.type==='configure') match.configure(m.teams,m.duration);
           if(m.type==='bull-choice')match.chooseBull(m.id);
+          if(m.type==='bull-map')match.selectBullMap(m.map);
           if(m.type==='track') match.selectTrack(m.track);
           if(m.type==='excavator-map') match.selectExcavatorMap(m.map);
           if(m.type==='assign') match.assign(m.id,m.team);
