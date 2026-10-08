@@ -1,3 +1,11 @@
+// Shared by every phone game, including dynamically mounted controllers.
+export function protectGameControls(target=document) {
+  const controls='.phone-controller .controls,#race-controller,#bull-controller,#fps-controller,#fishing-controller,#krill-controller';
+  for(const type of ['contextmenu','dragstart','selectstart'])target.addEventListener(type,event=>{
+    if(event.target.closest?.(controls)&&!event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])'))event.preventDefault();
+  },{capture:true});
+}
+
 // Each control owns one pointer; other controls remain independently usable.
 export function bindPad(el, callback, {vertical=false, eightWay=false, deadZone=null, radius=.36, knobTravel=.36, enabled=()=>true}={}) {
   let pointer=null;

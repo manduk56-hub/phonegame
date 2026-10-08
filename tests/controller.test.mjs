@@ -1,6 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {bindPad} from '../public/pointer-pad.js';
+import {bindPad,protectGameControls} from '../public/pointer-pad.js';
+test('all game surfaces block native long-press actions while input and chat remain editable',()=>{
+  const handlers=new Map();
+  protectGameControls({addEventListener(type,handler,options){assert.equal(options.capture,true);handlers.set(type,handler);}});
+  for(const surface of ['.phone-controller .controls','#race-controller','#bull-controller','#fps-controller','#fishing-controller','#krill-controller',null]){
+    for(const editable of [false,true])for(const handler of handlers.values()){
+      let prevented=false;
+      handler({target:{closest(selector){return selector.startsWith('input,')?editable:surface&&selector.split(',').includes(surface);}},preventDefault(){prevented=true;}});
+      assert.equal(prevented,Boolean(surface)&&!editable);
+    }
+  }
+});
 function element() {
   const captured=new Set(), knob={style:{}};
   return {querySelector:()=>knob,getBoundingClientRect:()=>({left:0,top:0,width:200,height:200}),setPointerCapture:id=>captured.add(id),hasPointerCapture:id=>captured.has(id),releasePointerCapture:id=>captured.delete(id)};

@@ -389,3 +389,11 @@ body :is(#bull-controller,#fps-controller,#race-controller){font-family:'NeoDung
 body :is(.bull-keys button,#fps-fire){border-radius:4px!important}
 @media(prefers-reduced-motion:reduce){body :is(button,select,input,.browser-options a){transition:none}}
 body :is(button.primary,#hub-play,#fps-fire):disabled{background-color:#343d38!important;color:#919b8a!important;box-shadow:inset 2px 2px #677268,inset -2px -3px #28352e,0 2px #17231e!important}
+/* Prevent iOS copy menus and dragging across all phone game surfaces. */
+:is(.phone-controller .controls,#race-controller,#bull-controller,#fps-controller,#fishing-controller,#krill-controller),
+:is(.phone-controller .controls,#race-controller,#bull-controller,#fps-controller,#fishing-controller,#krill-controller) *{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-user-drag:none;
+}

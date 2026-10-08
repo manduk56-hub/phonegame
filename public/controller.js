@@ -2,9 +2,10 @@ import {createKrillController} from './krill-controller.js';
 import {createBullController} from './bull-controller.js';
 import {createFishingController} from './fishing-controller.js';
 import {createFpsController} from './fps-controller.js';
-import {bindPad} from './pointer-pad.js';
+import {bindPad,protectGameControls} from './pointer-pad.js';
 import {createCabView} from './cab-view.js';
 import {createRaceController} from './race-controller.js';
+protectGameControls();
 // Keep results bundled: deployed servers may not expose a /results.js route.
 function renderResults(container,state,playerId) {
   container.hidden=state.phase!=='finished'||!state.results;
