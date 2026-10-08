@@ -29,6 +29,16 @@ test('independent pedal touches coexist; releasing one and cancellation reset th
   s.controller.stop();assert.equal(s.sent.at(-1).steer,0);
   s.pointer('#race-throttle','pointerdown',3);s.controller.stop();s.pointer('#race-throttle','pointerdown',4);s.tick();assert.equal(s.sent.at(-1).throttle,1);
 });
+test('acceleration and steering stay held together until each pointer is released',()=>{
+  const s=setup();
+  s.pointer('#race-throttle','pointerdown',1);s.pointer('#race-left','pointerdown',2);
+  for(let i=0;i<40;i++)s.tick();
+  assert.deepEqual(s.sent.at(-1),{type:'input',steer:-1,throttle:1,brake:0});
+  s.pointer('#race-left','pointerup',2);s.tick();
+  assert.deepEqual(s.sent.at(-1),{type:'input',steer:0,throttle:1,brake:0});
+  s.pointer('#race-throttle','pointerup',1);s.tick();
+  assert.deepEqual(s.sent.at(-1),{type:'input',steer:0,throttle:0,brake:0});
+});
 test('permission denial and insecure access expose touch steering instead of leaving controls unusable',async()=>{
   for(const options of [{permission:'denied'},{secure:false}]){const s=setup(options);await s.get('#race-sensor').onclick();assert.equal(s.get('.race-touch-steer').hidden,false);s.pointer('#race-right','pointerdown',9);s.tick();assert.equal(s.sent.at(-1).steer,1);}
 });
