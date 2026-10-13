@@ -1,9 +1,10 @@
 {
   "name": "dirt-rally",
-  "version": "0.6.16",
+  "version": "0.6.17",
   "private": true,
   "type": "module",
   "scripts": {
+    "render:covers": "node tools/render-game-covers.mjs",
     "start": "node server.mjs",
     "test": "node --test",
     "verify:fishing": "node tools/verify-fishing.mjs",
