@@ -7,6 +7,14 @@ var fps_texture: Texture2D
 var bull_texture: Texture2D = preload("res://bull-card.png")
 
 func _draw() -> void:
+	if kind == 6:
+		draw_rect(Rect2(Vector2.ZERO,size),Color("#253b40"))
+		for i in range(15):
+			var p := Vector2(size.x*(.12+(i%5)*.18),size.y*(.2+floor(i/5.0)*.25))
+			draw_rect(Rect2(p+Vector2(-8,8),Vector2(16,20)),Color("#466478"))
+			draw_rect(Rect2(p+Vector2(-6,-4),Vector2(12,12)),Color("#e5bf97"))
+			draw_rect(Rect2(p+Vector2(-7,-6),Vector2(14,4)),Color("#303d49"))
+		return
 	if kind == 4 or kind == 5:
 		var art_path := "res://assets/krill-card.png" if kind == 5 else "res://assets/fishing-card.png"
 		if not ResourceLoader.exists(art_path):

@@ -46,7 +46,7 @@ func run() -> void:
 	var fixed_qr_position: Vector2 = hub.qr.global_position
 	var shared_qr_texture: Texture2D = hub.qr.texture
 	assert(shared_qr_texture.get_width() == 1024)
-	for index in range(6):
+	for index in range(7):
 		hub.select_game(index)
 		for frame in range(3):
 			await process_frame
@@ -54,19 +54,19 @@ func run() -> void:
 		assert(hub.qr.texture == shared_qr_texture and hub.qr.is_visible_in_tree())
 		assert(hub.qr.get_global_rect().end.y < hub.detail_art.global_position.y)
 		assert(hub.play_button.get_global_rect().end.y < hub.size.y, "Play button %s outside menu %s, viewport %s" % [hub.play_button.get_global_rect(),hub.size,root.size])
-	for index in range(3,6):
+	for index in range(3,7):
 		hub.cards[index].pressed.emit()
 		assert(hub.selected == index and not hub.play_button.disabled)
 		hub.launch_game()
 		assert(is_instance_valid(hub.active_game))
 		qr_deadline = Time.get_ticks_msec()+6000
-		while hub.active_game.state.get("game") != (["bull","fishing","krill"][index-3]) or hub.active_game.qr.texture == null:
+		while hub.active_game.state.get("game") != (["bull","fishing","krill","disguise"][index-3]) or hub.active_game.qr.texture == null:
 			if Time.get_ticks_msec()>qr_deadline:
 				push_error("Selected menu did not connect")
 				quit(1)
 				return
 			await process_frame
-		await verify_preparation(hub,["bull","fishing","krill"][index-3])
+		await verify_preparation(hub,["bull","fishing","krill","disguise"][index-3])
 		hub.return_to_menu()
 		await process_frame
 	hub.cards[0].pressed.emit()
@@ -147,7 +147,7 @@ func run() -> void:
 		await process_frame
 	hub.return_to_menu()
 	await process_frame
-	print("PASS: selection exit button and Escape, shared preparation layout and QR visibility, all six playable games, host connection, running lock and return")
+	print("PASS: selection exit button and Escape, shared preparation layout and QR visibility, all seven playable games, host connection, running lock and return")
 	var escape := InputEventKey.new()
 	escape.keycode = KEY_ESCAPE
 	escape.pressed = true

@@ -7,6 +7,7 @@
     "render:covers": "node tools/render-game-covers.mjs",
     "start": "node server.mjs",
     "test": "node --test",
+    "verify:disguise": "node tools/verify-disguise.mjs",
     "verify:fishing": "node tools/verify-fishing.mjs",
     "verify:fps": "node tools/verify-fps.mjs",
     "verify:geometry": "node tools/verify-geometry.mjs",

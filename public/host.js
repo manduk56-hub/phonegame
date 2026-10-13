@@ -1,3 +1,5 @@
+import {createDisguiseScene} from './disguise-scene.js';
+const disguiseStyle=document.createElement('link');disguiseStyle.rel='stylesheet';disguiseStyle.href='/disguise.css';document.head.append(disguiseStyle);
 import {createRaceBroadcast} from './race-broadcast.js';
 import {createKrillScene} from './krill-scene.js';
 const krillStyle=document.createElement('link');krillStyle.rel='stylesheet';krillStyle.href='/krill.css';document.head.append(krillStyle);
@@ -22,7 +24,8 @@ const catalog=[
   {title:'FLAG STRIKE',subtitle:'조준하고, 탈환하고, 귀환하라',type:'FPS',description:'PC 화면 기준 방향키로 이동하고, 폰의 1인칭 십자가에 상대를 맞추세요. 벽 뒤의 상대는 맞지 않습니다. 중앙 깃발을 우리 진영으로 가져오면 1점, 사망하면 2초 후 그 자리에서 부활합니다.',meta:'2–16명 · 2–8팀 · 깃발 쟁탈전',ready:true},
   {title:'BULL RUN',subtitle:'뿔을 피하라, 끝까지 살아남아라',type:'투우',description:'한 명은 황소, 나머지는 도망자! 가속하는 황소의 뿔을 피해 원형 경기장에서 살아남으세요. 황소는 좌우 회전만 조작하며 자동으로 전진합니다.',meta:'2–16명 · 30–900초 · 랜덤/지정 황소',ready:true},
   {title:'TIDELINE',subtitle:'한 배에서 펼치는 바다 낚시 대결',type:'낚시',description:'큰 입질 때 가로 폰 윗부분을 몸 안쪽으로 당겨 챔질하세요. 물고기 방향으로 기울여 힘을 빼고 시계 방향으로 릴을 감으세요. 가장 많이 잡으면 우승!',meta:'1–16명 · 개인전 · 모션 센서 · 원형 릴',ready:true},
-  {title:'KRILL ESCAPE',subtitle:'작은 크릴, 거대한 고래',type:'생존',description:'다가오는 물고기와 장애물을 피하고 고래의 흡입 구역에서 탈출하세요. 왼쪽 패드로 이동하고 꼬리치기로 살짝 밀치세요. 마지막 크릴은 고래를 타고 조종합니다!',meta:'1–16명 · 개인 생존 · 모바일 이동 · 꼬리치기',ready:true}
+  {title:'KRILL ESCAPE',subtitle:'작은 크릴, 거대한 고래',type:'생존',description:'다가오는 물고기와 장애물을 피하고 고래의 흡입 구역에서 탈출하세요. 왼쪽 패드로 이동하고 꼬리치기로 살짝 밀치세요. 마지막 크릴은 고래를 타고 조종합니다!',meta:'1–16명 · 개인 생존 · 모바일 이동 · 꼬리치기',ready:true},
+  {title:'CROWD MASK',subtitle:'군중 속에 숨어라',type:'위장 생존',description:'NPC처럼 걷고 멈추며 다른 유저를 찾아 공격하세요. 킬 후 1초 커튼 · NPC 순간 정지와 위치 공개 · 마지막 생존자가 승리!',meta:'2–16명 · 맵 3개 · NPC 흉내 · 개인 생존',ready:true}
 ];
 const illustrations=[
   '<path fill="#7d805b" d="M0 135h400v25H0z"/><path fill="#e4c18c" d="m265 135 53-56 46 56z"/><rect x="83" y="113" width="147" height="28" rx="12" fill="#252b30"/><path stroke="#555c58" stroke-width="16" stroke-dasharray="1 24" d="M99 127h120"/><path fill="#f1b94a" d="M95 84h133v30H95z"/><path fill="#252b30" d="M105 40h62v48h-62z"/><path fill="#c9e4e2" d="M114 49h43v30h-43z"/><path fill="none" stroke="#252b30" stroke-width="19" d="m194 88 45-61 53 59"/><path fill="none" stroke="#f1b94a" stroke-width="12" d="m194 88 45-61 53 59"/><path fill="#252b30" d="m277 82 36 6-11 27-23-7z"/>',
@@ -31,7 +34,7 @@ const illustrations=[
   '<g fill="#252b30"><path d="M82 109h48v35H82zm63-32h48v35h-48zm64 32h48v35h-48zm63-32h48v35h-48z"/></g><circle cx="106" cy="87" r="22" fill="#f0c667"/><circle cx="169" cy="55" r="22" fill="#d77a88"/><circle cx="233" cy="87" r="22" fill="#80bab1"/><circle cx="296" cy="55" r="22" fill="#eee4d4"/><path stroke="#252b30" stroke-width="5" stroke-dasharray="5 10" d="M96 87h25m38-32h25m39 32h25m38-32h25"/>'
 ];
 illustrations[2]='<path fill="#657d75" d="M0 110h400v50H0z"/><path fill="#b4ad92" d="M50 60h75v65H50zm220 20h80v65h-80z"/><path stroke="#eee9d4" stroke-width="6" d="M195 140V22"/><path fill="#ffe45c" d="M198 24h65l-16 25h-49z"/><path fill="#f07866" d="M130 112h35v40h-35z"/><circle cx="147" cy="101" r="12" fill="#ead5ae"/><path stroke="white" stroke-width="3" d="M200 66v28m-14-14h28"/>';
-const art=i=>i===5?'<img class="hub-art" src="/assets/krill-card.png" alt="실제 게임 모델로 렌더링한 고래의 흡입과 크릴 탈출 장면">':i===4?'<img class="hub-art" src="/assets/fishing-card.png" alt="실제 게임 모델로 렌더링한 낚시배와 여섯 낚시꾼">':i===3?'<img class="hub-art" src="/assets/bull-card.png" alt="황소와 도망자 3D 모델 · 투우 게임">':i===2?'<img class="hub-art hub-fps-art" src="/assets/fps-model-card.png" alt="실제 FPS 병사와 소총 모델로 렌더링한 빨강·파랑 팀 깃발 쟁탈전" width="1920" height="1080">':i===1?'<img class="hub-art" src="/assets/racing-models.png" alt="선택 가능한 여섯 스포츠카">':i===0?'<img class="hub-art hub-game-render" src="/assets/dirt-rally-card.png" alt="실제 게임 속 노란 포크레인이 모래를 담은 버킷을 들어 올린 모습" width="1024" height="1024">':`<svg class="hub-art art-${i}" viewBox="0 0 400 160" aria-hidden="true"><defs><pattern id="grid-${i}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="white" stroke-opacity=".13"/></pattern></defs><path fill="url(#grid-${i})" d="M0 0h400v160H0z"/>${illustrations[i]}</svg>`;
+const art=i=>i===6?'<svg class="hub-art" viewBox="0 0 400 240" aria-label="군중 속 위장"><rect width="400" height="240" fill="#253b40"/><path d="M0 190 200 80 400 190 200 240Z" fill="#b9c4bf"/>'+Array.from({length:15},(_,i)=>'<g transform="translate('+(65+i%5*65)+','+(55+Math.floor(i/5)*55)+')"><rect x="-12" y="16" width="24" height="30" fill="#466478"/><rect x="-9" width="18" height="18" fill="#e5bf97"/><rect x="-10" y="-4" width="20" height="7" fill="#303d49"/></g>').join('')+'</svg>':i===5?'<img class="hub-art" src="/assets/krill-card.png" alt="실제 게임 모델로 렌더링한 고래의 흡입과 크릴 탈출 장면">':i===4?'<img class="hub-art" src="/assets/fishing-card.png" alt="실제 게임 모델로 렌더링한 낚시배와 여섯 낚시꾼">':i===3?'<img class="hub-art" src="/assets/bull-card.png" alt="황소와 도망자 3D 모델 · 투우 게임">':i===2?'<img class="hub-art hub-fps-art" src="/assets/fps-model-card.png" alt="실제 FPS 병사와 소총 모델로 렌더링한 빨강·파랑 팀 깃발 쟁탈전" width="1920" height="1080">':i===1?'<img class="hub-art" src="/assets/racing-models.png" alt="선택 가능한 여섯 스포츠카">':i===0?'<img class="hub-art hub-game-render" src="/assets/dirt-rally-card.png" alt="실제 게임 속 노란 포크레인이 모래를 담은 버킷을 들어 올린 모습" width="1024" height="1024">':`<svg class="hub-art art-${i}" viewBox="0 0 400 160" aria-hidden="true"><defs><pattern id="grid-${i}" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="white" stroke-opacity=".13"/></pattern></defs><path fill="url(#grid-${i})" d="M0 0h400v160H0z"/>${illustrations[i]}</svg>`;
 hub.innerHTML=`<header class="hub-header"><a class="hub-brand" href="#games">▦ 플레이룸 <span>함께 노는 시간</span></a><span class="hub-device">하나의 화면 · 각자의 휴대폰</span></header><section class="hub-intro"><p class="hub-kicker">PICK A GAME. MAKE A MEMORY.</p><h1>오늘은 어떤 게임을 할까요<span>?</span></h1><p>친구들을 모으고, 게임을 고르고, 함께 시작하세요.</p></section><div class="hub-layout"><section aria-label="게임 목록" class="hub-catalog">${catalog.map((g,i)=>`<button class="hub-card" data-game="${i}" aria-pressed="false">${art(i)}<span class="hub-card-heading"><strong>${g.title}</strong><span class="hub-tag">${g.type}</span></span><span class="hub-card-subtitle">${g.subtitle}</span><span class="hub-card-status ${g.ready?'is-ready':''}">${g.ready?('● 플레이 가능 <span>'+(i===1||i===4||i===5?'1':'2')+'–16명</span>'):'준비 중 <span>COMING SOON</span>'}</span></button>`).join('')}</section><aside class="hub-detail" aria-label="선택한 게임 정보"><p class="hub-detail-kicker">선택한 게임 <span>GAME INFO ↗</span></p><div id="hub-preview"></div><h2 id="hub-title"></h2><p id="hub-subtitle"></p><p id="hub-description" aria-live="polite"></p><p id="hub-meta"></p><button id="hub-play">대기실 입장 <span>→</span></button><p class="hub-footnote" id="hub-footnote"></p></aside></div><footer class="hub-footer"><span><b>01</b> 게임 선택 <i>→</i> <b>02</b> QR로 참가 <i>→</i> <b>03</b> 함께 플레이</span><span>PLAY TOGETHER.</span></footer>`;
 document.body.prepend(hub);
 const sidebar=document.createElement('div');sidebar.className='hub-sidebar';
@@ -64,7 +67,7 @@ function showScreen(screen){
   if(inLobby)backToGames.focus();else hub.querySelector(`[data-game="${selectedGame}"]`).focus();
   window.scrollTo(0,0);
 }
-$('hub-play').onclick=()=>{if(catalog[selectedGame].ready){send({type:'game',game:['excavator','racing','fps','bull','fishing','krill'][selectedGame]});location.hash='dirt-rally';showScreen('dirt-rally');}};
+$('hub-play').onclick=()=>{if(catalog[selectedGame].ready){send({type:'game',game:['excavator','racing','fps','bull','fishing','krill','disguise'][selectedGame]});location.hash='dirt-rally';showScreen('dirt-rally');}};
 backToGames.onclick=()=>{if(currentPhase!=='running'){if(currentPhase==='finished')send({type:'lobby'});location.hash='games';showScreen('games');}};
 window.addEventListener('hashchange',()=>{if(currentPhase==='running'&&location.hash!=='#dirt-rally'){location.hash='dirt-rally';return;}showScreen(location.hash.slice(1));});
 chooseGame(0);showScreen(location.hash.slice(1));
@@ -153,16 +156,21 @@ function renderFishing(m){
  for(const p of [...m.players].filter(p=>m.phase==='lobby'||p.participating).sort((a,b)=>b.caught-a.caught)){const row=document.createElement('div');row.className='fishing-standing';row.style.setProperty('--angler',p.color);const title=document.createElement('strong');title.textContent=(m.players.findIndex(v=>v.id===p.id)+1)+' · '+p.name+' · '+p.caught+'마리';const detail=document.createElement('div'),f=p.fishing;detail.textContent=m.phase==='finished'?Object.entries(p.collection).filter(([,n])=>n).map(([id,n])=>(m.fishing.species.find(s=>s.id===id)?.name||id)+' '+n+'마리').join(' / ')||'포획 기록 없음':f.stage==='fighting'?(m.fishing.species.find(s=>s.id===f.species)?.name+' · ')+(f.direction<0?'← 왼쪽':'오른쪽 →')+' · 힘 '+Math.round(f.energy*100)+'% · 줄 '+Math.round(f.tension*100)+'% · '+Math.ceil(f.distance)+'m':f.message;row.append(title,detail);list.append(row);}
  fishingPanel.replaceChildren(heading,list);
 }
+const disguiseCanvas=document.createElement('canvas');disguiseCanvas.id='disguise-overview';disguiseCanvas.hidden=true;lobby.insertBefore(disguiseCanvas,lobby.querySelector('.grid'));let disguiseScene;
+const disguisePanel=document.createElement('section');disguisePanel.id='disguise-panel';disguisePanel.hidden=true;lobby.insertBefore(disguisePanel,disguiseCanvas);
+const disguiseNotice=document.createElement('span'),disguiseMap=document.createElement('select');disguiseMap.ariaLabel='위장 생존 맵';for(const [id,title]of [['station','지하철 대합실'],['gallery','미술관'],['warehouse','물류 창고']])disguiseMap.add(new Option(title,id));disguiseMap.onchange=()=>send({type:'disguise-map',map:disguiseMap.value});disguisePanel.append(disguiseNotice,disguiseMap);
+function renderDisguise(m){const on=m.game==='disguise';disguiseCanvas.hidden=!on;disguisePanel.hidden=!on;if(!on)return;if(!disguiseScene)disguiseScene=createDisguiseScene(disguiseCanvas);disguiseScene.update(m);disguiseMap.value=m.disguise.map.id;disguiseMap.disabled=m.phase!=='lobby';lobby.querySelector('.worksite-hero h1').firstChild.textContent='CROWD MASK';lobby.querySelector('.title-caption').textContent='군중 속에 숨어라';lobby.querySelector('.worksite-hero .eyebrow').textContent='2–16명 · NPC 위장 생존';lobby.querySelector('.pixel-scene').hidden=true;lobby.querySelector('.worksite-hero p').textContent='NPC 흉내 · 이동하면 해제 · 바라보는 방향으로 공격 · 마지막 생존자가 승리';disguiseNotice.textContent=m.phase==='lobby'?'맵 선택 · QR 참가 · 2명 이상 시작':m.phase==='finished'?'최후의 생존자: '+(m.results.players.filter(p=>p.alive).map(p=>p.name).join(', ')||'없음'):m.disguise.curtain>0?'커튼 · 숨으세요':m.disguise.freeze>0?'NPC 순간 정지':m.disguise.reveal>0?'생존자 위치 공개':'생존 '+m.players.filter(p=>p.participating&&p.alive).length+'명 · 무킬 '+Math.floor(m.disguise.quiet)+'초';}
 function render(m){
+  renderDisguise(m);const disguise=m.game==='disguise';
   renderKrill(m);const krill=m.game==='krill';
   renderFishing(m);const fishing=m.game==='fishing';
   renderBull(m);const bull=m.game==='bull';
   const shooting=m.game==='fps';fpsCanvas.hidden=!shooting;
   if(shooting){if(!fpsScene)fpsScene=createFpsScene(fpsCanvas,{overview:true});fpsScene.update(m);lobby.querySelector('.title-caption').textContent='깃발을 탈환하라!';lobby.querySelector('.worksite-hero h1').firstChild.textContent='FLAG STRIKE';lobby.querySelector('.worksite-hero .eyebrow').textContent='최대 16명 · FPS 깃발 쟁탈전';lobby.querySelector('.pixel-scene').hidden=true;lobby.querySelector('.worksite-hero p').textContent='PC 화면을 보며 이동 방향으로 조준 · 발사 버튼으로 사격 · 깃발 운반';}
-  lobby.querySelector('.field-guide').hidden=shooting||bull||fishing||krill;
-  const settings=$('configure').closest('section');if(settings){const heading=settings.querySelector('h2');if(heading)heading.textContent=(bull||fishing||krill)?'경기 시간과 참가자':'팀과 경기 설정';const hint=settings.querySelector(':scope > p.muted');if(hint)hint.textContent=krill?'휴대폰 이동 패드와 꼬리치기를 사용하세요. 여러 명이면 최후의 한 마리까지 연장합니다.':fishing?'휴대폰을 가로로 잡고 센서 시작을 누른 뒤 PC에서 경기를 시작하세요.':bull?'황소 선택 후 경기를 시작하세요.':'참가자의 팀을 직접 바꿀 수 있습니다. 준비가 끝나면 경기를 시작하세요.';}
-  $('configure').textContent=(bull||fishing||krill)?'시간 적용':'균등 배정';
-  $('teams').parentElement.hidden=bull||fishing||krill;
+  lobby.querySelector('.field-guide').hidden=shooting||bull||fishing||krill||disguise;
+  const settings=$('configure').closest('section');if(settings){const heading=settings.querySelector('h2');if(heading)heading.textContent=(bull||fishing||krill||disguise)?'경기 시간과 참가자':'팀과 경기 설정';const hint=settings.querySelector(':scope > p.muted');if(hint)hint.textContent=disguise?'임무와 능력 없이 최후의 한 명까지. 오인 공격은 6초 제한과 1초 노출.':krill?'휴대폰 이동 패드와 꼬리치기를 사용하세요. 여러 명이면 최후의 한 마리까지 연장합니다.':fishing?'휴대폰을 가로로 잡고 센서 시작을 누른 뒤 PC에서 경기를 시작하세요.':bull?'황소 선택 후 경기를 시작하세요.':'참가자의 팀을 직접 바꿀 수 있습니다. 준비가 끝나면 경기를 시작하세요.';}
+  $('configure').textContent=(bull||fishing||krill||disguise)?'시간 적용':'균등 배정';
+  $('teams').parentElement.hidden=bull||fishing||krill||disguise;
   for(const option of $('teams').options)option.disabled=shooting&&Number(option.value)<2;
   renderMapPicker(m);
   renderTrackPicker(m);
@@ -171,26 +179,27 @@ function render(m){
   if(racing){raceBroadcast.update(m);if(m.race.mode==='bumper')raceBroadcast.root.hidden=true;if(!raceScene)raceScene=createRaceScene(raceCanvas,{overview:true});raceScene.update(m);raceSummary.textContent=m.race.mode==='bumper'?`${m.circuit.name} · 생존 ${m.players.filter(p=>p.eliminatedAt===null).length}/${m.players.length}대 · ${m.phase==='finished'?'경기 종료 · '+m.results.players.map(p=>p.rank+'위 '+p.name).join(' / '):'상대를 밀어 떨어뜨리세요'}`:m.phase==='finished'?m.results.players.map(p=>`${p.rank}위 ${p.name} ${p.time===null?'미완주':p.time.toFixed(2)+'초'}`).join(' / '):`${m.circuit.name} · ${(m.circuit.length/1000).toFixed(2)} km · ${m.race.laps}바퀴 · ${m.players.length}대 · 차량 충돌 사용`;
     $('results').hidden=true;
   }
-  if(bull||racing||fishing||krill)$('results').hidden=true;
+  if(bull||racing||fishing||krill||disguise)$('results').hidden=true;
   currentPhase=m.phase;
   $('hub-players').textContent=`접속 ${m.players.filter(p=>p.connected).length} / 16명`;
   backToGames.disabled=m.phase==='running';
   backToGames.title=backToGames.disabled?'대기실로 돌아온 뒤 게임을 변경하세요.':'';
   if(m.phase==='running'&&!hub.hidden){location.hash='dirt-rally';showScreen('dirt-rally');}
-  if(!racing&&!bull&&!fishing&&!krill)renderResults($('results'),m);
+  if(!racing&&!bull&&!fishing&&!krill&&!disguise)renderResults($('results'),m);
   if(m.connection&&m.connection.address!==$('address').value){$('address').value=m.connection.address;qr();}
-  const signature=JSON.stringify([m.game,m.circuit?.id,m.phase,m.teamCount,m.duration,m.bull?.choice,m.bull?.map,m.players.map(p=>[p.id,p.name,p.team,p.connected,p.car,p.color])]);
+  const signature=JSON.stringify([m.disguise?.map.id,m.game,m.circuit?.id,m.phase,m.teamCount,m.duration,m.bull?.choice,m.bull?.map,m.players.map(p=>[p.id,p.name,p.team,p.connected,p.car,p.color])]);
   $('status').textContent=`${m.players.filter(p=>p.connected).length}/16 접속 · ${m.phase==='lobby'?'대기':m.phase==='running'?`${Math.ceil(m.remaining)}초`:'종료'}`;
   $('scores').replaceChildren(...(racing?[...m.players].sort((a,b)=>a.rank-b.rank).map(p=>{const d=document.createElement('div');d.className='score';d.style.color=p.color;d.textContent=m.race.mode==='bumper'?`${p.rank}위 · ${p.name} · ${p.eliminatedAt===null?'생존':'탈락'}`:`${p.rank}위 · ${p.name} · ${Math.min(3,p.lap+1)}/3 LAP`;return d;}):m.teams.map(t=>{const d=document.createElement('div');d.className='score';d.style.color=t.color;d.textContent=m.water?`팀 ${t.id+1} · 물길 ${Math.floor(m.water.lanes[t.id].progress)}%`:shooting?`팀 ${t.id+1} · 깃발 ${t.captures}점`:`팀 ${t.id+1} · ${t.dirt} 모래`;return d;})));
   if(bull){$('scores').replaceChildren(...m.players.filter(p=>p.participating||m.phase==='lobby').map(p=>{const d=document.createElement('div');d.className='score';d.textContent=p.role==='bull'?`${p.name} · 황소`:`${p.name} · ${p.survival.toFixed(1)}초 · ${p.alive?'생존':'아웃'}`;return d;}));}
+  if(disguise){$('scores').replaceChildren();}
   if(krill){$('scores').replaceChildren(...m.players.map(p=>{const d=document.createElement('div');d.className='score';d.style.color=p.color;d.textContent=p.name+' · '+(p.alive?'생존':'탈락')+' · '+p.survival.toFixed(1)+'초';return d;}));}
   if(fishing){$('scores').replaceChildren(...[...m.players].sort((a,b)=>b.caught-a.caught).map(p=>{const d=document.createElement('div');d.className='score';d.style.color=p.color;d.textContent=p.name+' · '+p.caught+'마리';return d;}));}
   if(signature===latest)return;
   latest=signature;
-  $('teams').value=m.teamCount;$('duration').value=m.duration;
+  $('teams').value=m.teamCount;$('duration').value=m.duration;$('duration').parentElement.hidden=disguise;$('configure').hidden=disguise;$('players').hidden=disguise&&m.phase==='running';
   const locked=m.phase!=='lobby';
   for(const id of ['teams','duration','configure'])$(id).disabled=locked||(bull&&id==='teams');
-  $('start').disabled=locked||m.players.filter(p=>p.connected).length<(bull&&m.bull.map!=='gates'?2:1);$('lobby').disabled=false;
+  $('start').disabled=locked||m.players.filter(p=>p.connected).length<(disguise||bull&&m.bull.map!=='gates'?2:1);$('lobby').disabled=false;
   $('players').replaceChildren(...m.players.map((p,i)=>{
     const card=document.createElement('div');card.className='player';card.style.setProperty('--team',racing||krill?p.color:m.teams[p.team].color);
     const name=document.createElement('strong');name.textContent=`${i+1}. ${p.name} ${p.connected?'●':'(연결 끊김)'}`;
@@ -199,7 +208,7 @@ function render(m){
     for(const t of m.teams)select.add(new Option(`팀 ${t.id+1}`,t.id));
     select.value=p.team;select.disabled=locked;select.onchange=()=>send({type:'assign',id:p.id,team:Number(select.value)});
     const remove=document.createElement('button');remove.textContent='제외';remove.disabled=locked;remove.onclick=()=>send({type:'remove',id:p.id});
-    if(fishing||krill){const seat=document.createElement('span');seat.textContent='개인전 · '+(i+1)+'번 자리';row.append(seat,remove);}else if(bull){const role=document.createElement('span');role.textContent=m.phase==='lobby'?(m.bull.choice===p.id?'지정 황소':m.bull.choice==='random'?'무작위 추첨 대상':'사람'):p.role==='bull'?'황소':'사람';row.append(role,remove);}else if(racing){const car=document.createElement('span');car.textContent=m.race.cars.find(c=>c.id===p.car)?.name;row.append(car,remove);}else row.append(select,remove);card.append(name,row);return card;
+    if(fishing||krill||disguise){const seat=document.createElement('span');seat.textContent='개인전 · '+(i+1)+'번 자리';row.append(seat,remove);}else if(bull){const role=document.createElement('span');role.textContent=m.phase==='lobby'?(m.bull.choice===p.id?'지정 황소':m.bull.choice==='random'?'무작위 추첨 대상':'사람'):p.role==='bull'?'황소':'사람';row.append(role,remove);}else if(racing){const car=document.createElement('span');car.textContent=m.race.cars.find(c=>c.id===p.car)?.name;row.append(car,remove);}else row.append(select,remove);card.append(name,row);return card;
   }));
 }
 async function connect(){

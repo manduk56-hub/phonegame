@@ -8,7 +8,8 @@ const GAMES = [
 	["FLAG STRIKE", "조준 · 탈환 · 귀환", "FPS", "2–16명", "폰 전체 화면에서 1인칭으로 조준하고 발사!\n중앙 깃발을 우리 진영으로 가져오세요."],
 	["BULL RUN", "뿔을 피하라, 끝까지 살아남아라", "투우", "2–16명", "한 명은 황소, 나머지는 도망자!\n가속하는 황소를 피해 제한 시간까지 살아남으세요."],
 	["TIDELINE", "한 배에서 펼치는 바다 낚시 대결", "낚시", "1–16명", "큰 입질에 폰을 당겨 챔질! 물고기 방향으로 기울여\n힘을 빼고 시계 방향으로 릴을 감으세요."],
-	["KRILL ESCAPE", "작은 크릴, 거대한 고래", "생존", "1–16명", "다가오는 장애물과 고래의 흡입 구역을 피하세요.\n꼬리치기로 살짝 밀치기 · 마지막 크릴은 고래를 조종!"]
+	["KRILL ESCAPE", "작은 크릴, 거대한 고래", "생존", "1–16명", "다가오는 장애물과 고래의 흡입 구역을 피하세요.\n꼬리치기로 살짝 밀치기 · 마지막 크릴은 고래를 조종!"],
+	["CROWD MASK", "군중 속에 숨어라", "위장 생존", "2–16명", "NPC 흉내로 군중에 섞이고 다른 유저를 찾으세요.\n킬 후 커튼 · 맵 3개 · 마지막 생존자가 승리!"]
 ]
 var menu: MarginContainer
 var background: ColorRect
@@ -99,12 +100,12 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation",28)
 	stack.add_child(body)
 	var square_area := AspectRatioContainer.new()
-	square_area.ratio = 1.5
+	square_area.ratio = 934.0/458.0
 	square_area.stretch_mode = AspectRatioContainer.STRETCH_FIT
 	square_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(square_area)
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation",18)
 	grid.add_theme_constant_override("v_separation",18)
@@ -112,7 +113,7 @@ func _ready() -> void:
 	for i in range(GAMES.size()):
 		var card := Button.new()
 		card.name = "GameCard%d" % i
-		card.custom_minimum_size = Vector2(260,260)
+		card.custom_minimum_size = Vector2(220,220)
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		card.add_theme_stylebox_override("normal",preload("res://pixel_ui.gd").tile())
@@ -130,12 +131,12 @@ func _ready() -> void:
 		var art := Control.new()
 		art.set_script(ART)
 		art.kind = i
-		art.custom_minimum_size.y = 100
+		art.custom_minimum_size.y = 80
 		art.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		contents.add_child(art)
-		contents.add_child(label(GAMES[i][0],22))
-		contents.add_child(label(GAMES[i][1],16,"#a8b1ac"))
-		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 6 else "준비 중   /   " + GAMES[i][2],14,"#f1bd75" if i < 6 else "#a8b1ac"))
+		contents.add_child(label(GAMES[i][0],18))
+		contents.add_child(label(GAMES[i][1],12,"#a8b1ac"))
+		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < 7 else "준비 중   /   " + GAMES[i][2],12,"#f1bd75" if i < 7 else "#a8b1ac"))
 		for child in contents.get_children():
 			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.pressed.connect(select_game.bind(i))
@@ -233,9 +234,9 @@ func select_game(index: int) -> void:
 	detail_title.text = GAMES[index][0]
 	detail_subtitle.text = GAMES[index][1]
 	detail_description.text = GAMES[index][4]
-	detail_meta.text = "크릴 생존 · 1–16명 · 모바일 이동 · 꼬리치기" if index == 5 else "개인 낚시 · 1–16명 · 모션 챔질 · 시계 방향 릴" if index == 4 else "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else "투우 · 랜덤/지정 황소 · 생존시간 기록"))
-	play_button.text = "대기실 입장   →" if index < 6 else "곧 만나요!"
-	play_button.disabled = index > 5
+	detail_meta.text = "위장 생존 · 2–16명 · NPC 흉내 · 맵 3개" if index == 6 else "크릴 생존 · 1–16명 · 모바일 이동 · 꼬리치기" if index == 5 else "개인 낚시 · 1–16명 · 모션 챔질 · 시계 방향 릴" if index == 4 else "팀 대결   ·   최대 16명   ·   1–10분" if index == 0 else ("레이싱 · 최대 16명 · 폰 기울기 조작" if index == 1 else ("FPS · 2–8팀 · 깃발 쟁탈전 · 2초 뒤 부활" if index == 2 else "투우 · 랜덤/지정 황소 · 생존시간 기록"))
+	play_button.text = "대기실 입장   →" if index < 7 else "곧 만나요!"
+	play_button.disabled = index > 6
 
 func quit_game() -> void:
 	if menu.visible and not is_instance_valid(active_game):
@@ -247,9 +248,9 @@ func _input(event: InputEvent) -> void:
 		quit_game()
 
 func launch_game() -> void:
-	if selected > 5 or is_instance_valid(active_game):
+	if selected > 6 or is_instance_valid(active_game):
 		return
-	active_game = load(["res://main.tscn","res://racing.tscn","res://fps.tscn","res://bull.tscn","res://fishing.tscn","res://krill.tscn"][selected]).instantiate()
+	active_game = load(["res://main.tscn","res://racing.tscn","res://fps.tscn","res://bull.tscn","res://fishing.tscn","res://krill.tscn","res://disguise.tscn"][selected]).instantiate()
 	add_child(active_game)
 	menu.hide()
 	background.hide()

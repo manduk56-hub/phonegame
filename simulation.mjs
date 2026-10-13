@@ -6,6 +6,7 @@ import {raceSpawn,raceTick,chooseCar,CIRCUITS,RACE_TRACKS,TRACKS,CARS} from './r
 import {excavatorOverlap} from './collision.mjs';
 import {BULL_ARENA,BULL_GATES,bullSpawn,bullStart,bullTick} from './bull.mjs';
 import {FISHING,fishingSpawn,fishingStart,fishingTick,fishingAction,fishingResults} from './fishing.mjs';
+import {disguiseSpawn,disguiseStart,disguiseTick,disguiseAction,disguiseSnapshot,selectDisguiseMap} from './disguise.mjs';
 import {KRILL,krillSpawn,krillStart,krillTick,krillAction} from './krill.mjs';
 export const ARENA=JSON.parse(readFileSync(new URL('./game/arena.json',import.meta.url),'utf8'));
 export const COLORS = ['#faad28','#52c8fa','#f078a6','#77d99b','#a99aff','#fb775b','#e0d16c','#69d3cb'];
@@ -15,6 +16,7 @@ const distance = (a,b) => Math.hypot(a.x-b.x, a.z-b.z);
 const BUCKET_GROUND_ALLOWANCE = .18;
 export class Match {
   constructor() {
+    this.disguiseMap='station';
     this.bullChoice='random';this.bullMap='classic';this.bull=null;
     this.excavatorMap=EXCAVATOR_MAPS[0];
     this.circuit=CIRCUITS[0];
@@ -23,7 +25,7 @@ export class Match {
     this.teams = []; this.game = 'excavator'; this.results = null; this.raceLaps=this.circuit.laps;this.raceCollisions=true;this.countdown=0;this.raceElapsed=0;this.raceDirector=null;this.resetTeams();
   }
   resetTeams() {
-    this.krill=null;
+    this.krill=null;this.disguise=null;
     this.groundPiles = []; this.nextPileId = 0;
     this.teams = Array.from({length:this.teamCount}, (_,id) => {
       const angle = id / this.teamCount * Math.PI*2;
@@ -33,6 +35,7 @@ export class Match {
     resetFps(this);
   }
   spawn(p) {
+    if(this.game==='disguise'){disguiseSpawn(this,p);return;}
     if(this.game==='krill'){krillSpawn(this,p);return;}
     if(this.game==='fishing'){fishingSpawn(this,p);return;}
     if(this.game==='bull'){bullSpawn(this,p);return;}
@@ -60,14 +63,15 @@ export class Match {
     p={id:randomUUID(),token:randomUUID(),name:String(name||'플레이어').trim().slice(0,16)||'플레이어',team:counts.indexOf(Math.min(...counts)),connected:true};
     this.players.set(p.id,p); for(const q of this.players.values()) this.spawn(q); return p;
   }
-  neutral() {if(this.game==='krill')return {moveX:0,moveY:0};if(this.game==='fishing')return {tilt:0,reel:0};if(this.game==='bull')return {forward:0,steer:0,wave:0};if(this.game==='fps')return {forward:0,strafe:0};return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
+  neutral() {if(this.game==='disguise')return {moveX:0,moveY:0};if(this.game==='krill')return {moveX:0,moveY:0};if(this.game==='fishing')return {tilt:0,reel:0};if(this.game==='bull')return {forward:0,steer:0,wave:0};if(this.game==='fps')return {forward:0,strafe:0};return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
   selectGame(game){
     if(this.game===game)return;
     if(this.phase!=='lobby')throw Error('대기실에서 게임을 변경하세요.');
-    if(!['excavator','racing','fps','bull','fishing','krill'].includes(game))throw Error('지원하지 않는 게임입니다.');
+    if(!['excavator','racing','fps','bull','fishing','krill','disguise'].includes(game))throw Error('지원하지 않는 게임입니다.');
     this.game=game;if(game==='fps'&&this.teamCount<2)this.teamCount=2;this.resetTeams();for(const p of this.players.values())p.team%=this.teamCount;this.results=null;for(const p of this.players.values())this.spawn(p);
     if(game==='racing'){this.duration=Math.max(300,this.duration);this.remaining=this.duration;}
   }
+  selectDisguiseMap(id){selectDisguiseMap(this,id);}
   selectExcavatorMap(id){
     if(this.game!=='excavator'||this.phase!=='lobby')throw Error('맵은 포크레인 대기실에서 선택하세요.');
     const map=EXCAVATOR_MAPS.find(m=>m.id===id);if(!map)throw Error('올바른 맵을 선택하세요.');
@@ -107,6 +111,7 @@ export class Match {
   }
   start() {
     if(this.phase!=='lobby'||![...this.players.values()].some(p=>p.connected)) throw Error('접속한 참가자가 있어야 시작할 수 있습니다.');
+    if(this.game==='disguise'){disguiseStart(this);return;}
     if(this.game==='krill'){krillStart(this);return;}
     if(this.game==='fishing'){fishingStart(this);return;}
     if(this.game==='bull'){bullStart(this);this.remaining=this.duration;this.results=null;this.phase='running';return;}
@@ -142,6 +147,7 @@ export class Match {
     return Math.max(.2,(4.6-d)*.55)*scale;
   }
   action(id, action) {
+    if(this.game==='disguise'){disguiseAction(this,id,action);return;}
     if(this.game==='krill'){krillAction(this,id,action);return;}
     if(this.game==='fishing'){fishingAction(this,id,action);return;}
     if(this.game!=='excavator')return;
@@ -176,6 +182,7 @@ export class Match {
     }
   }
   tick(dt,now=Date.now()) {
+    if(this.game==='disguise'){disguiseTick(this,dt,now);return;}
     if(this.game==='krill'){krillTick(this,dt,now);return;}
     if(this.game==='fishing'){fishingTick(this,Number.isFinite(dt)?clamp(dt,0,1):0,now);return;}
     if(this.game==='bull'){bullTick(this,Math.max(0,Math.min(.1,dt)),now);return;}
@@ -257,10 +264,11 @@ export class Match {
     return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
       ...(this.game==='excavator'?{excavatorMap:this.excavatorMap,excavatorMaps:EXCAVATOR_MAPS,water:waterSnapshot(this.water)}:{}),
       ...(this.game==='bull'?{bull:{...(this.phase==='lobby'?{}:this.bull||{}),map:this.bullMap,arena:BULL_ARENA,gates:BULL_GATES,choice:this.bullChoice}}:{}),
+      ...(this.game==='disguise'?{disguise:disguiseSnapshot(this)}:{}),
       ...(this.game==='krill'?{krill:{...(this.krill||{elapsed:0,stage:'rest',safe:{x:0,y:0,r:2.8},obstacles:[]}),...KRILL}}:{}),
       ...(this.game==='fishing'?{fishing:{...(this.fishing||{elapsed:0}),...FISHING}}:{}),
       ...(this.game==='fps'?{fps:{...this.fps,arena:FPS_ARENA}}:{}),
       ...(this.game==='racing'?{race:{mode:this.circuit.mode||'race',laps:this.raceLaps,collisions:this.raceCollisions,steeringRange:50,countdown:this.countdown,elapsed:this.raceElapsed,broadcast:this.raceDirector?{id:this.raceDirector.id,reason:this.raceDirector.reason}:null,cars:CARS,tracks:TRACKS},circuit:this.circuit}:{}),
-      players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,...(this.game==='krill'?{tailCooldown:cooldown}:{}),...(this.game==='excavator'?{bucket:this.bucket(p)}:{})}))};
+      players:[...this.players.values()].map(({token,input,lastInput,cooldown,...p})=>({...p,...(this.game==='disguise'?{attackCooldown:cooldown}:{}),...(this.game==='krill'?{tailCooldown:cooldown}:{}),...(this.game==='excavator'?{bucket:this.bucket(p)}:{})}))};
   }
 }

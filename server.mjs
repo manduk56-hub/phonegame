@@ -20,6 +20,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   Object.assign(files,{'/bull-scene.js':'bull-scene.js','/bull-controller.js':'bull-controller.js','/bull.css':'bull.css','/brick-model.js':'brick-model.js'});
   Object.assign(files,{'/fishing-scene.js':'fishing-scene.js','/fishing-view.js':'fishing-view.js','/fishing-effects.js':'fishing-effects.js','/fishing-controller.js':'fishing-controller.js','/fishing-controls.js':'fishing-controls.js','/fishing.css':'fishing.css'});
   Object.assign(files,{'/krill-scene.js':'krill-scene.js','/krill-controller.js':'krill-controller.js','/krill.css':'krill.css'});
+  Object.assign(files,{'/disguise-scene.js':'disguise-scene.js','/disguise-controller.js':'disguise-controller.js','/disguise.css':'disguise.css'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{
@@ -105,7 +106,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
           if(m.type==='fire')match.fire(id,m);
           if(m.type==='car')match.chooseCar(id,m.car);
           if(m.type==='race-view'&&match.game==='racing'&&['first','third'].includes(m.viewMode)){const p=match.players.get(id);if(p)p.viewMode=m.viewMode;}
-          if(m.type==='action'&&['scoop','drop','cast','hook','tail'].includes(m.action)) match.action(id,m.action);
+          if(m.type==='action'&&['scoop','drop','cast','hook','tail','mimic','attack'].includes(m.action)) match.action(id,m.action);
         } else if(role==='host') {
           if(m.type==='game')match.selectGame(m.game);
           if(m.type==='network') {
@@ -114,6 +115,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
           }
           if(m.type==='configure') match.configure(m.teams,m.duration);
           if(m.type==='bull-choice')match.chooseBull(m.id);
+          if(m.type==='disguise-map')match.selectDisguiseMap(m.map);
           if(m.type==='bull-map')match.selectBullMap(m.map);
           if(m.type==='track') match.selectTrack(m.track);
           if(m.type==='excavator-map') match.selectExcavatorMap(m.map);
