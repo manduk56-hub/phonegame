@@ -20,7 +20,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   Object.assign(files,{'/bull-scene.js':'bull-scene.js','/bull-controller.js':'bull-controller.js','/bull.css':'bull.css','/brick-model.js':'brick-model.js'});
   Object.assign(files,{'/fishing-scene.js':'fishing-scene.js','/fishing-view.js':'fishing-view.js','/fishing-effects.js':'fishing-effects.js','/fishing-controller.js':'fishing-controller.js','/fishing-controls.js':'fishing-controls.js','/fishing.css':'fishing.css'});
   Object.assign(files,{'/krill-scene.js':'krill-scene.js','/krill-controller.js':'krill-controller.js','/krill.css':'krill.css'});
-  Object.assign(files,{'/disguise-scene.js':'disguise-scene.js','/disguise-controller.js':'disguise-controller.js','/disguise.css':'disguise.css'});
+  Object.assign(files,{'/disguise-geometry.js':'disguise-geometry.js','/disguise-scene.js':'disguise-scene.js','/disguise-controller.js':'disguise-controller.js','/disguise.css':'disguise.css'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{

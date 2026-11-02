@@ -7,6 +7,10 @@ var curtain: ColorRect
 var signals := Node3D.new()
 var capture_frames := 0
 var fixture_mode := false
+var attack_layer := Node3D.new()
+var mechanic_geometry := Node3D.new()
+var mechanic_signature := ""
+var train_node: Node3D
 
 func _ready() -> void:
 	if not OS.get_environment("DIRT_RALLY_SERVER_URL").is_empty():
@@ -29,12 +33,14 @@ func _ready() -> void:
 	add_child(sun)
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 26
+	camera.size = 28
 	camera.position = Vector3(0,30,26)
 	add_child(camera)
 	camera.look_at(Vector3.ZERO)
 	add_child(map_geometry)
 	add_child(signals)
+	add_child(attack_layer)
+	add_child(mechanic_geometry)
 	build_ui()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--disguise-fixture="):
@@ -65,9 +71,9 @@ func build_ui() -> void:
 	var layout := VBoxContainer.new()
 	lobby.add_child(layout)
 	layout.add_child(text_label("CROWD MASK · NPC 위장 생존",30))
-	layout.add_child(text_label("임무 없이 NPC 흉내 · 마지막 생존자가 승리\n폰 이동 패드 / NPC 흉내 / 바라보는 방향으로 공격",20))
+	layout.add_child(text_label("임무 없이 NPC 흉내 · 마지막 생존자가 승리\n폰에서 내 위치 확인 / NPC 흉내 / 부채꼴 공격",20))
 	map_picker = OptionButton.new()
-	for title in ["지하철 대합실 · 통근객","미술관 · 관람객","물류 창고 · 작업자"]:
+	for title in ["막차 플랫폼 · 통근객","다섯 개의 방 · 관람객","컨베이어 창고 · 작업자"]:
 		map_picker.add_item(title)
 	map_picker.item_selected.connect(func(index):send_admin({"type":"disguise-map","map":["station","gallery","warehouse"][index]}))
 	layout.add_child(map_picker)
@@ -108,26 +114,123 @@ func build_ui() -> void:
 	curtain.hide()
 	cover_layer.add_child(curtain)
 
+func floor_label(text: String, x: float, z: float) -> void:
+	var marker := Label3D.new()
+	marker.font = FONT
+	marker.text = text
+	marker.font_size = 28
+	marker.pixel_size = .018
+	marker.modulate = Color("#263f48")
+	marker.outline_size = 0
+	marker.position = Vector3(x,.15,z)
+	marker.rotation_degrees.x = -55
+	map_geometry.add_child(marker)
+
 func build_map(map: Dictionary) -> void:
 	for child in map_geometry.get_children():
 		child.queue_free()
 	for actor in actors.values():
 		actor.queue_free()
 	actors.clear()
-	block(map_geometry,Vector3(30,.2,22),Vector3(0,-.1,0),Color(map.floor))
-	for x in range(-15,16,3):
-		block(map_geometry,Vector3(.025,.015,22),Vector3(x,.015,0),Color("#7d8f91"))
-	for z in range(-11,12,2):
-		block(map_geometry,Vector3(30,.015,.025),Vector3(0,.015,z),Color("#7d8f91"))
-	for prop in map.props:
+	mechanic_signature = ""
+	block(map_geometry,Vector3(35,.2,23),Vector3(0,-.15,0),Color("#243b44"))
+	for room in map.rooms:
+		block(map_geometry,Vector3(room.w,.12,room.d),Vector3(room.x,-.02,room.z),Color(room.color))
+		floor_label(room.name,room.x,room.z-room.d/2+.8)
+	var objects: Array = map.walls+map.props
+	for prop in objects:
 		block(map_geometry,Vector3(prop.w,prop.h,prop.d),Vector3(prop.x,prop.h/2,prop.z),Color(prop.color))
-		if map.id == "gallery":
-			block(map_geometry,Vector3(prop.w*.65,.7,.06),Vector3(prop.x,prop.h*.6,prop.z+prop.d/2+.04),Color("#eed393"))
+		if prop.kind == "wall":
+			block(map_geometry,Vector3(prop.w+.04,.08,prop.d+.04),Vector3(prop.x,prop.h+.04,prop.z),Color("#a4b5ad"))
+		elif map.id == "gallery":
+			block(map_geometry,Vector3(prop.w*.65,.65,.07),Vector3(prop.x,prop.h*.6,prop.z+prop.d/2+.04),Color("#f0d392"))
 		elif map.id == "warehouse":
-			block(map_geometry,Vector3(prop.w*.8,.22,prop.d*.8),Vector3(prop.x,prop.h+.11,prop.z),Color("#b79567"))
-	block(map_geometry,Vector3(30,.35,.2),Vector3(0,.175,-11),Color("#3e555f"))
-	block(map_geometry,Vector3(.2,.35,22),Vector3(-15,.175,0),Color("#3e555f"))
-	block(map_geometry,Vector3(.2,.35,22),Vector3(15,.175,0),Color("#3e555f"))
+			for y in [.45,1.1]:
+				block(map_geometry,Vector3(prop.w*.75,.3,prop.d*.85),Vector3(prop.x,y,prop.z),Color("#b79567"))
+			if str(prop.kind).begins_with("랙"):
+				for i in range(-1,2):
+					block(map_geometry,Vector3(prop.w*.7,.42,1.35),Vector3(prop.x,prop.h+.21,prop.z+i*prop.d*.26),Color("#b79567"))
+					block(map_geometry,Vector3(.1,.44,1.37),Vector3(prop.x,prop.h+.21,prop.z+i*prop.d*.26),Color("#e5d0a1"))
+	if map.id == "station":
+		for z in [-.8,.8]:
+			block(map_geometry,Vector3(34,.06,.12),Vector3(0,.05,z),Color("#9bb5c1"))
+		for x in [-11,11]:
+			block(map_geometry,Vector3(3.5,.08,4.3),Vector3(x,.08,0),Color("#d8bc6b"))
+			for i in range(6):
+				block(map_geometry,Vector3(3.3,.015,.22),Vector3(x,.13,-1.7+i*.65),Color("#fff1ae"))
+		for z in [-2.5,2.5]:
+			block(map_geometry,Vector3(34,.02,.13),Vector3(0,.08,z),Color("#efcb64"))
+	elif map.id == "warehouse":
+		for z in range(-9,10,2):
+			block(map_geometry,Vector3(2.8,.025,.09),Vector3(0,.08,z),Color("#d5b15c"))
+	for z in [-11.2,11.2]:
+		block(map_geometry,Vector3(35,.25,.2),Vector3(0,.15,z),Color("#3e555f"))
+	for x in [-17.2,17.2]:
+		block(map_geometry,Vector3(.2,.25,23),Vector3(x,.15,0),Color("#3e555f"))
+
+func update_mechanic(s: Dictionary) -> void:
+	var k: Dictionary = s.mechanic
+	var signature := str(s.map.id)+str(k.get("closed",false))+str(k.get("side",""))+str(k.get("direction",0))
+	if signature != mechanic_signature:
+		mechanic_signature = signature
+		for child in mechanic_geometry.get_children():
+			child.queue_free()
+		train_node = null
+		for prop in s.solids:
+			if prop.kind in ["전시문","차단 선로"]:
+				block(mechanic_geometry,Vector3(prop.w,prop.h,prop.d),Vector3(prop.x,prop.h/2+.04,prop.z),Color(prop.color))
+		if k.kind == "belt":
+			for z in range(-9,10,3):
+				var surface := SurfaceTool.new()
+				surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+				for point in [Vector3(0,.13,z+.5*k.direction),Vector3(-.36,.13,z-.25*k.direction),Vector3(.36,.13,z-.25*k.direction)]:
+					surface.add_vertex(point)
+				var arrow := MeshInstance3D.new()
+				arrow.mesh = surface.commit()
+				var material := StandardMaterial3D.new()
+				material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				material.cull_mode = BaseMaterial3D.CULL_DISABLED
+				material.albedo_color = Color("#f6cc72")
+				arrow.material_override = material
+				mechanic_geometry.add_child(arrow)
+		if k.kind == "train" and k.closed:
+			train_node = Node3D.new()
+			mechanic_geometry.add_child(train_node)
+			block(train_node,Vector3(11,1.5,2),Vector3(0,.85,0),Color("#d8e4dd"))
+			block(train_node,Vector3(11,.18,2.05),Vector3(0,.55,0),Color("#438787"))
+			for x in range(-4,5,2):
+				block(train_node,Vector3(1.2,.55,2.04),Vector3(x,1.15,0),Color("#527384"))
+	if is_instance_valid(train_node):
+		train_node.position.x = -24+48*float(k.progress)
+
+func show_sector(points: Array, color: Color) -> void:
+	if points.size() < 3:
+		return
+	var surface := SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in range(1,points.size()-1):
+		for point in [points[0],points[i],points[i+1]]:
+			surface.add_vertex(Vector3(point.x,.09,point.z))
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = surface.commit()
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.albedo_color = color
+	mesh.material_override = material
+	attack_layer.add_child(mesh)
+	var outline := SurfaceTool.new()
+	outline.begin(Mesh.PRIMITIVE_LINE_STRIP)
+	for point in points+[points[0]]:
+		outline.add_vertex(Vector3(point.x,.12,point.z))
+	var edge := MeshInstance3D.new()
+	edge.mesh = outline.commit()
+	var ink := StandardMaterial3D.new()
+	ink.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ink.albedo_color = Color(color.r,color.g,color.b,1)
+	edge.material_override = ink
+	attack_layer.add_child(edge)
 
 func make_person(map: Dictionary) -> Node3D:
 	var actor := Node3D.new()
@@ -140,7 +243,8 @@ func make_person(map: Dictionary) -> Node3D:
 		var leg := block(actor,Vector3(.16,.5,.2),Vector3(x,.25,0),Color("#34434b"))
 		leg.name = "LegL" if x < 0 else "LegR"
 	for x in [-.38,.38]:
-		block(actor,Vector3(.15,.52,.18),Vector3(x,.85,0),Color(map.coat))
+		var arm := block(actor,Vector3(.15,.52,.18),Vector3(x,.85,0),Color(map.coat))
+		arm.name = "ArmL" if x < 0 else "ArmR"
 	if map.id == "warehouse":
 		block(actor,Vector3(.5,.3,.4),Vector3(0,.78,.4),Color("#b79567"))
 	add_child(actor)
@@ -172,6 +276,14 @@ func accept_state(message: Dictionary) -> void:
 		map_id = map.id
 		build_map(map)
 	curtain.visible = float(s.curtain) > 0
+	update_mechanic(s)
+	for child in attack_layer.get_children():
+		child.queue_free()
+	for swing in s.swings:
+		if swing.age < .72 and swing.result != "cancelled":
+			show_sector(swing.polygon,Color(1,.48,.36,.28) if swing.resolved else Color(1,.87,.51,.20))
+			if swing.has("hit"):
+				show_signal(swing.hit.x,swing.hit.z)
 	for child in signals.get_children():
 		child.queue_free()
 	var people: Array = s.npcs.duplicate()
@@ -193,6 +305,10 @@ func accept_state(message: Dictionary) -> void:
 		actor.position = Vector3(p.x,0,p.z)
 		actor.rotation.y = float(p.get("yaw",0))
 		actor.set_meta("moving",p.get("moving",false))
+		actor.set_meta("swing_age",-1.0)
+		for swing in s.swings:
+			if swing.attacker == p.id and swing.age < .52:
+				actor.set_meta("swing_age",float(swing.age))
 		if float(p.get("exposed",0)) > 0:
 			show_signal(p.x,p.z)
 	for id in actors.keys():
@@ -202,13 +318,13 @@ func accept_state(message: Dictionary) -> void:
 	for point in s.revealPoints:
 		show_signal(point.x,point.z)
 	status.text = "CROWD MASK · %s · 생존 %d명" % [map.name,alive]
-	ranking.text = "NPC 흉내 · 이동하면 해제 · 바라보는 방향으로 공격"
+	ranking.text = str(s.map.concept)
 	if s.stage == "freeze":
 		ranking.text = map.event+" · NPC 순간 정지"
 	elif s.stage == "reveal":
 		ranking.text = "생존자 위치 공개!"
 	elif message.phase == "running":
-		ranking.text = "무킬 %d초 · 다음 단서 %d초" % [s.quiet,maxi(0,45-int(s.quiet)) if s.quiet < 45 else maxi(0,int(s.nextReveal)-int(s.quiet))]
+		ranking.text = str(s.mechanic.label)+" · 무킬 %d초" % s.quiet
 	elif message.phase == "finished":
 		var names := PackedStringArray()
 		for p in message.results.players:
@@ -235,6 +351,14 @@ func _process(delta: float) -> void:
 		var walk: float = sin(elapsed*9)*.4 if actor.get_meta("moving",false) else 0
 		actor.get_node("LegL").rotation.x = walk
 		actor.get_node("LegR").rotation.x = -walk
+		var age: float = actor.get_meta("swing_age",-1.0)
+		var punch: float = sin(clampf(age/.52,0,1)*PI) if age >= 0 else 0.0
+		actor.get_node("ArmR").rotation.x = -punch*2.3
+		actor.get_node("ArmR").rotation.z = -punch*.65
+		actor.get_node("ArmL").rotation.x = -punch*.5
+		actor.scale.z = 1+punch*.15
+		if age >= 0:
+			actor.set_meta("swing_age",age+delta)
 	if fixture_mode:
 		capture_frames += 1
 		if capture_frames == 12:
