@@ -4,6 +4,8 @@ var kind := 0
 var excavator_texture: Texture2D
 var racing_texture: Texture2D
 var fps_texture: Texture2D
+var fishing_texture: Texture2D = preload("res://assets/fishing-card.png")
+var krill_texture: Texture2D = preload("res://assets/krill-card.png")
 var bull_texture: Texture2D = preload("res://bull-card.png")
 
 func _draw() -> void:
@@ -16,10 +18,7 @@ func _draw() -> void:
 			draw_rect(Rect2(p+Vector2(-7,-6),Vector2(14,4)),Color("#303d49"))
 		return
 	if kind == 4 or kind == 5:
-		var art_path := "res://assets/krill-card.png" if kind == 5 else "res://assets/fishing-card.png"
-		if not ResourceLoader.exists(art_path):
-			return
-		var texture: Texture2D = load(art_path)
+		var texture: Texture2D = krill_texture if kind == 5 else fishing_texture
 		if texture != null:
 			var ratio := minf(size.x/texture.get_width(),size.y/texture.get_height())
 			draw_texture_rect(texture,Rect2((size-Vector2(texture.get_size())*ratio)/2,Vector2(texture.get_size())*ratio),false)
