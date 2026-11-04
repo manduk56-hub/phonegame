@@ -49,9 +49,23 @@ const welcome=document.createElement('div');welcome.className='hub-welcome';
 const intro=hub.querySelector('.hub-intro');intro.before(welcome);
 welcome.append(intro,hub.querySelector('.hub-join'));
 document.title='플레이룸 · 게임 선택';
+const PAGE_SIZE=4;
+let catalogPage=0;
+const catalogPanel=document.createElement('div');catalogPanel.className='hub-catalog-panel';
+const catalogGrid=hub.querySelector('.hub-catalog');catalogGrid.before(catalogPanel);catalogPanel.append(catalogGrid);
+catalogPanel.insertAdjacentHTML('beforeend','<nav class="hub-pagination" aria-label="게임 목록 페이지"><button id="hub-prev" type="button">← 이전 페이지</button><span id="hub-page" role="status" aria-live="polite"></span><button id="hub-next" type="button">다음 페이지 →</button></nav>');
+function showCatalogPage(page){
+  catalogPage=Math.max(0,Math.min(Math.ceil(catalog.length/PAGE_SIZE)-1,page));
+  for(const card of catalogGrid.children)card.hidden=Math.floor(Number(card.dataset.game)/PAGE_SIZE)!==catalogPage;
+  $('hub-page').textContent=(catalogPage+1)+' / '+Math.ceil(catalog.length/PAGE_SIZE);
+  $('hub-prev').disabled=catalogPage===0;$('hub-next').disabled=(catalogPage+1)*PAGE_SIZE>=catalog.length;
+}
+function changeCatalogPage(delta){chooseGame((catalogPage+delta)*PAGE_SIZE);catalogGrid.querySelector('[data-game="'+selectedGame+'"]').focus({preventScroll:true});}
+$('hub-prev').onclick=()=>changeCatalogPage(-1);$('hub-next').onclick=()=>changeCatalogPage(1);
 let selectedGame=0,currentPhase='lobby';
 function chooseGame(index){
   selectedGame=index;
+  showCatalogPage(Math.floor(index/PAGE_SIZE));
   const game=catalog[index];
   for(const card of hub.querySelectorAll('.hub-card'))card.setAttribute('aria-pressed',String(Number(card.dataset.game)===index));
   // Use a separate pattern ID in the large preview to avoid duplicate SVG IDs.

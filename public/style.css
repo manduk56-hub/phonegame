@@ -401,3 +401,20 @@ body :is(button.primary,#hub-play,#fps-fire):disabled{background-color:#343d38!i
 /* Establish gesture ownership before the first finger lands. */
 :is(.phone-controller .controls,#race-controller,#bull-controller,#fps-controller,#fishing-controller,#krill-controller,#disguise-controller),
 :is(.phone-controller .controls,#race-controller,#bull-controller,#fps-controller,#fishing-controller,#krill-controller,#disguise-controller) *{touch-action:none}
+
+/* Four games per page, with separate image and text space. */
+.hub-catalog-panel{min-width:0;display:flex;flex-direction:column;gap:20px}
+.hub-catalog{grid-template-rows:repeat(2,minmax(0,1fr));flex:1}
+.hub-card[hidden]{display:none!important}
+.hub-card{aspect-ratio:auto;min-height:280px;gap:12px}
+.hub-card>.hub-art{flex:1 1 160px;height:160px;min-height:0;max-height:240px;width:100%;object-fit:contain;overflow:hidden}
+.hub-card-heading{min-width:0;flex-wrap:wrap;flex-shrink:0}
+.hub-card-heading strong{min-width:0;overflow-wrap:anywhere}
+.hub-card-subtitle{overflow-wrap:anywhere;flex-shrink:0}
+.hub-card-status{flex-shrink:0}
+.hub-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hub-pagination button{min-height:44px;padding:10px 16px}
+#hub-page{white-space:nowrap;color:#eee9da}
+.hub-detail{min-width:0;overflow-wrap:anywhere}
+#hub-preview{min-width:0;overflow:hidden}
+@media(max-width:720px){.hub-card{min-height:230px}.hub-card>.hub-art{flex-basis:120px;height:120px;max-height:180px}.hub-card-heading strong{font-size:16px}.hub-card-subtitle{white-space:normal;font-size:12px}.hub-pagination{gap:8px}.hub-pagination button{font-size:12px;padding:10px 8px}}

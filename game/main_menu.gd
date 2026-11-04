@@ -15,7 +15,12 @@ const GAMES = [
 ]
 var menu: MarginContainer
 var background: ColorRect
+const PAGE_SIZE := 4
 var cards: Array[Button] = []
+var catalog_page := 0
+var page_label: Label
+var previous_page: Button
+var next_page: Button
 var detail_art: Control
 var detail_title: Label
 var detail_subtitle: Label
@@ -101,12 +106,13 @@ func _ready() -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation",28)
 	stack.add_child(body)
-	var square_area := ScrollContainer.new()
+	var square_area := VBoxContainer.new()
 	square_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	square_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(square_area)
 	var grid := GridContainer.new()
-	grid.columns = 5
+	grid.columns = 2
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation",18)
 	grid.add_theme_constant_override("v_separation",18)
@@ -114,9 +120,10 @@ func _ready() -> void:
 	for i in range(GAMES.size()):
 		var card := Button.new()
 		card.name = "GameCard%d" % i
-		card.custom_minimum_size = Vector2(170,170)
-		card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		card.custom_minimum_size = Vector2(240,220)
+		card.clip_contents = true
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		card.add_theme_stylebox_override("normal",preload("res://pixel_ui.gd").tile())
 		card.add_theme_stylebox_override("hover",preload("res://pixel_ui.gd").tile("#556453","#e8ca8a"))
 		grid.add_child(card)
@@ -132,15 +139,36 @@ func _ready() -> void:
 		var art := Control.new()
 		art.set_script(ART)
 		art.kind = 99 if GAMES[i][0] == "MOLE MISCHIEF" else i
-		art.custom_minimum_size.y = 80
+		art.custom_minimum_size.y = 110
 		art.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		contents.add_child(art)
-		contents.add_child(label(GAMES[i][0],18))
-		contents.add_child(label(GAMES[i][1],12,"#a8b1ac"))
+		var title := label(GAMES[i][0],24)
+		title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		contents.add_child(title)
+		var subtitle := label(GAMES[i][1],16,"#a8b1ac")
+		subtitle.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		contents.add_child(subtitle)
 		contents.add_child(label("● 플레이 가능   /   " + GAMES[i][3] if i < GAMES.size() else "준비 중   /   " + GAMES[i][2],12,"#f1bd75" if i < GAMES.size() else "#a8b1ac"))
 		for child in contents.get_children():
 			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.pressed.connect(select_game.bind(i))
+	var pagination := HBoxContainer.new()
+	pagination.add_theme_constant_override("separation",16)
+	square_area.add_child(pagination)
+	previous_page = Button.new()
+	previous_page.text = "← 이전 페이지"
+	previous_page.custom_minimum_size = Vector2(180,44)
+	previous_page.pressed.connect(change_page.bind(-1))
+	pagination.add_child(previous_page)
+	page_label = label("",20)
+	page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pagination.add_child(page_label)
+	next_page = Button.new()
+	next_page.text = "다음 페이지 →"
+	next_page.custom_minimum_size = Vector2(180,44)
+	next_page.pressed.connect(change_page.bind(1))
+	pagination.add_child(next_page)
 	var sidebar := VBoxContainer.new()
 	sidebar.custom_minimum_size.x = 430
 	sidebar.add_theme_constant_override("separation",16)
@@ -226,8 +254,20 @@ func _ready() -> void:
 		get_viewport().get_texture().get_image().save_png("res://../.runtime/game-menu.png")
 		get_tree().quit()
 
+func change_page(direction: int) -> void:
+	var target := clampi(catalog_page+direction,0,ceili(float(GAMES.size())/PAGE_SIZE)-1)
+	if target != catalog_page:
+		select_game(target*PAGE_SIZE)
+		cards[selected].grab_focus()
+
 func select_game(index: int) -> void:
 	selected = index
+	catalog_page = index/PAGE_SIZE
+	for i in range(cards.size()):
+		cards[i].visible = i/PAGE_SIZE == catalog_page
+	page_label.text = "%d / %d" % [catalog_page+1,ceili(float(GAMES.size())/PAGE_SIZE)]
+	previous_page.disabled = catalog_page == 0
+	next_page.disabled = (catalog_page+1)*PAGE_SIZE >= GAMES.size()
 	for i in range(cards.size()):
 		cards[i].add_theme_stylebox_override("normal",preload("res://pixel_ui.gd").tile("#556453" if i == index else "#414d43","#efb96d" if i == index else "#9eac88"))
 	detail_art.kind = 99 if GAMES[index][0] == "MOLE MISCHIEF" else index

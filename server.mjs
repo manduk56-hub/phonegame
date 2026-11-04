@@ -30,6 +30,7 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
     try {
       const url=new URL(req.url,'http://localhost');
       if(url.pathname==='/krill-models.json'){res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/krill-models.json',import.meta.url)));return;}
+      if(['/assets/clover-card.png','/assets/mole-card.png','/assets/disguise-card.png'].includes(url.pathname)){res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public'+url.pathname,import.meta.url)));return;}
       if(url.pathname==='/assets/krill-card.png'){res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public/assets/krill-card.png',import.meta.url)));return;}
       if(url.pathname==='/fishing-models.json'){res.setHeader('Content-Type','application/json');res.end(await readFile(new URL('./game/fishing-models.json',import.meta.url)));return;}
       if(['/assets/fishing-card.png','/assets/fishing-fish-models.png'].includes(url.pathname)){res.setHeader('Content-Type','image/png');res.end(await readFile(new URL('./public'+url.pathname,import.meta.url)));return;}

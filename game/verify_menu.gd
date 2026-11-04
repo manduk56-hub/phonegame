@@ -24,11 +24,13 @@ func run() -> void:
 	for frame in range(6):
 		await process_frame
 	assert(hub.menu.visible and hub.cards.size() == hub.GAMES.size() and hub.cards.size() >= 5)
-	for card in hub.cards:
-		if absf(card.size.x-card.size.y)>1.0:
-			push_error("Game cards must be square: %s, viewport: %s" % [card.size,root.size])
-			quit(1)
-			return
+	assert(hub.cards.filter(func(card):return card.visible).size() == 4)
+	hub.change_page(1)
+	assert(hub.selected == 4 and hub.catalog_page == 1)
+	hub.change_page(1)
+	assert(hub.selected == 8 and hub.next_page.disabled)
+	assert(hub.cards.filter(func(card):return card.visible).size() == 1)
+	hub.select_game(0)
 	assert(not hub.play_button.disabled)
 	assert(hub.quit_button.text.contains("Esc") and hub.quit_button.pressed.is_connected(hub.quit_game))
 	assert(hub.quit_button.get_global_rect().end.y <= hub.size.y)
