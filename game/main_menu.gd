@@ -18,6 +18,7 @@ var background: ColorRect
 const PAGE_SIZE := 4
 var cards: Array[Button] = []
 var catalog_page := 0
+var empty_slots: Array[Control] = []
 var page_label: Label
 var previous_page: Button
 var next_page: Button
@@ -110,17 +111,23 @@ func _ready() -> void:
 	square_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	square_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(square_area)
+	var card_area := AspectRatioContainer.new()
+	card_area.ratio = 1.0
+	card_area.stretch_mode = AspectRatioContainer.STRETCH_FIT
+	card_area.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	square_area.add_child(card_area)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation",18)
 	grid.add_theme_constant_override("v_separation",18)
-	square_area.add_child(grid)
+	card_area.add_child(grid)
 	for i in range(GAMES.size()):
 		var card := Button.new()
 		card.name = "GameCard%d" % i
-		card.custom_minimum_size = Vector2(240,220)
+		card.custom_minimum_size = Vector2(240,240)
 		card.clip_contents = true
 		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -152,6 +159,13 @@ func _ready() -> void:
 		for child in contents.get_children():
 			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.pressed.connect(select_game.bind(i))
+	for i in range(PAGE_SIZE-1):
+		var slot := Control.new()
+		slot.custom_minimum_size = Vector2(240,240)
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		grid.add_child(slot)
+		empty_slots.append(slot)
 	var pagination := HBoxContainer.new()
 	pagination.add_theme_constant_override("separation",16)
 	square_area.add_child(pagination)
@@ -210,7 +224,7 @@ func _ready() -> void:
 	join_row.add_theme_constant_override("separation",14)
 	join_panel.add_child(join_row)
 	qr = TextureRect.new()
-	qr.custom_minimum_size = Vector2(200,200)
+	qr.custom_minimum_size = Vector2(144,144)
 	qr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	qr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	qr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -265,6 +279,9 @@ func select_game(index: int) -> void:
 	catalog_page = index/PAGE_SIZE
 	for i in range(cards.size()):
 		cards[i].visible = i/PAGE_SIZE == catalog_page
+	var remaining := mini(PAGE_SIZE,GAMES.size()-catalog_page*PAGE_SIZE)
+	for i in range(empty_slots.size()):
+		empty_slots[i].visible = i < PAGE_SIZE-remaining
 	page_label.text = "%d / %d" % [catalog_page+1,ceili(float(GAMES.size())/PAGE_SIZE)]
 	previous_page.disabled = catalog_page == 0
 	next_page.disabled = (catalog_page+1)*PAGE_SIZE >= GAMES.size()

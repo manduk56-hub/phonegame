@@ -7,20 +7,23 @@ try{
  const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  for(const width of [1920,1600,1280,1024,768,720,390,320]){
   await page.setViewportSize({width,height:1000});await page.goto('http://127.0.0.1:'+app.port);await page.locator('#hub-qr').waitFor();await page.evaluate(()=>document.fonts.ready);
+  const expectedSize=await page.locator('.hub-card:visible').first().boundingBox();
   for(let p=0;p<3;p++){
    assert.equal(await page.locator('.hub-card:visible').count(),p===2?1:4);
    assert.equal(await page.locator('#hub-page').textContent(),(p+1)+' / 3');
    await page.locator('.hub-card:not([hidden]) img').evaluateAll(images=>Promise.all(images.map(img=>img.decode())));
-   const issues=await page.evaluate(()=>{
+   const issues=await page.evaluate(expectedSize=>{
     const issues=[];
     if(document.documentElement.scrollWidth>innerWidth)issues.push('horizontal page overflow');
     for(const c of document.querySelectorAll('.hub-card:not([hidden])')){
      const r=c.getBoundingClientRect();
+     if(Math.abs(r.width-r.height)>1)issues.push('card not square');
+     if(Math.abs(r.width-expectedSize.width)>1||Math.abs(r.height-expectedSize.height)>1)issues.push('card size changed');
      if(c.scrollWidth>c.clientWidth+1||c.scrollHeight>c.clientHeight+1)issues.push('card overflow '+c.dataset.game);
      for(const el of c.children){const b=el.getBoundingClientRect();if(b.left<r.left||b.right>r.right+1||b.top<r.top||b.bottom>r.bottom+1)issues.push('content outside '+c.dataset.game);}
     }
     return issues;
-   });assert.deepEqual(issues,[],width+' page '+p);
+   },expectedSize);assert.deepEqual(issues,[],width+' page '+p);
    if(width===1600)await page.screenshot({path:'.runtime/web-catalog-'+p+'.png',fullPage:true});
    if(p<2)await page.locator('#hub-next').click();
   }

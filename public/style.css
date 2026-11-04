@@ -404,10 +404,10 @@ body :is(button.primary,#hub-play,#fps-fire):disabled{background-color:#343d38!i
 
 /* Four games per page, with separate image and text space. */
 .hub-catalog-panel{min-width:0;display:flex;flex-direction:column;gap:20px}
-.hub-catalog{grid-template-rows:repeat(2,minmax(0,1fr));flex:1}
+.hub-catalog{grid-template-rows:repeat(2,minmax(0,1fr));align-content:start;align-items:start}
 .hub-card[hidden]{display:none!important}
-.hub-card{aspect-ratio:auto;min-height:280px;gap:12px}
-.hub-card>.hub-art{flex:1 1 160px;height:160px;min-height:0;max-height:240px;width:100%;object-fit:contain;overflow:hidden}
+.hub-card{aspect-ratio:1;min-height:0;height:100%;gap:12px}
+.hub-card>.hub-art{flex:1 1 0;height:0;min-height:0;width:100%;object-fit:contain;overflow:hidden}
 .hub-card-heading{min-width:0;flex-wrap:wrap;flex-shrink:0}
 .hub-card-heading strong{min-width:0;overflow-wrap:anywhere}
 .hub-card-subtitle{overflow-wrap:anywhere;flex-shrink:0}
@@ -417,4 +417,6 @@ body :is(button.primary,#hub-play,#fps-fire):disabled{background-color:#343d38!i
 #hub-page{white-space:nowrap;color:#eee9da}
 .hub-detail{min-width:0;overflow-wrap:anywhere}
 #hub-preview{min-width:0;overflow:hidden}
-@media(max-width:720px){.hub-card{min-height:230px}.hub-card>.hub-art{flex-basis:120px;height:120px;max-height:180px}.hub-card-heading strong{font-size:16px}.hub-card-subtitle{white-space:normal;font-size:12px}.hub-pagination{gap:8px}.hub-pagination button{font-size:12px;padding:10px 8px}}
+@media(max-width:720px){.hub-card{min-height:0}.hub-card>.hub-art{flex-basis:0;height:0;max-height:none}.hub-card-heading strong{font-size:16px}.hub-card-subtitle{white-space:normal;font-size:12px}.hub-pagination{gap:8px}.hub-pagination button{font-size:12px;padding:10px 8px}}
+
+@media(max-width:540px){.hub-catalog{grid-template-columns:1fr;grid-template-rows:none;grid-auto-rows:auto}.hub-card{height:auto;aspect-ratio:1}.hub-card-heading strong{font-size:20px}.hub-card-subtitle{font-size:14px}}
