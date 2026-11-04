@@ -211,11 +211,11 @@ void vertex() { field_position = VERTEX.xy; }
 void fragment() {
  float outside = distance(field_position,safe_center)-safe_radius;
  if (outside <= 0.0) { discard; }
- float stripe = step(0.9,fract((field_position.x+field_position.y)*0.45));
+ float stripe = step(0.55,fract((field_position.x+field_position.y)*0.45));
  float edge = 1.0-smoothstep(0.04,0.16,outside);
  float pulse = 0.92+0.08*sin(TIME*5.0);
  ALBEDO = mix(vec3(1.0,0.18,0.12),vec3(1.0,0.65,0.2),max(stripe,edge));
- ALPHA = max(intensity*(0.3+stripe*0.35),edge*0.75)*pulse;
+ ALPHA = max(intensity*(0.65+stripe*0.35),edge*0.75)*pulse;
 }
 """
 	var danger_material := ShaderMaterial.new()
@@ -288,7 +288,7 @@ func accept_state(message: Dictionary) -> void:
 	var material: ShaderMaterial = danger_zone.material_override
 	material.set_shader_parameter("safe_center",Vector2(k.safe.x,k.safe.y))
 	material.set_shader_parameter("safe_radius",k.safe.r)
-	material.set_shader_parameter("intensity",.3 if k.stage == "suction" else .18)
+	material.set_shader_parameter("intensity",.6 if k.stage == "suction" else .42)
 	status.text = "KRILL ESCAPE · " + ("대기실" if phase == "lobby" else "경고 영역 흡입 중!" if k.stage == "suction" else "흡입 예고! 경고 무늬를 피하세요" if k.stage == "warning" else "바다 속 생존")
 	var rows := PackedStringArray()
 	for p in message.players:

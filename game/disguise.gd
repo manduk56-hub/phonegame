@@ -108,7 +108,20 @@ func build_ui() -> void:
 	cover_layer.layer = 50
 	add_child(cover_layer)
 	curtain = ColorRect.new()
-	curtain.color = Color("#11191d")
+	curtain.color = Color.WHITE
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+uniform float coverage = 0.0;
+void fragment() {
+ if (UV.x > coverage*0.5 && UV.x < 1.0-coverage*0.5) { discard; }
+ float fold = 0.5+0.5*cos(UV.x*100.0);
+ COLOR = vec4(mix(vec3(0.27,0.08,0.16),vec3(0.69,0.29,0.35),fold),1.0);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	curtain.material = material
 	curtain.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	curtain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	curtain.hide()
@@ -304,6 +317,7 @@ func accept_state(message: Dictionary) -> void:
 		var actor: Node3D = actors[p.id]
 		actor.position = Vector3(p.x,0,p.z)
 		actor.rotation.y = float(p.get("yaw",0))
+		actor.set_meta("base_yaw",actor.rotation.y)
 		actor.set_meta("moving",p.get("moving",false))
 		actor.set_meta("swing_age",-1.0)
 		for swing in s.swings:
@@ -323,6 +337,8 @@ func accept_state(message: Dictionary) -> void:
 		ranking.text = map.event+" · NPC 순간 정지"
 	elif s.stage == "reveal":
 		ranking.text = "생존자 위치 공개!"
+	elif float(s.get("curtainPending",0)) > 0:
+		ranking.text = "%d초 뒤 커튼으로 가립니다" % ceili(float(s.curtainPending))
 	elif message.phase == "running":
 		ranking.text = str(s.mechanic.label)+" · 무킬 %d초" % s.quiet
 	elif message.phase == "finished":
@@ -347,6 +363,15 @@ func accept_state(message: Dictionary) -> void:
 
 func _process(delta: float) -> void:
 	elapsed += delta
+	if not state.is_empty() and state.has("disguise"):
+		var s: Dictionary = state.disguise
+		var remaining: float = float(s.get("curtain",0))
+		var motion: float = float(s.get("curtainMotion",.22))
+		var total: float = float(s.get("curtainTime",1))+motion*2
+		curtain.visible = remaining > 0
+		var coverage: float = clampf(minf((total-remaining)/motion,remaining/motion),0,1)
+		(curtain.material as ShaderMaterial).set_shader_parameter("coverage",coverage)
+		s.curtain = maxf(0,remaining-delta)
 	for actor in actors.values():
 		var walk: float = sin(elapsed*9)*.4 if actor.get_meta("moving",false) else 0
 		actor.get_node("LegL").rotation.x = walk
@@ -356,6 +381,10 @@ func _process(delta: float) -> void:
 		actor.get_node("ArmR").rotation.x = -punch*2.3
 		actor.get_node("ArmR").rotation.z = -punch*.65
 		actor.get_node("ArmL").rotation.x = -punch*.5
+		actor.get_node("ArmL").rotation.z = punch*1.9
+		actor.get_node("ArmR").rotation.z = -punch*1.9
+		actor.position.y = punch*.95
+		actor.rotation.y = float(actor.get_meta("base_yaw",0))+(clampf(age/.52,0,1)*TAU if age >= 0 else 0.0)
 		actor.scale.z = 1+punch*.15
 		if age >= 0:
 			actor.set_meta("swing_age",age+delta)

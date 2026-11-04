@@ -69,7 +69,7 @@ func _ready() -> void:
 	score_strip.add_child(match_clock)
 	var layout: VBoxContainer = lobby.get_child(0)
 	lobby_title.text = "BULL RUN / 투우 대기실"
-	lobby_hint.text = "황소: 왼쪽 전진 · 오른쪽 ◀▶ 회전 · 사람은 뿔을 피하세요"
+	lobby_hint.text = "황소: 자동 돌진 · ◀▶ 회전 · 사람은 뿔을 피하세요"
 	teams_input.hide()
 	teams_input.get_parent().get_child(0).hide()
 	configure_button.text = "경기 시간 적용"
@@ -105,7 +105,7 @@ func accept_state(message: Dictionary) -> void:
 	bull_map_choice.disabled = phase != "lobby" or not authenticated
 	bull_map_choice.select(1 if gate_map else 0)
 	bull_choice.visible = not gate_map
-	lobby_hint.text = "모두 사람 · 문이 열리면 직선 돌진 · 황소 속도 고정" if gate_map else "황소: 왼쪽 전진 · 오른쪽 ◀▶ 회전 · 사람은 뿔을 피하세요"
+	lobby_hint.text = "모두 사람 · 문이 열리면 직선 돌진 · 황소 속도 고정" if gate_map else "황소: 자동 돌진 · ◀▶ 회전 · 사람은 뿔을 피하세요"
 	var celebrating: bool = phase == "finished" and message.bull.get("celebration",{}).get("ready",false)
 	camera.size = 36 if celebrating else 100
 	camera.position = Vector3(0,30,34) if celebrating else Vector3(0,65,74)

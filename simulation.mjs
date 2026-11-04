@@ -1,3 +1,5 @@
+import {moleSpawn,moleStart,moleTick,moleSnapshot} from './mole.mjs';
+import {cloverSpawn,cloverStart,cloverAction,cloverTick,cloverField} from './clover.mjs';
 import {FPS_ARENA,resetFps,fpsSpawn,fpsAim,fpsFire,fpsTick,fpsResults,dropFlag} from './fps.mjs';
 import {EXCAVATOR_MAPS,resetWater,waterAction,waterTick,waterResults,waterHeight,waterSnapshot} from './waterway.mjs';
 import { randomUUID } from 'node:crypto';
@@ -25,7 +27,7 @@ export class Match {
     this.teams = []; this.game = 'excavator'; this.results = null; this.raceLaps=this.circuit.laps;this.raceCollisions=true;this.countdown=0;this.raceElapsed=0;this.raceDirector=null;this.resetTeams();
   }
   resetTeams() {
-    this.krill=null;this.disguise=null;
+    this.krill=null;this.disguise=null;this.mole=null;this.clover=cloverField();
     this.groundPiles = []; this.nextPileId = 0;
     this.teams = Array.from({length:this.teamCount}, (_,id) => {
       const angle = id / this.teamCount * Math.PI*2;
@@ -35,6 +37,8 @@ export class Match {
     resetFps(this);
   }
   spawn(p) {
+    if(this.game==='mole'){moleSpawn(this,p);return;}
+    if(this.game==='clover'){cloverSpawn(this,p);return;}
     if(this.game==='disguise'){disguiseSpawn(this,p);return;}
     if(this.game==='krill'){krillSpawn(this,p);return;}
     if(this.game==='fishing'){fishingSpawn(this,p);return;}
@@ -63,11 +67,11 @@ export class Match {
     p={id:randomUUID(),token:randomUUID(),name:String(name||'플레이어').trim().slice(0,16)||'플레이어',team:counts.indexOf(Math.min(...counts)),connected:true};
     this.players.set(p.id,p); for(const q of this.players.values()) this.spawn(q); return p;
   }
-  neutral() {if(this.game==='disguise')return {moveX:0,moveY:0};if(this.game==='krill')return {moveX:0,moveY:0};if(this.game==='fishing')return {tilt:0,reel:0};if(this.game==='bull')return {forward:0,steer:0,wave:0};if(this.game==='fps')return {forward:0,strafe:0};return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
+  neutral() {if(this.game==='clover')return {moveX:0,moveY:0,turn:0};if(this.game==='disguise')return {moveX:0,moveY:0};if(this.game==='krill')return {moveX:0,moveY:0};if(this.game==='fishing')return {tilt:0,reel:0};if(this.game==='bull')return {forward:0,steer:0,wave:0};if(this.game==='fps')return {forward:0,strafe:0};return this.game==='racing'?{steer:0,throttle:0,brake:0}:{travelL:0,travelR:0,swing:0,boom:0,stick:0,curl:0};}
   selectGame(game){
     if(this.game===game)return;
     if(this.phase!=='lobby')throw Error('대기실에서 게임을 변경하세요.');
-    if(!['excavator','racing','fps','bull','fishing','krill','disguise'].includes(game))throw Error('지원하지 않는 게임입니다.');
+    if(!['excavator','racing','fps','bull','fishing','krill','disguise','clover','mole'].includes(game))throw Error('지원하지 않는 게임입니다.');
     this.game=game;if(game==='fps'&&this.teamCount<2)this.teamCount=2;this.resetTeams();for(const p of this.players.values())p.team%=this.teamCount;this.results=null;for(const p of this.players.values())this.spawn(p);
     if(game==='racing'){this.duration=Math.max(300,this.duration);this.remaining=this.duration;}
   }
@@ -110,6 +114,8 @@ export class Match {
     for(const p of this.players.values()) this.spawn(p);
   }
   start() {
+    if(this.game==='mole'){if(this.phase!=='lobby')throw Error('대기실에서 시작하세요.');moleStart(this);return;}
+    if(this.game==='clover'){if(this.phase!=='lobby'||![...this.players.values()].some(p=>p.connected))throw Error('참가자가 있어야 시작할 수 있습니다.');cloverStart(this);return;}
     if(this.phase!=='lobby'||![...this.players.values()].some(p=>p.connected)) throw Error('접속한 참가자가 있어야 시작할 수 있습니다.');
     if(this.game==='disguise'){disguiseStart(this);return;}
     if(this.game==='krill'){krillStart(this);return;}
@@ -146,7 +152,8 @@ export class Match {
     const scale=central?Math.max(.025,amount/maximum):clamp(amount/maximum,.05,2.5);
     return Math.max(.2,(4.6-d)*.55)*scale;
   }
-  action(id, action) {
+  action(id, action, value={}) {
+    if(this.game==='clover'){cloverAction(this,id,action,value);return;}
     if(this.game==='disguise'){disguiseAction(this,id,action);return;}
     if(this.game==='krill'){krillAction(this,id,action);return;}
     if(this.game==='fishing'){fishingAction(this,id,action);return;}
@@ -182,6 +189,8 @@ export class Match {
     }
   }
   tick(dt,now=Date.now()) {
+    if(this.game==='mole'){moleTick(this,dt);return;}
+    if(this.game==='clover'){cloverTick(this,dt,now);return;}
     if(this.game==='disguise'){disguiseTick(this,dt,now);return;}
     if(this.game==='krill'){krillTick(this,dt,now);return;}
     if(this.game==='fishing'){fishingTick(this,Number.isFinite(dt)?clamp(dt,0,1):0,now);return;}
@@ -264,7 +273,9 @@ export class Match {
     return {type:'state',arena:ARENA,game:this.game,phase:this.phase,results:this.results,teamCount:this.teamCount,duration:this.duration,remaining:this.remaining,central:this.central,teams:this.teams,groundPiles:this.groundPiles,
       ...(this.game==='excavator'?{excavatorMap:this.excavatorMap,excavatorMaps:EXCAVATOR_MAPS,water:waterSnapshot(this.water)}:{}),
       ...(this.game==='bull'?{bull:{...(this.phase==='lobby'?{}:this.bull||{}),map:this.bullMap,arena:BULL_ARENA,gates:BULL_GATES,choice:this.bullChoice}}:{}),
+      ...(this.game==='clover'?{clover:this.clover}:{}),
       ...(this.game==='disguise'?{disguise:disguiseSnapshot(this)}:{}),
+      ...(this.game==='mole'?{mole:moleSnapshot(this)}:{}),
       ...(this.game==='krill'?{krill:{...(this.krill||{elapsed:0,stage:'rest',safe:{x:0,y:0,r:2.8},obstacles:[]}),...KRILL}}:{}),
       ...(this.game==='fishing'?{fishing:{...(this.fishing||{elapsed:0}),...FISHING}}:{}),
       ...(this.game==='fps'?{fps:{...this.fps,arena:FPS_ARENA}}:{}),

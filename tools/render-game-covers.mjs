@@ -26,7 +26,7 @@ for(const player of match.players.values()){
   player.fishing.fishZ=player.z+Math.cos(player.yaw)*5;
 }
 await writeFile(path.join(root,'.runtime/fishing-card-fixture.json'),JSON.stringify(match.snapshot()));
-for(const script of ['render_krill_card.gd','render_fishing_card.gd']){
+for(const script of ['render_krill_card.gd','render_fishing_card.gd','render_disguise_card.gd','render_party_cards.gd']){
   const child=spawn(engine,['--path','game','--script',`res://${script}`,'--windowed','--resolution','1600x900'],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});
   let output='';
   child.stdout.on('data',data=>output+=data);

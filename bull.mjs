@@ -100,11 +100,11 @@ export function bullTick(m,dt,now){
   if(!b?.connected){finish(m,'humans');return;}
   b.lift=Math.max(0,b.lift-dt);
   const input=now-b.lastInput<350?b.input:{forward:0,steer:0};
-  const advancing=input.forward>0;
+  // Neutral and expired input cannot stop a running bull.
   const steps=Math.max(1,Math.ceil(dt/.016)),step=dt/steps;
   for(let n=0;n<steps;n++){
     if(b.stun>0){b.stun=Math.max(0,b.stun-step);b.x-=Math.sin(b.yaw)*4*step;b.z-=Math.cos(b.yaw)*4*step;continue;}
-    b.speed=advancing?Math.min(BULL_ARENA.bullMaxSpeed,Math.max(BULL_ARENA.bullMinSpeed,b.speed)+BULL_ARENA.acceleration*step):0;
+    b.speed=Math.min(BULL_ARENA.bullMaxSpeed,Math.max(BULL_ARENA.bullMinSpeed,b.speed)+BULL_ARENA.acceleration*step);
     b.yaw+=input.steer*(2.15/(1+Math.max(0,b.speed-BULL_ARENA.bullMinSpeed)*.22))*step;
     b.x+=Math.sin(b.yaw)*b.speed*step;b.z+=Math.cos(b.yaw)*b.speed*step;
     // Substeps keep the front horn collision from skipping runners at full speed.

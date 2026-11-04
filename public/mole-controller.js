@@ -1,0 +1,2 @@
+import {createMoleView} from './mole-view.js';
+export function createMoleController({send}){const root=document.createElement('section');root.id='mole-controller';root.hidden=true;document.body.append(root);const view=createMoleView(root,{act:send});return {...view,update(m,p){root.hidden=false;document.title="MOLE MISCHIEF · 두더지 잡기";document.body.classList.add('mole-phone');document.getElementById('results').hidden=true;view.update(m,p);},hide(){root.hidden=true;document.body.classList.remove('mole-phone');}};}

@@ -97,6 +97,7 @@ func animate(time: float, opening: float, active: bool, delta: float, angle: flo
 		var pos := point(u,float(i%3),time,angle)
 		var next := point(maxf(0,u-.015),float(i%3),time,angle)
 		var transform := Transform3D(Basis.IDENTITY,pos)
-		transform = transform.looking_at(next,Vector3.UP)
+		if pos.distance_squared_to(next) > .000001:
+			transform = transform.looking_at(next,Vector3.UP)
 		transform.basis = transform.basis.scaled(Vector3.ONE*strength*sin(PI*u))
 		foam.multimesh.set_instance_transform(i,transform)

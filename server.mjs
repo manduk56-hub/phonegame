@@ -1,3 +1,4 @@
+import {moleAction} from './mole.mjs';
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {networkInterfaces} from 'node:os';
@@ -20,7 +21,9 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
   Object.assign(files,{'/bull-scene.js':'bull-scene.js','/bull-controller.js':'bull-controller.js','/bull.css':'bull.css','/brick-model.js':'brick-model.js'});
   Object.assign(files,{'/fishing-scene.js':'fishing-scene.js','/fishing-view.js':'fishing-view.js','/fishing-effects.js':'fishing-effects.js','/fishing-controller.js':'fishing-controller.js','/fishing-controls.js':'fishing-controls.js','/fishing.css':'fishing.css'});
   Object.assign(files,{'/krill-scene.js':'krill-scene.js','/krill-controller.js':'krill-controller.js','/krill.css':'krill.css'});
+  Object.assign(files,Object.fromEntries(['clover-scene.js','clover-controller.js','clover.css'].map(f=>['/'+f,f])));
   Object.assign(files,{'/disguise-geometry.js':'disguise-geometry.js','/disguise-scene.js':'disguise-scene.js','/disguise-controller.js':'disguise-controller.js','/disguise.css':'disguise.css'});
+  Object.assign(files,{'/mole-view.js':'mole-view.js','/mole-controller.js':'mole-controller.js','/mole.css':'mole.css'});
   let addresses=[],lanAddresses=[],joinAddress='',internetStatus=publicAddress?'online':'local';
   const snapshot=()=>({...match.snapshot(),connection:{room,address:joinAddress,internetStatus}});
   const server=http.createServer(async(req,res)=>{
@@ -102,11 +105,12 @@ export async function createServer({port=3000,host='0.0.0.0',manualTick=false,pu
             chatHistory.push(message);if(chatHistory.length>50)chatHistory.shift();
             for(const client of wss.clients)if(client.playerId||['host','display'].includes(client.sessionRole))send(client,{type:'chat',message});
           }
+          if(m.type==='mole')moleAction(match,id,m);
           if(m.type==='input') match.input(id,m);
           if(m.type==='fire')match.fire(id,m);
           if(m.type==='car')match.chooseCar(id,m.car);
           if(m.type==='race-view'&&match.game==='racing'&&['first','third'].includes(m.viewMode)){const p=match.players.get(id);if(p)p.viewMode=m.viewMode;}
-          if(m.type==='action'&&['scoop','drop','cast','hook','tail','mimic','attack'].includes(m.action)) match.action(id,m.action);
+          if(m.type==='action'&&['scoop','drop','cast','hook','tail','mimic','attack','crouch','clover-select','pull'].includes(m.action)) match.action(id,m.action,m);
         } else if(role==='host') {
           if(m.type==='game')match.selectGame(m.game);
           if(m.type==='network') {

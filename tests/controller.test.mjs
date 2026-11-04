@@ -4,10 +4,10 @@ import {bindPad,protectGameControls} from '../public/pointer-pad.js';
 test('all game surfaces block native long-press actions while input and chat remain editable',()=>{
   const handlers=new Map();
   protectGameControls({addEventListener(type,handler,options){assert.equal(options.capture,true);handlers.set(type,handler);}});
-  for(const surface of ['.phone-controller .controls','#race-controller','#bull-controller','#fps-controller','#fishing-controller','#krill-controller',null]){
+  for(const surface of ['.phone-controller .controls','#race-controller','#bull-controller','#fps-controller','#fishing-controller','#krill-controller','#disguise-controller',null]){
     for(const editable of [false,true])for(const handler of handlers.values()){
       let prevented=false;
-      handler({target:{closest(selector){return selector.startsWith('input,')?editable:surface&&selector.split(',').includes(surface);}},preventDefault(){prevented=true;}});
+      handler({touches:[{},{}],target:{closest(selector){return selector.startsWith('input,')?editable:surface&&selector.split(',').includes(surface);}},preventDefault(){prevented=true;}});
       assert.equal(prevented,Boolean(surface)&&!editable);
     }
   }
@@ -44,4 +44,12 @@ test('disabled controls ignore touches; focus reset discards captured pointers a
   enabled=true;el.onpointerdown(event(1,172,100));assert.equal(value[0],1);
   reset();el.onpointermove(event(1,172,100));assert.deepEqual(value,[0,0]);
   el.onpointerdown(event(2,172,100));enabled=false;el.onpointermove(event(2,172,100));assert.deepEqual(value,[0,0]);
+});
+
+test('single touches preserve ordinary buttons while multi-touch and native gestures are suppressed',()=>{
+ const handlers=new Map();protectGameControls({addEventListener(type,fn){handlers.set(type,fn);}});
+ const target={closest:s=>s.startsWith('input,')?false:true};let count=0;
+ handlers.get('touchstart')({target,touches:[{}],preventDefault(){count++;}});assert.equal(count,0);
+ handlers.get('touchstart')({target,touches:[{},{}],preventDefault(){count++;}});assert.equal(count,1);
+ handlers.get('gesturestart')({target,preventDefault(){count++;}});assert.equal(count,2);
 });

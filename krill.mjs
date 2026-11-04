@@ -1,4 +1,4 @@
-export const KRILL={width:10,height:5.8,speed:6.6,tailRange:1.6,tailPush:1.44,tailCooldown:1.1};
+export const KRILL={width:10,height:5.8,speed:6.6,tailRange:2,tailPush:2.1,tailCooldown:1.1};
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 export function krillSpawn(m,p){
  const i=[...m.players.keys()].indexOf(p.id);p.x=(i%4-1.5)*3.6;p.y=(Math.floor(i/4)-1.5)*2.3;p.z=0;
@@ -6,7 +6,7 @@ export function krillSpawn(m,p){
  p.alive=true;p.participating=false;p.survival=0;p.suction=0;p.hits=0;p.stun=0;p.invulnerable=0;p.tail=0;p.cooldown=0;p.vx=0;p.vy=0;p.swimX=0;p.swimY=0;p.message='경고 무늬가 없는 곳으로 이동하세요';p.input=m.neutral();p.lastInput=0;
 }
 export function krillStart(m){
- m.krill={elapsed:0,cycle:0,cycleTime:0,interval:6,stage:'rest',opening:0,safe:{x:0,y:0,r:2.8},obstacles:[],serial:0,spawnTimer:1.4,initialCount:0,ride:{x:0,y:0,yaw:0}};
+ m.krill={elapsed:0,cycle:0,cycleTime:0,interval:6,stage:'rest',opening:0,safe:{x:0,y:0,r:3.2},obstacles:[],serial:0,spawnTimer:1.4,initialCount:0,ride:{x:0,y:0,yaw:0}};
  for(const p of m.players.values()){krillSpawn(m,p);p.participating=p.connected;p.alive=p.connected;if(p.connected)m.krill.initialCount++;}
  m.phase='running';m.remaining=m.duration;m.results=null;
 }
@@ -21,7 +21,7 @@ export function krillTick(m,dt,now){
  if(m.phase==='finished'){const winner=m.players.get(m.results.winnerIds[0]);if(winner?.connected&&now-winner.lastInput<350){k.ride.x=clamp(k.ride.x+winner.input.moveX*dt*3,-4,4);k.ride.y=clamp(k.ride.y+winner.input.moveY*dt*2,-2,2);k.ride.yaw=winner.input.moveX*.16;}return;}
  if(m.phase!=='running')return;
  k.elapsed+=dt;m.remaining=Math.max(0,m.duration-k.elapsed);k.cycleTime+=dt;
- if(k.cycleTime>=k.interval){k.cycleTime-=k.interval;k.cycle++;k.interval=Math.max(4.2,6-k.elapsed*.028);k.safe={x:Math.sin(k.cycle*2.4)*5.5,y:Math.cos(k.cycle*1.7)*2.5,r:Math.max(.85,2.8-Math.min(1,k.elapsed*.012)-Math.max(0,k.elapsed-m.duration)*.025)};}
+ if(k.cycleTime>=k.interval){k.cycleTime-=k.interval;k.cycle++;k.interval=Math.max(4.2,6-k.elapsed*.028);k.safe={x:Math.sin(k.cycle*2.4)*5.5,y:Math.cos(k.cycle*1.7)*2.4,r:Math.max(1.2,3.2-Math.min(1,k.elapsed*.012)-Math.max(0,k.elapsed-m.duration)*.025)};}
  const open=k.interval-1.4,warn=open-2;
  k.stage=k.cycleTime< warn?'rest':k.cycleTime<open?'warning':'suction';
  k.opening=k.stage==='suction'?Math.min(1,(k.cycleTime-open)/.25):Math.max(0,k.opening-dt*5);

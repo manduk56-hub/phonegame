@@ -7,6 +7,7 @@
     "render:covers": "node tools/render-game-covers.mjs",
     "start": "node server.mjs",
     "test": "node --test",
+    "verify:clover": "node tools/verify-clover.mjs",
     "verify:disguise": "node tools/verify-disguise.mjs",
     "verify:fishing": "node tools/verify-fishing.mjs",
     "verify:fps": "node tools/verify-fps.mjs",
@@ -18,7 +19,8 @@
     "verify:circuits": "node tools/verify-circuits.mjs",
     "verify:remote": "node tools/verify-live.mjs --endpoint=https://dirt-rally.115.68.208.145.sslip.io",
     "verify:krill": "node tools/verify-krill.mjs",
-    "preview:krill": "node tools/Start-Krill-Preview.mjs"
+    "preview:krill": "node tools/Start-Krill-Preview.mjs",
+    "verify:mole": "node tools/verify-mole.mjs"
   },
   "dependencies": {
     "qrcode": "^1.5.4",

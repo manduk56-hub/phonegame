@@ -1,6 +1,10 @@
 // Shared by every phone game, including dynamically mounted controllers.
 export function protectGameControls(target=document) {
-  const controls='.phone-controller .controls,#race-controller,#bull-controller,#fps-controller,#fishing-controller,#krill-controller';
+  const controls='.phone-controller .controls,#race-controller,#bull-controller,#fps-controller,#fishing-controller,#krill-controller,#disguise-controller,#clover-controller';
+  // Keep native gestures from stealing independently owned game pointers.
+  for(const type of ['touchstart','touchmove','gesturestart','gesturechange'])target.addEventListener(type,event=>{
+    if((type!=='touchstart'||event.touches.length>1)&&event.target.closest?.(controls)&&!event.target.closest('input,textarea,select'))event.preventDefault();
+  },{capture:true,passive:false});
   for(const type of ['contextmenu','dragstart','selectstart'])target.addEventListener(type,event=>{
     if(event.target.closest?.(controls)&&!event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])'))event.preventDefault();
   },{capture:true});

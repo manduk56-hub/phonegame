@@ -7,15 +7,21 @@ var fps_texture: Texture2D
 var fishing_texture: Texture2D = preload("res://assets/fishing-card.png")
 var krill_texture: Texture2D = preload("res://assets/krill-card.png")
 var bull_texture: Texture2D = preload("res://bull-card.png")
+var disguise_texture: Texture2D = preload("res://assets/disguise-card.png")
+var clover_texture: Texture2D = preload("res://assets/clover-card.png")
+var mole_texture: Texture2D = preload("res://assets/mole-card.png")
 
 func _draw() -> void:
+	if kind == 99 or kind == 7:
+		var texture: Texture2D = mole_texture if kind == 99 else clover_texture
+		var image_size: Vector2 = texture.get_size()
+		var ratio := maxf(size.x/image_size.x,size.y/image_size.y)
+		draw_texture_rect(texture,Rect2((size-image_size*ratio)/2,image_size*ratio),false)
+		return
 	if kind == 6:
-		draw_rect(Rect2(Vector2.ZERO,size),Color("#253b40"))
-		for i in range(15):
-			var p := Vector2(size.x*(.12+(i%5)*.18),size.y*(.2+floor(i/5.0)*.25))
-			draw_rect(Rect2(p+Vector2(-8,8),Vector2(16,20)),Color("#466478"))
-			draw_rect(Rect2(p+Vector2(-6,-4),Vector2(12,12)),Color("#e5bf97"))
-			draw_rect(Rect2(p+Vector2(-7,-6),Vector2(14,4)),Color("#303d49"))
+		var image_size: Vector2 = disguise_texture.get_size()
+		var ratio := minf(size.x/image_size.x,size.y/image_size.y)
+		draw_texture_rect(disguise_texture,Rect2((size-image_size*ratio)/2,image_size*ratio),false)
 		return
 	if kind == 4 or kind == 5:
 		var texture: Texture2D = krill_texture if kind == 5 else fishing_texture
